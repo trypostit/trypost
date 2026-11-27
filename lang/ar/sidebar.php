@@ -19,7 +19,6 @@ return [
     ],
     'settings' => 'الإعدادات',
     'plans_billing' => 'الخطط والفوترة',
-    'backoffice' => 'لوحة الإدارة',
     'log_out' => 'تسجيل الخروج',
     'help' => 'مساعدة',
     'language' => 'اللغة: :name',

@@ -17,8 +17,10 @@ import {
     componentToString,
     numericTick,
 } from '@/components/ui/chart';
+import { DAILY_CHART_PADDING, useAdminDayAxis, valueAt } from '@/composables/admin/useAdminDayAxis';
 import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
-import date from '@/date';
+import { filled, isNumber } from '@/lib/helpers';
+import { formatFullNumber, formatMoney } from '@/lib/utils';
 
 /** One stacked series of the chart: a value per day, in the order of `days`. */
 export interface AdminChartSeries {
@@ -34,30 +36,25 @@ export interface AdminChartSeries {
 
 type ChartPoint = {
     index: number;
-    label: string;
-    [key: string]: string | number;
+    [key: string]: number;
 };
-
-/** One label every few days, so a long range stays readable. */
-const MAX_TICKS = 8;
 
 const props = defineProps<{
     /** Calendar days, `YYYY-MM-DD`, oldest first. */
     days: string[];
     series: AdminChartSeries[];
     testId?: string;
-    /** The values are US dollars: the axis and the tooltip total show them so. */
+    /** The values are cents of a US dollar: the axis and the tooltip total show them as money. */
     currency?: boolean;
     /** The tooltip ends with the day's total across the series. */
     showTotal?: boolean;
 }>();
 
-const usd = (value: number): string =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+const { ticks, formatDay } = useAdminDayAxis(() => props.days);
 
 const formatValueTick = numericTick((tick, index, ticks): string => {
     if (props.currency) {
-        return usd(tick);
+        return formatMoney(tick);
     }
 
     return formatCountTick(tick, index, ticks);
@@ -73,23 +70,38 @@ const wantsTotal = computed((): boolean => {
 
 const formatTotal = (total: number): string => {
     if (props.currency) {
-        return usd(total);
+        return formatMoney(total);
     }
 
-    return total.toLocaleString();
+    return formatFullNumber(total);
 };
 
-/** The day's total across the series, in dollars when the chart is a cost. */
-const dayTotal = numericTick((tick): ChartTooltipDetail | null => {
-    const point = chartData.value[Math.round(tick)];
+/** A series' value on a day; a day it has no value for reads 0. */
+const pointValue = (point: ChartPoint, key: string): number => {
+    const value = point[key];
 
-    if (!wantsTotal.value || point === undefined) {
+    if (isNumber(value)) {
+        return value;
+    }
+
+    return 0;
+};
+
+/** The day's total across the series, as money when the chart is a cost. */
+const dayTotal = numericTick((tick): ChartTooltipDetail | null => {
+    if (!wantsTotal.value) {
         return null;
     }
 
-    const total = props.series.reduce((sum, series) => sum + Number(point[series.key] ?? 0), 0);
+    const point = chartData.value[Math.round(tick)];
 
-    return { label: 'Total', value: formatTotal(total) };
+    if (filled(point)) {
+        const total = props.series.reduce((sum, series) => sum + pointValue(point, series.key), 0);
+
+        return { label: 'Total', value: formatTotal(total) };
+    }
+
+    return null;
 });
 
 const chartConfig = computed(
@@ -103,11 +115,11 @@ const chartConfig = computed(
 );
 
 const chartData = computed<ChartPoint[]>(() =>
-    props.days.map((day, index) => {
-        const point: ChartPoint = { index, label: date.formatMonthDay(day) };
+    props.days.map((_, index) => {
+        const point: ChartPoint = { index };
 
         props.series.forEach((series) => {
-            point[series.key] = series.values[index] ?? 0;
+            point[series.key] = valueAt(series.values, index);
         });
 
         return point;
@@ -119,44 +131,34 @@ const yAccessors = computed(() =>
     props.series.map(
         (series) =>
             (point: ChartPoint): number =>
-                Number(point[series.key] ?? 0),
+                pointValue(point, series.key),
     ),
 );
 const barColors = computed(() => props.series.map((series) => series.color));
 
-const formatDay = numericTick(
-    (tick): string => chartData.value[Math.round(tick)]?.label ?? '',
-);
-
-const ticks = computed((): number[] => {
-    const step = Math.max(1, Math.ceil(props.days.length / MAX_TICKS));
-
-    return props.days
-        .map((_, index) => index)
-        .filter((index) => index % step === 0);
-});
+const seriesByKey = computed(() => new Map(props.series.map((series) => [series.key, series])));
 
 /** The day under the pointer, read by the series' tooltip details. */
 const hoveredIndex = ref(0);
 
 const seriesValue = (key: string, value: number): string => {
-    const format = props.series.find((series) => series.key === key)?.format;
+    const format = seriesByKey.value.get(key)?.format;
 
-    if (format === undefined) {
-        return value.toLocaleString();
+    if (filled(format)) {
+        return format(hoveredIndex.value, value);
     }
 
-    return format(hoveredIndex.value, value);
+    return formatFullNumber(value);
 };
 
 const seriesDetails = (key: string, value: number): ChartTooltipDetail[] => {
-    const details = props.series.find((series) => series.key === key)?.details;
+    const details = seriesByKey.value.get(key)?.details;
 
-    if (details === undefined) {
-        return [];
+    if (filled(details)) {
+        return details(hoveredIndex.value, value);
     }
 
-    return details(hoveredIndex.value, value);
+    return [];
 };
 
 const appContext = useChartAppContext();
@@ -193,7 +195,7 @@ const tooltipTriggers = computed(() => ({
     >
         <VisXYContainer
             :data="chartData"
-            :padding="{ top: 14, right: 8, bottom: 8, left: 0 }"
+            :padding="DAILY_CHART_PADDING"
         >
             <VisStackedBar
                 :x="xAccessor"

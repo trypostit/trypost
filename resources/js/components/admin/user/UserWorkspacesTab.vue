@@ -2,25 +2,27 @@
 import { IconBuilding } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
+import { humanize } from '@/lib/adminFormat';
+import { featureLabel } from '@/lib/adminPermissions';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber } from '@/lib/utils';
 import type {
     AdminUserChannel,
     AdminUserWorkspaceDetail,
     AdminUserWorkspacesData,
+    BadgeVariant,
 } from '@/types/admin';
 
 const props = defineProps<{
     data: AdminUserWorkspacesData;
 }>();
-
-type BadgeVariant = 'success' | 'warning' | 'destructive' | 'secondary';
 
 const STATUS_BADGES: Record<string, { label: string; variant: BadgeVariant }> = {
     connected: { label: 'Connected', variant: 'success' },
@@ -70,8 +72,15 @@ const role = (workspace: AdminUserWorkspaceDetail): string => {
     return 'Member';
 };
 
-const statusBadge = (channel: AdminUserChannel): { label: string; variant: BadgeVariant } =>
-    STATUS_BADGES[channel.status] ?? { label: channel.status, variant: 'secondary' };
+const statusBadge = (channel: AdminUserChannel): { label: string; variant: BadgeVariant } => {
+    const badge = STATUS_BADGES[channel.status];
+
+    if (filled(badge)) {
+        return badge;
+    }
+
+    return { label: humanize(channel.status), variant: 'secondary' };
+};
 
 const channelName = (channel: AdminUserChannel): string => {
     if (filled(channel.name)) {
@@ -89,24 +98,40 @@ const lastChecked = (channel: AdminUserChannel): string => {
     return 'Never checked';
 };
 
-const lacksPermissions = (channel: AdminUserChannel): boolean =>
-    filled(channel.missing_permissions);
+/** What the channel's connect did not grant, as the Networks page names the features. */
+const missingPermissionsLabel = (channel: AdminUserChannel): string | null => {
+    if (filled(channel.missing_permissions)) {
+        return `Missing: ${channel.missing_permissions.map(featureLabel).join(', ')}`;
+    }
 
-const missingPermissionsLabel = (channel: AdminUserChannel): string =>
-    `Missing: ${channel.missing_permissions.map((feature) => feature.replaceAll('_', ' ')).join(', ')}`;
+    return null;
+};
 
-const hasChannels = (workspace: AdminUserWorkspaceDetail): boolean => filled(workspace.channels);
+const workspaceDescription = (workspace: AdminUserWorkspaceDetail): string =>
+    `${role(workspace)} · created ${date.formatDate(workspace.created_at)}`;
+
+/** Each workspace with its channels read once: name, last check, missing scopes and status. */
+const workspaceRows = computed(() =>
+    props.data.workspaces.map((workspace) => ({
+        ...workspace,
+        description: workspaceDescription(workspace),
+        hasChannels: filled(workspace.channels),
+        channels: workspace.channels.map((channel) => ({
+            id: channel.id,
+            platform: channel.platform,
+            name: channelName(channel),
+            lastChecked: lastChecked(channel),
+            missingPermissions: missingPermissionsLabel(channel),
+            badge: statusBadge(channel),
+        })),
+    })),
+);
 </script>
 
 <template>
     <div class="flex flex-col gap-10" data-testid="admin-user-workspaces">
         <SettingsSection title="Connected channels" :description="channelsTotal">
-            <p
-                v-if="!hasChannelsConnected"
-                class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"
-            >
-                No channels connected.
-            </p>
+            <AdminEmptyState v-if="!hasChannelsConnected">No channels connected.</AdminEmptyState>
             <ul
                 v-else
                 class="flex flex-wrap gap-2"
@@ -127,18 +152,13 @@ const hasChannels = (workspace: AdminUserWorkspaceDetail): boolean => filled(wor
             </ul>
         </SettingsSection>
 
-        <p
-            v-if="!hasWorkspaces"
-            class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"
-        >
-            This user is not in any workspace.
-        </p>
+        <AdminEmptyState v-if="!hasWorkspaces">This user is not in any workspace.</AdminEmptyState>
 
         <SettingsSection
-            v-for="workspace in data.workspaces"
+            v-for="workspace in workspaceRows"
             :key="workspace.id"
             :title="workspace.name"
-            :description="`${role(workspace)} · created ${date.formatDate(workspace.created_at)}`"
+            :description="workspace.description"
         >
             <div
                 class="overflow-hidden rounded-xl border border-border bg-card"
@@ -150,7 +170,7 @@ const hasChannels = (workspace: AdminUserWorkspaceDetail): boolean => filled(wor
                     Channels
                 </p>
                 <p
-                    v-if="!hasChannels(workspace)"
+                    v-if="!workspace.hasChannels"
                     class="px-5 py-4 text-sm text-muted-foreground sm:px-6"
                 >
                     No channels connected.
@@ -164,21 +184,19 @@ const hasChannels = (workspace: AdminUserWorkspaceDetail): boolean => filled(wor
                         <PlatformLogo :platform="channel.platform" size="xs" />
                         <div class="grid min-w-0 flex-1">
                             <span class="truncate text-sm font-emphasis text-foreground">{{
-                                channelName(channel)
+                                channel.name
                             }}</span>
                             <span class="truncate text-xs text-muted-foreground">{{
-                                lastChecked(channel)
+                                channel.lastChecked
                             }}</span>
                         </div>
                         <Badge
-                            v-if="lacksPermissions(channel)"
+                            v-if="channel.missingPermissions"
                             variant="warning"
                             :data-testid="`admin-user-channel-permissions-${channel.id}`"
-                            >{{ missingPermissionsLabel(channel) }}</Badge
+                            >{{ channel.missingPermissions }}</Badge
                         >
-                        <Badge :variant="statusBadge(channel).variant">{{
-                            statusBadge(channel).label
-                        }}</Badge>
+                        <Badge :variant="channel.badge.variant">{{ channel.badge.label }}</Badge>
                     </li>
                 </ul>
                 <p

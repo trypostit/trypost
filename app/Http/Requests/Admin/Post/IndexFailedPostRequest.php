@@ -34,7 +34,7 @@ class IndexFailedPostRequest extends FormRequest
      */
     public function networks(): array
     {
-        return array_values((array) $this->validated('networks', []));
+        return collect($this->validated('networks', []))->values()->all();
     }
 
     public function category(): ?ErrorCategory

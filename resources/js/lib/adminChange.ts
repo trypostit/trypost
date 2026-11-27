@@ -1,5 +1,6 @@
-import type { AdminChange } from '@/components/admin/AdminStatGrid.vue';
+import { isNumber } from '@/lib/helpers';
 import { formatPercentChange, percentChange } from '@/lib/utils';
+import type { AdminChange } from '@/types/admin';
 
 /**
  * A figure's change from a past value, as the backoffice's stat tiles show
@@ -9,9 +10,9 @@ import { formatPercentChange, percentChange } from '@/lib/utils';
 export const metricChange = (current: number, past: number, inverted = false): AdminChange | null => {
     const value = percentChange(current, past);
 
-    if (value === null) {
-        return null;
+    if (isNumber(value)) {
+        return { value, label: formatPercentChange(value, 1), inverted };
     }
 
-    return { value, label: formatPercentChange(value, 1), inverted };
+    return null;
 };

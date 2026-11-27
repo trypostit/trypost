@@ -19,7 +19,6 @@ return [
     ],
     'settings' => 'Instellingen',
     'plans_billing' => 'Abonnementen en facturatie',
-    'backoffice' => 'Backoffice',
     'log_out' => 'Uitloggen',
     'help' => 'Hulp',
     'language' => 'Taal: :name',

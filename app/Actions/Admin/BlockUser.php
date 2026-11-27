@@ -6,7 +6,6 @@ namespace App\Actions\Admin;
 
 use App\Enums\Admin\AdminActionType;
 use App\Models\User;
-use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class BlockUser
@@ -14,14 +13,17 @@ class BlockUser
     public function __construct(private readonly RecordAdminAction $recordAdminAction) {}
 
     /**
-     * Block a user: they lose every session now, cannot sign in or use the API
-     * and MCP, and the scheduled posts of the account they own stay scheduled
-     * until they are unblocked. An admin can never be blocked.
+     * Block a user: they cannot sign in or use the API and MCP, and the posts
+     * of the account they own wait until they are unblocked. Their sessions
+     * stored in the database are dropped now; with another session driver,
+     * `LogoutBlockedUser` signs them out on their next request. Blocking a
+     * blocked user changes nothing; that an admin is never blocked is
+     * checked by `BlockUserRequest`.
      */
     public function execute(User $admin, User $user, string $reason): void
     {
-        if ($user->is($admin) || $user->isBackofficeAdmin()) {
-            throw new DomainException('A backoffice admin cannot be blocked.');
+        if ($user->isBlocked()) {
+            return;
         }
 
         DB::transaction(function () use ($admin, $user, $reason): void {

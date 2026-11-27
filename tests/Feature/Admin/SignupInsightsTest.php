@@ -3,51 +3,47 @@
 declare(strict_types=1);
 
 use App\Actions\Admin\BuildSignupInsights;
+use App\Dto\Analytics\DateRange;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia;
+use Stripe\ApiRequestor;
 
 beforeEach(function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
     $this->now = CarbonImmutable::now('UTC')->startOfDay()->addHours(12);
     $this->travelTo($this->now->subDays(30));
-    $this->admin = User::factory()->create(['email' => 'admin@trypost.test']);
+    $this->admin = backofficeAdmin();
     $this->travelTo($this->now);
 });
 
+afterEach(fn () => ApiRequestor::setHttpClient(null));
+
 /** An owner who signed up today with the Welcome answers given. */
-function signedUp(array $answers = []): User
+function adminSignup(array $answers = []): User
 {
     return User::factory()->create(['persona' => null, 'goals' => null, 'previous_software' => null, ...$answers]);
 }
 
-function subscribe(User $user, int $minutesLater = 0): void
-{
-    $subscription = $user->account->subscriptions()->create(['type' => 'default', 'stripe_id' => 'sub_'.str()->random(8), 'stripe_status' => 'active', 'stripe_price' => 'price_x', 'quantity' => 1]);
-    $subscription->forceFill(['created_at' => $user->created_at->addMinutes($minutesLater)])->save();
-}
-
 test('follows the owners who signed up through Welcome, a subscription, a channel and a post', function () {
-    $paid = signedUp(['persona' => 'agency', 'goals' => ['save_time'], 'previous_software' => 'buffer', 'google_id' => 'g-1']);
-    subscribe($paid, 4);
-    Cache::forever('admin:stripe-price-monthly:price_x', 1900);
+    $paid = adminSignup(['persona' => 'agency', 'goals' => ['save_time'], 'previous_software' => 'buffer', 'google_id' => 'g-1']);
+    adminBackdateSubscription(subscribeAccount($paid->account), $paid->created_at->addMinutes(4));
+    fakeStripeReads(['price_123' => [1900, 'month']]);
     $workspace = Workspace::factory()->create(['user_id' => $paid->id, 'account_id' => $paid->account_id]);
     $channel = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::X]);
     Post::factory()->forAccount($channel)->published()->create(['user_id' => $paid->id]);
 
-    signedUp(['persona' => 'agency', 'goals' => ['save_time', 'use_mcp'], 'previous_software' => 'none']);
-    signedUp(['persona' => 'creator']);
+    adminSignup(['persona' => 'agency', 'goals' => ['save_time', 'use_mcp'], 'previous_software' => 'none']);
+    adminSignup(['persona' => 'creator']);
 
-    $member = signedUp(['persona' => 'creator']);
+    $member = adminSignup(['persona' => 'creator']);
     $member->account->forceFill(['owner_id' => $paid->id])->save();
     $member->forceFill(['account_id' => $paid->account_id])->save();
 
-    $insights = BuildSignupInsights::execute($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC');
+    $insights = BuildSignupInsights::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
     $funnel = collect($insights['funnel'])->pluck('count', 'key');
     $personas = collect($insights['personas'])->keyBy('value');
 
@@ -57,6 +53,23 @@ test('follows the owners who signed up through Welcome, a subscription, a channe
         ->and(collect($insights['goals'])->pluck('count', 'value')->all())->toMatchArray(['save_time' => 2, 'use_mcp' => 1])
         ->and(collect($insights['software'])->firstWhere('value', 'none')['label'])->toBe('None yet')
         ->and(collect($insights['signup_methods'])->pluck('count', 'value')->all())->toMatchArray(['google' => 1, 'email' => 2]);
+});
+
+test('counts a signup on the day it happened in the viewer\'s zone', function () {
+    fakeStripeReads(['price_123' => [1900, 'month']]);
+    $today = $this->now->startOfDay();
+    $this->travelTo($today->addHour());
+    $owner = adminSignup();
+    adminBackdateSubscription(subscribeAccount($owner->account), $owner->created_at);
+    $this->travelTo($this->now);
+
+    $saoPaulo = BuildSignupInsights::execute(DateRange::fromDates($today->subDay()->toDateString(), $today->toDateString(), 'America/Sao_Paulo'));
+    $utc = BuildSignupInsights::execute(DateRange::fromDates($today->subDay()->toDateString(), $today->toDateString(), 'UTC'));
+
+    expect($saoPaulo['signups_by_day'])->toBe([1, 0])
+        ->and($saoPaulo['subscribed_by_day'])->toBe([1, 0])
+        ->and($utc['signups_by_day'])->toBe([0, 1])
+        ->and($utc['subscribed_by_day'])->toBe([0, 1]);
 });
 
 test('the insights page shows the signup funnel', function () {

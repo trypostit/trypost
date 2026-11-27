@@ -19,7 +19,6 @@ return [
     ],
     'settings' => 'Налаштування',
     'plans_billing' => 'Тарифи й оплата',
-    'backoffice' => 'Бекофіс',
     'log_out' => 'Вийти',
     'help' => 'Допомога',
     'language' => 'Мова: :name',

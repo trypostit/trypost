@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue';
 
-import AdminStatGrid, {
-    type AdminStat,
-} from '@/components/admin/AdminStatGrid.vue';
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import AdminChangelogEntryDialog from '@/components/admin/user/AdminChangelogEntryDialog.vue';
 import SessionDevice from '@/components/admin/user/SessionDevice.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import date from '@/date';
+import { CHANGELOG_REACTIONS } from '@/lib/adminChangelog';
 import { filled } from '@/lib/helpers';
 import { browserIconUrl, parseBrowserName } from '@/lib/userAgent';
 import { formatFullNumber } from '@/lib/utils';
 import type {
     AdminActivity,
     AdminChangelogView,
+    AdminStat,
     AdminUserActivityData,
 } from '@/types/admin';
 import type { ChangelogEntry } from '@/types/changelog';
@@ -24,8 +25,6 @@ const props = defineProps<{
     data: AdminUserActivityData;
     userName: string;
 }>();
-
-const REACTION_EMOJI: Record<string, string> = { like: '👍', dislike: '👎' };
 
 const ACTIVITY_LABELS: Record<string, string> = {
     'user.blocked': 'Blocked',
@@ -57,22 +56,16 @@ const closeEntry = (): void => {
 };
 
 const reactionEmoji = (view: AdminChangelogView): string => {
-    const emoji = REACTION_EMOJI[view.entry.reaction ?? ''];
-
-    if (filled(emoji)) {
-        return emoji;
+    if (filled(view.entry.reaction)) {
+        return CHANGELOG_REACTIONS[view.entry.reaction].emoji;
     }
 
     return '';
 };
 
 const reactionLabel = (view: AdminChangelogView): string => {
-    if (view.entry.reaction === 'like') {
-        return 'Liked';
-    }
-
-    if (view.entry.reaction === 'dislike') {
-        return 'Disliked';
+    if (filled(view.entry.reaction)) {
+        return CHANGELOG_REACTIONS[view.entry.reaction].label;
     }
 
     return 'No reaction';
@@ -129,12 +122,7 @@ const orUnknown = (value: string | null): string => {
             title="Admin history"
             description="What backoffice admins did to this user."
         >
-            <p
-                v-if="!hasHistory"
-                class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"
-            >
-                No admin has acted on this user yet.
-            </p>
+            <AdminEmptyState v-if="!hasHistory">No admin has acted on this user yet.</AdminEmptyState>
             <ul
                 v-else
                 class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
@@ -168,12 +156,7 @@ const orUnknown = (value: string | null): string => {
             title="Sessions"
             description="Where the user is signed in now."
         >
-            <p
-                v-if="!hasSessions"
-                class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"
-            >
-                No open sessions.
-            </p>
+            <AdminEmptyState v-if="!hasSessions">No open sessions.</AdminEmptyState>
             <ul v-else class="flex flex-col gap-2">
                 <SettingsListRow
                     v-for="session in data.sessions"

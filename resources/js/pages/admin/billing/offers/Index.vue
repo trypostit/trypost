@@ -4,7 +4,8 @@ import { IconDots, IconPlus } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
-import AdminStatGrid, { type AdminStat } from '@/components/admin/AdminStatGrid.vue';
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import OfferFormDialog from '@/components/admin/offers/OfferFormDialog.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import {
@@ -36,15 +37,14 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { filled } from '@/lib/helpers';
+import { firstError } from '@/lib/adminFormat';
+import { filled, isNumber } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
 import { destroy as offersDestroy } from '@/routes/admin/billing/offers';
 import { store as offerEndStore } from '@/routes/admin/billing/offers/end';
-import type { AdminOffer } from '@/types/admin';
+import type { AdminOffer, AdminStat, BadgeVariant, OfferState } from '@/types/admin';
 
-type BadgeVariant = 'success' | 'info' | 'warning' | 'secondary';
-
-const STATES: Record<string, { label: string; variant: BadgeVariant }> = {
+const STATES: Record<OfferState, { label: string; variant: BadgeVariant }> = {
     live: { label: 'Live', variant: 'success' },
     scheduled: { label: 'Scheduled', variant: 'info' },
     full: { label: 'Full', variant: 'warning' },
@@ -52,15 +52,17 @@ const STATES: Record<string, { label: string; variant: BadgeVariant }> = {
 };
 
 /** States an offer can still be ended from. */
-const ENDABLE_STATES = ['live', 'scheduled', 'full'];
+const ENDABLE_STATES: OfferState[] = ['live', 'scheduled', 'full'];
 
 const props = defineProps<{
     offers: AdminOffer[];
     today: string;
 }>();
 
+type OffersTab = 'all' | OfferState;
+
 /** The tabs, each a set of states; All holds every offer. */
-const TABS: { value: string; label: string; states: string[] }[] = [
+const TABS: { value: OffersTab; label: string; states: OfferState[] }[] = [
     { value: 'all', label: 'All', states: ['live', 'scheduled', 'full', 'ended'] },
     { value: 'live', label: 'Live', states: ['live'] },
     { value: 'scheduled', label: 'Scheduled', states: ['scheduled'] },
@@ -68,9 +70,9 @@ const TABS: { value: string; label: string; states: string[] }[] = [
     { value: 'ended', label: 'Ended', states: ['ended'] },
 ];
 
-const tab = ref('all');
+const tab = ref<OffersTab>('all');
 
-const tabStates = computed((): string[] => {
+const tabStates = computed((): OfferState[] => {
     const current = TABS.find((option) => option.value === tab.value);
 
     if (filled(current)) {
@@ -84,11 +86,15 @@ const shownOffers = computed(() =>
     props.offers.filter((offer) => tabStates.value.includes(offer.state)),
 );
 
-const tabCount = (states: string[]): string =>
+const tabCount = (states: OfferState[]): string =>
     formatFullNumber(props.offers.filter((offer) => states.includes(offer.state)).length);
 
 const selectTab = (value: string | number): void => {
-    tab.value = String(value);
+    const picked = TABS.find((option) => option.value === value);
+
+    if (filled(picked)) {
+        tab.value = picked.value;
+    }
 };
 
 const hasOffers = computed(() => filled(props.offers));
@@ -131,14 +137,15 @@ const summary = computed((): AdminStat[] => [
     },
 ]);
 
-const state = (offer: AdminOffer): { label: string; variant: BadgeVariant } => {
-    const known = STATES[offer.state];
+const state = (offer: AdminOffer): { label: string; variant: BadgeVariant } => STATES[offer.state];
 
-    if (filled(known)) {
-        return known;
+/** A trial means at least one day; 0 is no trial. */
+const hasTrial = (offer: AdminOffer): boolean => {
+    if (isNumber(offer.trial_days)) {
+        return offer.trial_days > 0;
     }
 
-    return { label: offer.state, variant: 'secondary' };
+    return false;
 };
 
 /** What the offer gives, in a few words. */
@@ -149,7 +156,7 @@ const gives = (offer: AdminOffer): string => {
         parts.push(`Coupon ${offer.stripe_coupon_id}`);
     }
 
-    if (filled(offer.trial_days) && offer.trial_days > 0) {
+    if (hasTrial(offer)) {
         parts.push(`${offer.trial_days}-day trial`);
     }
 
@@ -227,34 +234,40 @@ const openEdit = (offer: AdminOffer): void => {
 
 type Confirmation = { offer: AdminOffer; action: 'end' | 'delete' };
 
+/** Kept after the dialog closes, so its text holds while it animates out. */
 const confirming = ref<Confirmation | null>(null);
+const confirmOpen = ref(false);
 const isConfirming = ref(false);
 
-const confirmOpen = computed({
-    get: (): boolean => filled(confirming.value),
-    set: (open: boolean): void => {
-        if (!open) {
-            confirming.value = null;
-        }
-    },
-});
+const ask = (confirmation: Confirmation): void => {
+    confirming.value = confirmation;
+    confirmOpen.value = true;
+};
 
 const askEnd = (offer: AdminOffer): void => {
-    confirming.value = { offer, action: 'end' };
+    ask({ offer, action: 'end' });
 };
 
 const askDelete = (offer: AdminOffer): void => {
-    confirming.value = { offer, action: 'delete' };
+    ask({ offer, action: 'delete' });
 };
 
 const isDeleting = computed(() => confirming.value?.action === 'delete');
 
-const confirmTitle = computed((): string => {
-    if (isDeleting.value) {
-        return `Delete ${confirming.value?.offer.slug}?`;
+const confirmingSlug = computed((): string => {
+    if (filled(confirming.value)) {
+        return confirming.value.offer.slug;
     }
 
-    return `End ${confirming.value?.offer.slug} now?`;
+    return '';
+});
+
+const confirmTitle = computed((): string => {
+    if (isDeleting.value) {
+        return `Delete ${confirmingSlug.value}?`;
+    }
+
+    return `End ${confirmingSlug.value} now?`;
 });
 
 const confirmDescription = computed((): string => {
@@ -282,16 +295,10 @@ const confirmLabel = computed((): string => {
 });
 
 const showError = (errors: Record<string, string>): void => {
-    toast.error(Object.values(errors)[0] ?? 'Could not change this offer.');
+    toast.error(firstError(errors, 'Could not change this offer.'));
 };
 
-const confirm = (): void => {
-    const current = confirming.value;
-
-    if (!filled(current)) {
-        return;
-    }
-
+const send = (current: Confirmation): void => {
     const options = {
         preserveScroll: true,
         onStart: () => {
@@ -299,7 +306,7 @@ const confirm = (): void => {
         },
         onFinish: () => {
             isConfirming.value = false;
-            confirming.value = null;
+            confirmOpen.value = false;
         },
         onError: showError,
     };
@@ -311,6 +318,12 @@ const confirm = (): void => {
     }
 
     router.post(offerEndStore.url(current.offer.id), {}, options);
+};
+
+const confirm = (): void => {
+    if (filled(confirming.value)) {
+        send(confirming.value);
+    }
 };
 </script>
 
@@ -328,145 +341,134 @@ const confirm = (): void => {
             </Button>
         </template>
 
-
-        <p
-            v-if="!hasOffers"
-            class="rounded-xl border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground"
-        >
-            No offers yet.
-        </p>
+        <AdminEmptyState v-if="!hasOffers" variant="page">No offers yet.</AdminEmptyState>
 
         <div v-else class="flex flex-col gap-6">
-        <AnalyticsSection title="All offers" flush>
-            <AdminStatGrid :stats="summary" />
-        </AnalyticsSection>
+            <AnalyticsSection title="All offers" flush>
+                <AdminStatGrid :stats="summary" />
+            </AnalyticsSection>
 
-        <Tabs :model-value="tab" @update:model-value="selectTab">
-            <TabsList variant="line">
-                <TabsTrigger
-                    v-for="option in TABS"
-                    :key="option.value"
-                    :value="option.value"
-                    :data-testid="`admin-offers-tab-${option.value}`"
-                >
-                    {{ option.label }}
-                    <span class="text-xs text-muted-foreground tabular-nums">{{
-                        tabCount(option.states)
-                    }}</span>
-                </TabsTrigger>
-            </TabsList>
-        </Tabs>
+            <Tabs :model-value="tab" @update:model-value="selectTab">
+                <TabsList variant="line">
+                    <TabsTrigger
+                        v-for="option in TABS"
+                        :key="option.value"
+                        :value="option.value"
+                        :data-testid="`admin-offers-tab-${option.value}`"
+                    >
+                        {{ option.label }}
+                        <span class="text-xs text-muted-foreground tabular-nums">{{
+                            tabCount(option.states)
+                        }}</span>
+                    </TabsTrigger>
+                </TabsList>
+            </Tabs>
 
-        <p
-            v-if="!hasShownOffers"
-            class="rounded-xl border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground"
-        >
-            No offers here.
-        </p>
+            <AdminEmptyState v-if="!hasShownOffers" variant="page">No offers here.</AdminEmptyState>
 
-        <div v-else class="overflow-hidden rounded-xl border border-border bg-card">
-            <div class="overflow-x-auto">
-                <Table data-testid="admin-offers">
-                    <TableHeader>
-                        <TableRow class="hover:bg-transparent">
-                            <TableHead class="h-11 border-r-0 px-4 sm:px-5">Offer</TableHead>
-                            <TableHead class="h-11 border-r-0 px-4">Gives</TableHead>
-                            <TableHead class="h-11 border-r-0 px-4">Dates</TableHead>
-                            <TableHead class="h-11 border-r-0 px-4 text-right">Redeemed</TableHead>
-                            <TableHead class="h-11 border-r-0 px-4 text-right">Conversion</TableHead>
-                            <TableHead class="h-11 w-12 border-r-0 px-4 sm:px-5">
-                                <span class="sr-only">Actions</span>
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <TableRow
-                            v-for="offer in shownOffers"
-                            :key="offer.id"
-                            class="last:border-b-0"
-                            :data-testid="`admin-offer-${offer.slug}`"
-                        >
-                            <TableCell class="border-r-0 px-4 py-3 align-top sm:px-5">
-                                <div class="flex flex-col gap-1.5">
-                                    <span class="flex items-center gap-2">
-                                        <code class="font-mono text-sm font-emphasis text-foreground">{{
-                                            offer.slug
-                                        }}</code>
-                                        <Badge :variant="state(offer).variant">{{ state(offer).label }}</Badge>
-                                    </span>
-                                    <Tooltip v-if="hasMissingCopy(offer)">
-                                        <TooltipTrigger as-child>
-                                            <span
-                                                class="w-fit cursor-default text-xs text-warning"
-                                                :data-testid="`admin-offer-missing-copy-${offer.slug}`"
-                                                >{{ missingCopyLabel(offer) }}</span
+            <div v-else class="overflow-hidden rounded-xl border border-border bg-card">
+                <div class="overflow-x-auto">
+                    <Table data-testid="admin-offers">
+                        <TableHeader>
+                            <TableRow class="hover:bg-transparent">
+                                <TableHead class="h-11 border-r-0 px-4 sm:px-5">Offer</TableHead>
+                                <TableHead class="h-11 border-r-0 px-4">Gives</TableHead>
+                                <TableHead class="h-11 border-r-0 px-4">Dates</TableHead>
+                                <TableHead class="h-11 border-r-0 px-4 text-right">Redeemed</TableHead>
+                                <TableHead class="h-11 border-r-0 px-4 text-right">Conversion</TableHead>
+                                <TableHead class="h-11 w-12 border-r-0 px-4 sm:px-5">
+                                    <span class="sr-only">Actions</span>
+                                </TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow
+                                v-for="offer in shownOffers"
+                                :key="offer.id"
+                                class="last:border-b-0"
+                                :data-testid="`admin-offer-${offer.slug}`"
+                            >
+                                <TableCell class="border-r-0 px-4 py-3 align-top sm:px-5">
+                                    <div class="flex flex-col gap-1.5">
+                                        <span class="flex items-center gap-2">
+                                            <code class="font-mono text-sm font-emphasis text-foreground">{{
+                                                offer.slug
+                                            }}</code>
+                                            <Badge :variant="state(offer).variant">{{ state(offer).label }}</Badge>
+                                        </span>
+                                        <Tooltip v-if="hasMissingCopy(offer)">
+                                            <TooltipTrigger as-child>
+                                                <span
+                                                    class="w-fit cursor-default text-xs text-warning"
+                                                    :data-testid="`admin-offer-missing-copy-${offer.slug}`"
+                                                    >{{ missingCopyLabel(offer) }}</span
+                                                >
+                                            </TooltipTrigger>
+                                            <TooltipContent class="max-w-sm">
+                                                {{ missingCopyList(offer) }}
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="border-r-0 px-4 py-3 align-top">
+                                    <div class="flex flex-col gap-1.5">
+                                        <span class="text-sm text-foreground">{{ gives(offer) }}</span>
+                                        <span class="flex flex-wrap gap-1">
+                                            <Badge
+                                                v-for="tag in rules(offer)"
+                                                :key="tag"
+                                                variant="secondary"
+                                                >{{ tag }}</Badge
                                             >
-                                        </TooltipTrigger>
-                                        <TooltipContent class="max-w-sm">
-                                            {{ missingCopyList(offer) }}
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TableCell>
-                            <TableCell class="border-r-0 px-4 py-3 align-top">
-                                <div class="flex flex-col gap-1.5">
-                                    <span class="text-sm text-foreground">{{ gives(offer) }}</span>
-                                    <span class="flex flex-wrap gap-1">
-                                        <Badge
-                                            v-for="tag in rules(offer)"
-                                            :key="tag"
-                                            variant="secondary"
-                                            >{{ tag }}</Badge
-                                        >
-                                    </span>
-                                </div>
-                            </TableCell>
-                            <TableCell class="border-r-0 px-4 py-3 align-top text-sm whitespace-nowrap text-muted-foreground">
-                                {{ dates(offer) }}
-                            </TableCell>
-                            <TableCell class="border-r-0 px-4 py-3 text-right align-top">
-                                <span class="block text-sm font-medium text-foreground tabular-nums">{{
-                                    redemptions(offer)
-                                }}</span>
-                                <span class="block text-xs text-muted-foreground tabular-nums"
-                                    >{{ formatFullNumber(offer.claimed) }} claimed</span
-                                >
-                            </TableCell>
-                            <TableCell class="border-r-0 px-4 py-3 text-right align-top text-sm text-foreground tabular-nums">
-                                {{ conversion(offer.redeemed, offer.claimed) }}
-                            </TableCell>
-                            <TableCell class="border-r-0 px-4 py-3 text-right align-top sm:px-5">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger as-child>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            :aria-label="`Actions for ${offer.slug}`"
-                                            :data-testid="`admin-offer-actions-${offer.slug}`"
-                                        >
-                                            <IconDots class="size-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem @select="openEdit(offer)">Edit</DropdownMenuItem>
-                                        <DropdownMenuItem v-if="canEnd(offer)" @select="askEnd(offer)">
-                                            End now
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            v-if="canDelete(offer)"
-                                            variant="destructive"
-                                            @select="askDelete(offer)"
-                                        >
-                                            Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
+                                        </span>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="border-r-0 px-4 py-3 align-top text-sm whitespace-nowrap text-muted-foreground">
+                                    {{ dates(offer) }}
+                                </TableCell>
+                                <TableCell class="border-r-0 px-4 py-3 text-right align-top">
+                                    <span class="block text-sm font-medium text-foreground tabular-nums">{{
+                                        redemptions(offer)
+                                    }}</span>
+                                    <span class="block text-xs text-muted-foreground tabular-nums"
+                                        >{{ formatFullNumber(offer.claimed) }} claimed</span
+                                    >
+                                </TableCell>
+                                <TableCell class="border-r-0 px-4 py-3 text-right align-top text-sm text-foreground tabular-nums">
+                                    {{ conversion(offer.redeemed, offer.claimed) }}
+                                </TableCell>
+                                <TableCell class="border-r-0 px-4 py-3 text-right align-top sm:px-5">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger as-child>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                :aria-label="`Actions for ${offer.slug}`"
+                                                :data-testid="`admin-offer-actions-${offer.slug}`"
+                                            >
+                                                <IconDots class="size-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem @select="openEdit(offer)">Edit</DropdownMenuItem>
+                                            <DropdownMenuItem v-if="canEnd(offer)" @select="askEnd(offer)">
+                                                End now
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                v-if="canDelete(offer)"
+                                                variant="destructive"
+                                                @select="askDelete(offer)"
+                                            >
+                                                Delete
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
-        </div>
         </div>
     </AdminLayout>
 

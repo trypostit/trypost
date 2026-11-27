@@ -62,16 +62,16 @@ class BuildQuotaCards
         }
 
         $within = fn (array $days): array => collect($days)
-            ->filter(fn (array $day): bool => $day['date'] >= $start && $day['date'] <= $end)
+            ->filter(fn (array $day): bool => data_get($day, 'date') >= $start && data_get($day, 'date') <= $end)
             ->values()
             ->all();
 
-        $usage['daily_project_usage'] = $within(data_get($usage, 'daily_project_usage', []));
+        data_set($usage, 'daily_project_usage', $within(data_get($usage, 'daily_project_usage', [])));
 
         if (filled(data_get($usage, 'daily_client_app_usage'))) {
-            $usage['daily_client_app_usage'] = collect($usage['daily_client_app_usage'])
+            data_set($usage, 'daily_client_app_usage', collect(data_get($usage, 'daily_client_app_usage'))
                 ->map(fn (array $app): array => [...$app, 'usage' => $within(data_get($app, 'usage', []))])
-                ->all();
+                ->all());
         }
 
         return $usage;

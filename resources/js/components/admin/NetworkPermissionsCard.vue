@@ -5,37 +5,17 @@ import { computed } from 'vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { filled } from '@/lib/helpers';
+import { featureLabel } from '@/lib/adminPermissions';
+import { blank, filled } from '@/lib/helpers';
 import type {
     AdminFeaturePermission,
     AdminNetworkPermissions,
     AdminScopePermission,
 } from '@/types/admin';
 
-const FEATURE_LABELS: Record<string, string> = {
-    publish: 'Publish',
-    thread_replies: 'Replies',
-    followers: 'Followers',
-    post_insights: 'Insights',
-    post_insights_extended: 'Extended insights',
-    post_history: 'Post history',
-    private_post_read: 'Private reads',
-    facebook_reel_cover: 'Reel cover',
-};
-
 const props = defineProps<{
     network: AdminNetworkPermissions;
 }>();
-
-const featureLabel = (feature: string): string => {
-    const label = FEATURE_LABELS[feature];
-
-    if (filled(label)) {
-        return label;
-    }
-
-    return feature;
-};
 
 const enabledCount = computed(
     () => props.network.features.filter((feature) => feature.enabled).length,
@@ -70,8 +50,14 @@ const scopePurpose = (scope: AdminScopePermission): string => {
     return 'Not used by a feature';
 };
 
-const isUnused = (scope: AdminScopePermission): boolean =>
-    !scope.required && !filled(scope.features);
+/** A scope neither connecting nor any feature needs. */
+const isUnused = (scope: AdminScopePermission): boolean => {
+    if (scope.required) {
+        return false;
+    }
+
+    return blank(scope.features);
+};
 
 const scopeClass = (scope: AdminScopePermission): string => {
     if (isUnused(scope)) {

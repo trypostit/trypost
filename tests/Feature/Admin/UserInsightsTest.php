@@ -5,53 +5,52 @@ declare(strict_types=1);
 use App\Actions\Admin\UserProfile\BuildUserHealth;
 use App\Actions\Admin\Users\BuildChurnRisk;
 use App\Actions\Admin\Users\BuildUsageInsights;
+use App\Dto\Analytics\DateRange;
 use App\Enums\Account\LifecycleStage;
+use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
-use App\Models\Workspace;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia;
+use Stripe\ApiRequestor;
 
 beforeEach(function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
     $this->now = CarbonImmutable::now('UTC')->startOfDay()->addHours(12);
     $this->travelTo($this->now);
-    $this->admin = User::factory()->create(['email' => 'admin@trypost.test']);
+    $this->admin = backofficeAdmin();
 });
 
-/** An owner with a workspace and a channel of the given status. */
-function accountWithChannel(string $name, Status $status = Status::Connected): array
+afterEach(fn () => ApiRequestor::setHttpClient(null));
+
+/**
+ * An owner with a workspace and an X channel of the given status.
+ *
+ * @return array{0: User, 1: SocialAccount}
+ */
+function adminOwnerWithChannel(string $name, Status $status = Status::Connected): array
 {
-    $owner = User::factory()->create(['name' => $name]);
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id, 'account_id' => $owner->account_id]);
-    $channel = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::X, 'status' => $status]);
+    $owner = workspaceOwner(['name' => $name]);
+    $channel = SocialAccount::factory()->create(['workspace_id' => $owner->current_workspace_id, 'platform' => Platform::X, 'status' => $status]);
 
     return [$owner, $channel];
 }
 
-function sentAt(SocialAccount $channel, CarbonImmutable $at, string $state = 'published', array $attributes = []): void
-{
-    $post = Post::factory()->forAccount($channel)->{$state}()->create($attributes);
-    Post::query()->whereKey($post->id)->toBase()->update(['publication_updated_at' => $at, 'published_at' => $at]);
-}
-
 test('usage ranks the accounts by posts, channels, automation and failures, against the period before', function () {
-    [$busy, $busyChannel] = accountWithChannel('Busy');
-    [$quiet, $quietChannel] = accountWithChannel('Quiet');
+    [$busy, $busyChannel] = adminOwnerWithChannel('Busy');
+    [$quiet, $quietChannel] = adminOwnerWithChannel('Quiet');
 
     foreach (range(1, 3) as $index) {
-        sentAt($busyChannel, $this->now->subHours($index), 'published', ['created_via' => 'api']);
+        adminPostSentAt($busyChannel, $this->now->subHours($index), 'published', ['created_via' => 'api']);
     }
 
-    sentAt($quietChannel, $this->now->subHour());
-    sentAt($quietChannel, $this->now->subHour(), 'failed');
-    sentAt($quietChannel, $this->now->subDays(10));
+    adminPostSentAt($quietChannel, $this->now->subHour());
+    adminPostSentAt($quietChannel, $this->now->subHour(), 'failed');
+    adminPostSentAt($quietChannel, $this->now->subDays(10));
 
-    $usage = BuildUsageInsights::execute($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC');
+    $usage = BuildUsageInsights::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
 
     expect($usage['totals'])->toMatchArray(['active_accounts' => 2, 'posts' => 4, 'posts_per_active' => 2.0, 'channels_per_account' => 1.0])
         ->and($usage['previous'])->toMatchArray(['active_accounts' => 1, 'posts' => 1])
@@ -62,19 +61,18 @@ test('usage ranks the accounts by posts, channels, automation and failures, agai
 });
 
 test('churn risk flags the paying accounts that stopped, cancel, owe or lost their channels', function () {
-    Cache::forever('admin:stripe-price-monthly:price_x', 1900);
+    fakeStripeReads(['price_123' => [1900, 'month']]);
 
-    [$fine, $fineChannel] = accountWithChannel('Fine');
-    [$leaving, $leavingChannel] = accountWithChannel('Leaving', Status::TokenExpired);
-    sentAt($leavingChannel, $this->now->subDays(30));
+    [$fine, $fineChannel] = adminOwnerWithChannel('Fine');
+    [$leaving, $leavingChannel] = adminOwnerWithChannel('Leaving', Status::TokenExpired);
+    adminPostSentAt($leavingChannel, $this->now->subDays(30));
     foreach ([$fine, $leaving] as $owner) {
-        $subscription = $owner->account->subscriptions()->create(['type' => 'default', 'stripe_id' => 'sub_'.str()->random(8), 'stripe_status' => 'active', 'stripe_price' => 'price_x', 'quantity' => 1]);
-        $subscription->forceFill(['created_at' => $this->now->subDays(30)])->save();
+        adminBackdateSubscription(subscribeAccount($owner->account), $this->now->subDays(30));
     }
-    sentAt($fineChannel, $this->now->subHour());
+    adminPostSentAt($fineChannel, $this->now->subHour());
     $leaving->account->subscription()->update(['ends_at' => $this->now->addDays(5)]);
 
-    $churn = BuildChurnRisk::execute($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC');
+    $churn = BuildChurnRisk::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
 
     expect($churn)->toMatchArray(['base' => 2, 'active' => 1, 'at_risk' => 1, 'mrr_at_risk_cents' => 1900])
         ->and($churn['accounts'][0]['name'])->toBe('Leaving')
@@ -94,15 +92,14 @@ test('the people insights page shows usage and churn risk', function () {
 });
 
 test('a user profile reads the account health and churn risk the way the insights do', function () {
-    Cache::forever('admin:stripe-price-monthly:price_x', 1900);
+    fakeStripeReads(['price_123' => [1900, 'month']]);
 
-    [$owner, $channel] = accountWithChannel('Leaving', Status::TokenExpired);
-    $owner->account->subscriptions()->create(['type' => 'default', 'stripe_id' => 'sub_'.str()->random(8), 'stripe_status' => 'active', 'stripe_price' => 'price_x', 'quantity' => 1, 'ends_at' => $this->now->addDays(5)])
-        ->forceFill(['created_at' => $this->now->subDays(60)])->save();
-    sentAt($channel, $this->now->subDays(40));
-    sentAt($channel, $this->now->subDays(35), 'published', ['created_via' => 'api']);
-    sentAt($channel, $this->now->subDays(25));
-    sentAt($channel, $this->now->subDays(24), 'failed');
+    [$owner, $channel] = adminOwnerWithChannel('Leaving', Status::TokenExpired);
+    adminBackdateSubscription(subscribeAccount($owner->account, ['ends_at' => $this->now->addDays(5)]), $this->now->subDays(60));
+    adminPostSentAt($channel, $this->now->subDays(40));
+    adminPostSentAt($channel, $this->now->subDays(35), 'published', ['created_via' => 'api']);
+    adminPostSentAt($channel, $this->now->subDays(25));
+    adminPostSentAt($channel, $this->now->subDays(24), 'failed');
 
     $health = BuildUserHealth::execute($owner);
 
@@ -114,7 +111,62 @@ test('a user profile reads the account health and churn risk the way the insight
 });
 
 test('a user profile shows no churn risk for an account that pays nothing', function () {
-    [$owner] = accountWithChannel('Someone');
+    [$owner] = adminOwnerWithChannel('Someone');
 
     expect(BuildUserHealth::execute($owner)['risk'])->toBeNull();
 });
+
+test('a post the network rejected in review counts as failed, as everywhere in the backoffice', function () {
+    fakeStripeReads(['price_123' => [1900, 'month']]);
+    [$owner, $channel] = adminOwnerWithChannel('Rejected');
+    adminBackdateSubscription(subscribeAccount($owner->account), $this->now->subDays(30));
+    adminPostSentAt($channel, $this->now->subHour(), 'failed');
+    Post::query()->where('social_account_id', $channel->id)->toBase()->update(['publish_status' => PublishStatus::Rejected->value]);
+
+    $range = DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC');
+
+    expect(collect(BuildUsageInsights::execute($range)['top_accounts'])->firstWhere('name', 'Rejected')['failed'])->toBe(1)
+        ->and(BuildUserHealth::execute($owner)['posts']['failed'])->toBe(1);
+});
+
+test('usage and churn count a post on the day it went out in the viewer\'s zone', function () {
+    fakeStripeReads(['price_123' => [1900, 'month']]);
+    [$owner, $channel] = adminOwnerWithChannel('Night owl');
+    adminBackdateSubscription(subscribeAccount($owner->account), $this->now->subDays(30));
+    $today = $this->now->startOfDay();
+    adminPostSentAt($channel, $today->addHour());
+
+    $yesterday = $today->subDay()->toDateString();
+    $saoPaulo = DateRange::fromDates($yesterday, $yesterday, 'America/Sao_Paulo');
+    $utc = DateRange::fromDates($yesterday, $yesterday, 'UTC');
+
+    expect(BuildUsageInsights::execute($saoPaulo)['totals']['posts'])->toBe(1)
+        ->and(BuildUsageInsights::execute($utc)['totals']['posts'])->toBe(0)
+        ->and(BuildChurnRisk::execute($saoPaulo)['active'])->toBe(1)
+        ->and(BuildChurnRisk::execute($utc)['active'])->toBe(0);
+});
+
+test('each churn signal weighs into the risk level', function (array $subscription, LifecycleStage $stage, ?array $channels, array $posts, array $signals, ?string $level) {
+    fakeStripeReads(['price_123' => [1900, 'month']]);
+    [$owner] = adminOwnerWithChannel('Someone');
+    adminBackdateSubscription(subscribeAccount($owner->account, $subscription), $this->now->subDays(30));
+    $paid = BuildChurnRisk::paidSubscriptions($owner->account_id)->get($owner->account_id);
+
+    $risk = BuildChurnRisk::assess($owner->account, $stage, $paid, $channels, ...$posts);
+
+    expect($risk['signals'])->toEqualCanonicalizing($signals)
+        ->and($risk['level'])->toBe($level)
+        ->and($risk['mrr_cents'])->toBe(1900);
+})->with([
+    'past due' => [['stripe_status' => 'past_due'], LifecycleStage::Active, ['total' => 1, 'broken' => 0], [5, 5, 0], ['past_due'], 'medium'],
+    'cancelling' => [['ends_at' => now()->addDays(5)], LifecycleStage::Active, ['total' => 1, 'broken' => 0], [5, 5, 0], ['cancelling'], 'medium'],
+    'dormant' => [[], LifecycleStage::Dormant, ['total' => 1, 'broken' => 0], [0, 0, 0], ['dormant'], 'medium'],
+    'never posted' => [[], LifecycleStage::Connected, ['total' => 1, 'broken' => 0], [0, 0, 0], ['never_posted'], 'medium'],
+    'no channels' => [[], LifecycleStage::Onboarding, null, [0, 0, 0], ['no_channels'], 'medium'],
+    'channels broken' => [[], LifecycleStage::Active, ['total' => 2, 'broken' => 1], [5, 5, 0], ['channels_broken'], 'medium'],
+    'at risk' => [[], LifecycleStage::AtRisk, ['total' => 1, 'broken' => 0], [0, 0, 0], ['at_risk'], 'low'],
+    'posting dropped' => [[], LifecycleStage::Active, ['total' => 1, 'broken' => 0], [5, 10, 0], ['posting_dropped'], 'low'],
+    'failing' => [[], LifecycleStage::Active, ['total' => 1, 'broken' => 0], [5, 5, 5], ['failing'], 'low'],
+    'several at once' => [['stripe_status' => 'past_due'], LifecycleStage::Dormant, ['total' => 1, 'broken' => 0], [0, 0, 0], ['past_due', 'dormant'], 'high'],
+    'none' => [[], LifecycleStage::Active, ['total' => 1, 'broken' => 0], [5, 5, 0], [], null],
+]);

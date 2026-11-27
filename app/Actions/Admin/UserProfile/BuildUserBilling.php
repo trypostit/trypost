@@ -15,6 +15,7 @@ use App\Support\Admin\StripeDashboard;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Discount;
 use Laravel\Cashier\Invoice;
+use Laravel\Cashier\PaymentMethod;
 use Throwable;
 
 class BuildUserBilling
@@ -38,7 +39,7 @@ class BuildUserBilling
             return ['account' => null];
         }
 
-        $account->subscriptions->each(fn (Subscription $subscription) => $subscription->setRelation('owner', $account));
+        $account->subscriptions->each(fn (Subscription $subscription): Subscription => $subscription->setRelation('owner', $account));
 
         return [
             'account' => [
@@ -126,7 +127,7 @@ class BuildUserBilling
         } catch (Throwable $exception) {
             report($exception);
 
-            return ['cards' => [], 'discount' => null, 'invoices' => [], 'error' => $exception->getMessage()];
+            return ['cards' => [], 'discount' => null, 'used_discounts' => [], 'invoices' => [], 'error' => $exception->getMessage()];
         }
     }
 
@@ -170,7 +171,7 @@ class BuildUserBilling
         }
 
         return $account->paymentMethods('card')
-            ->map(fn ($card): array => [
+            ->map(fn (PaymentMethod $card): array => [
                 'id' => $card->id,
                 'brand' => $card->card->brand,
                 'last4' => $card->card->last4,

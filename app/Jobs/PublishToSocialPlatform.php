@@ -100,6 +100,13 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        if ($this->post->isOwnerBlocked()) {
+            $this->post->waitForOwnerUnblock();
+            $this->broadcastStatus();
+
+            return;
+        }
+
         if ($this->post->socialAccount->status === Status::Disconnected) {
             $this->failAndFinalize(__('posts.errors.account_disconnected'));
 

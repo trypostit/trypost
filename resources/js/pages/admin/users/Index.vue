@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Head, InfiniteScroll, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, InfiniteScroll, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import SettingsSearch from '@/components/settings/SettingsSearch.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import debounce from '@/debounce';
 import AdminLayout from '@/layouts/AdminLayout.vue';
@@ -34,37 +36,33 @@ const props = defineProps<{
     filters: { search: string; status: StatusFilter };
 }>();
 
-const page = usePage();
-
-const statusFilter = (value: unknown): StatusFilter => {
-    if (value === 'blocked') {
-        return 'blocked';
-    }
-
-    return 'all';
-};
-
-/** The active tab is read from the URL, like the Billing tabs. */
-const status = ref<StatusFilter>(
-    statusFilter(
-        new URL(page.url, window.location.origin).searchParams.get('status'),
-    ),
-);
-
 const searchQuery = ref(props.filters.search);
 
-const reload = (): void => {
-    router.get(
-        usersIndex.url(),
-        { search: searchQuery.value || undefined, status: status.value },
-        { preserveState: true, preserveScroll: true, only: ['users', 'filters'], reset: ['users'] },
-    );
+/** The filters as the URL carries them; an empty search leaves the URL. */
+const filterQuery = (): { status: StatusFilter; search?: string } => {
+    if (filled(searchQuery.value)) {
+        return { status: status.value, search: searchQuery.value };
+    }
+
+    return { status: status.value };
 };
 
-const selectStatus = (value: string | number): void => {
-    status.value = statusFilter(value);
-    reload();
+const reload = (): void => {
+    router.get(usersIndex.url(), filterQuery(), {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: ['users', 'filters'],
+        reset: ['users'],
+    });
 };
+
+const { tab: status, selectTab: selectStatus } = useUrlTab({
+    tabs: STATUS_FILTERS.map((filter) => filter.value),
+    initial: props.filters.status,
+    param: 'status',
+    onSelect: reload,
+});
 
 const search = debounce(reload, 300);
 
@@ -111,13 +109,9 @@ const planLabel = (user: AdminUser): string => {
                 placeholder="Search by name or email"
             />
 
-            <p
-                v-if="hasNoResults"
-                class="rounded-xl border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground"
-                data-testid="admin-users-empty"
-            >
+            <AdminEmptyState v-if="hasNoResults" variant="page" test-id="admin-users-empty">
                 No users match this search.
-            </p>
+            </AdminEmptyState>
 
             <div
                 v-else

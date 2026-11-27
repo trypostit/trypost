@@ -13,40 +13,21 @@ use App\Models\ChangelogEntryView;
 use App\Models\Invite;
 use App\Models\Post;
 use App\Models\SocialAccount;
-use App\Models\User;
 use App\Models\Webhook;
-use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
 use Stripe\ApiRequestor;
 
 beforeEach(function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $this->admin = User::factory()->create(['email' => 'admin@trypost.test', 'name' => 'Admin']);
-    $this->user = User::factory()->create(['name' => 'Grace', 'utm_source' => 'google', 'google_id' => 'g-1']);
-    $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id, 'account_id' => $this->user->account_id, 'name' => 'Grace Co']);
-    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
+    $this->admin = backofficeAdmin(['name' => 'Admin']);
+    $this->user = workspaceOwner(['name' => 'Grace', 'utm_source' => 'google', 'google_id' => 'g-1'], ['name' => 'Grace Co']);
+    $this->workspace = $this->user->currentWorkspace;
 });
 
 afterEach(function () {
     ApiRequestor::setHttpClient(null);
 });
-
-function profileTab(mixed $test, string $tab): AssertableInertia
-{
-    $page = null;
-
-    $test->actingAs($test->admin)
-        ->get(route('admin.users.show', ['user' => $test->user, 'tab' => $tab]))
-        ->assertOk()
-        ->assertInertia(function (AssertableInertia $inertia) use (&$page, $tab): void {
-            $inertia->component('admin/users/Show')->where('tab', $tab);
-            $page = $inertia;
-        });
-
-    return $page;
-}
 
 test('the overview shows how the user signs in, came in and was last seen', function () {
     DB::table('sessions')->insert(['id' => 'sess-1', 'user_id' => $this->user->id, 'ip_address' => '203.0.113.7', 'user_agent' => 'Safari', 'payload' => '', 'last_activity' => now()->timestamp]);
@@ -99,7 +80,6 @@ test('the posts tab counts posts by network and status and the workspace content
 });
 
 test('the integrations tab lists api keys and webhooks', function () {
-    $this->user->update(['current_workspace_id' => $this->workspace->id]);
     $result = createApiTestToken(['user' => $this->user, 'workspace' => $this->workspace]);
     Webhook::factory()->create(['workspace_id' => $this->workspace->id, 'endpoint' => 'https://hooks.example.test/in']);
 
@@ -141,6 +121,22 @@ test('the billing tab shows the stored subscription and reads cards and discount
             ->where('data.stripe.used_discounts.0.name', 'Black Friday')
             ->where('data.stripe.used_discounts.0.amount_off', '$18.00')
             ->where('data.account.stripe_url', "https://dashboard.stripe.com/test/customers/{$this->user->account->stripe_id}"),
+        );
+});
+
+test('the billing tab keeps the stored part and every Stripe key when Stripe fails', function () {
+    $this->user->account->forceFill(['stripe_id' => 'cus_down'])->save();
+    fakeStripeReads(down: true);
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.users.show', ['user' => $this->user, 'tab' => 'billing']))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('data.account.stripe_id', 'cus_down')
+            ->where('data.stripe.cards', [])
+            ->where('data.stripe.discount', null)
+            ->where('data.stripe.used_discounts', [])
+            ->where('data.stripe.invoices', [])
+            ->whereNot('data.stripe.error', null),
         );
 });
 

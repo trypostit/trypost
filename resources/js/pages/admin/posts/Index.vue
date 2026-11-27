@@ -2,12 +2,10 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-import AdminSortableTable, {
-    type AdminTableColumn,
-} from '@/components/admin/AdminSortableTable.vue';
-import AdminStatGrid, {
-    type AdminStat,
-} from '@/components/admin/AdminStatGrid.vue';
+import AdminBarRows from '@/components/admin/AdminBarRows.vue';
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
+import AdminSortableTable from '@/components/admin/AdminSortableTable.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import PublishingBarChart from '@/components/admin/PublishingBarChart.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
@@ -18,11 +16,17 @@ import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { errorCategoryLabel } from '@/lib/adminErrorCategories';
+import { ALARMING_FAILURE_RATE } from '@/lib/adminPublishing';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
 import { index as postsIndex } from '@/routes/admin/posts';
 import { index as failedIndex } from '@/routes/admin/posts/failed';
-import type { AdminPublishingStats } from '@/types/admin';
+import type {
+    AdminBarRow,
+    AdminPublishingStats,
+    AdminStat,
+    AdminTableColumn,
+} from '@/types/admin';
 import type { AnalyticsFilters, DateRange } from '@/types/analytics';
 
 const props = defineProps<{
@@ -94,11 +98,10 @@ const NETWORK_COLUMNS: AdminTableColumn[] = [
 ];
 
 const ERROR_COLUMNS: AdminTableColumn[] = [
-    { key: 'network', label: 'Network' },
+    { key: 'network_label', label: 'Network' },
     { key: 'message', label: 'Error' },
     { key: 'count', label: 'Posts', numeric: true },
 ];
-
 
 const TYPE_COLUMNS: AdminTableColumn[] = [
     { key: 'type', label: 'Post type' },
@@ -113,9 +116,6 @@ const ORIGIN_LABELS: Record<string, string> = {
     mcp: 'AI apps (MCP)',
     repurpose: 'Repurpose',
 };
-
-/** A failure rate at or above this reads as trouble. */
-const ALARMING_FAILURE_RATE = 10;
 
 const rateClass = (rate: number): string => {
     if (rate >= ALARMING_FAILURE_RATE) {
@@ -139,13 +139,25 @@ const totalSent = computed(() =>
     props.stats.origins.reduce((sum, origin) => sum + origin.published + origin.failed, 0),
 );
 
-const originRows = computed(() =>
+/** Each origin's bar is its share of the posts sent; it shows what it published and its failure rate. */
+const originRows = computed((): AdminBarRow[] =>
     props.stats.origins.map((origin) => ({
-        ...origin,
-        origin_label: originLabel(origin.origin),
-        share: percentOf(origin.published + origin.failed, totalSent.value),
+        key: origin.origin,
+        label: originLabel(origin.origin),
+        count: origin.published,
+        bar: percentOf(origin.published + origin.failed, totalSent.value),
     })),
 );
+
+const originFailureRate = (row: AdminBarRow): number => {
+    const origin = props.stats.origins.find((candidate) => candidate.origin === row.key);
+
+    if (filled(origin)) {
+        return origin.failure_rate;
+    }
+
+    return 0;
+};
 
 const typeRows = computed(() =>
     props.stats.content_types.map((type) => ({
@@ -157,14 +169,6 @@ const typeRows = computed(() =>
 const typeKey = (row: { platform: string; content_type: string }): string =>
     `${row.platform}-${row.content_type}`;
 
-const maxCategory = computed(() =>
-    Math.max(1, ...props.stats.categories.map((category) => category.count)),
-);
-
-const shareWidth = (share: number): string => `${share}%`;
-
-const categoryWidth = (count: number): string => `${(count / maxCategory.value) * 100}%`;
-
 const failedUrl = (query: Record<string, string | string[]>): string =>
     failedIndex.url({ query });
 
@@ -173,6 +177,16 @@ const categoryUrl = (category: string): string =>
 
 const errorUrl = (row: { network: string; category: string }): string =>
     failedUrl({ networks: [row.network], category: row.category });
+
+const categoryRows = computed((): AdminBarRow[] =>
+    props.stats.categories.map((category) => ({
+        key: category.category,
+        label: errorCategoryLabel(category.category),
+        count: category.count,
+        href: categoryUrl(category.category),
+        barClass: 'bg-destructive/70',
+    })),
+);
 
 const hasCategories = computed(() => filled(props.stats.categories));
 const hasTypes = computed(() => filled(props.stats.content_types));
@@ -187,7 +201,7 @@ const networkRows = computed(() =>
 const errorRows = computed(() =>
     props.stats.top_errors.map((error) => ({
         ...error,
-        network: getPlatformLabel(error.platform),
+        network_label: getPlatformLabel(error.platform),
     })),
 );
 
@@ -196,9 +210,9 @@ const errorKey = (row: { platform: string; message: string }): string =>
     `${row.platform}-${row.message}`;
 
 const hasOrigins = computed(() => filled(props.stats.origins));
+/** A network row exists only for a network that sent posts, so it also tells whether anything was sent. */
 const hasNetworks = computed(() => filled(props.stats.networks));
 const hasErrors = computed(() => filled(props.stats.top_errors));
-const hasPosts = computed(() => filled(props.stats.networks));
 </script>
 
 <template>
@@ -208,7 +222,6 @@ const hasPosts = computed(() => filled(props.stats.networks));
         title="Publishing"
         description="What TryPost sent to the networks, across every workspace."
     >
-
         <div class="flex flex-col gap-6" data-testid="admin-publishing">
             <div
                 class="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border-strong pb-3"
@@ -233,7 +246,7 @@ const hasPosts = computed(() => filled(props.stats.networks));
             </AnalyticsSection>
 
             <AnalyticsSection title="Posts per day" :subtitle="rangeSubtitle">
-                <PublishingBarChart v-if="hasPosts" :days="stats.days" />
+                <PublishingBarChart v-if="hasNetworks" :days="stats.days" />
                 <p
                     v-else
                     class="py-16 text-center text-sm text-muted-foreground"
@@ -248,12 +261,7 @@ const hasPosts = computed(() => filled(props.stats.networks));
                 :subtitle="rangeSubtitle"
                 flush
             >
-                <p
-                    v-if="!hasNetworks"
-                    class="mx-4 mb-4 rounded-lg border border-dashed border-border-strong px-5 py-10 text-center text-sm text-muted-foreground sm:mx-5 sm:mb-5"
-                >
-                    No posts in this period.
-                </p>
+                <AdminEmptyState v-if="!hasNetworks" variant="section">No posts in this period.</AdminEmptyState>
                 <AdminSortableTable
                     v-else
                     :columns="NETWORK_COLUMNS"
@@ -294,38 +302,13 @@ const hasPosts = computed(() => filled(props.stats.networks));
                     subtitle="Click a cause to see its posts"
                     flush
                 >
-                    <p
-                        v-if="!hasCategories"
-                        class="mx-4 mb-4 rounded-lg border border-dashed border-border-strong px-5 py-10 text-center text-sm text-muted-foreground sm:mx-5 sm:mb-5"
-                    >
-                        No failures in this period.
-                    </p>
-                    <ul
+                    <AdminEmptyState v-if="!hasCategories" variant="section">No failures in this period.</AdminEmptyState>
+                    <AdminBarRows
                         v-else
-                        class="flex flex-col border-t border-border py-2"
-                        data-testid="admin-publishing-categories"
-                    >
-                        <li v-for="category in stats.categories" :key="category.category">
-                            <Link
-                                :href="categoryUrl(category.category)"
-                                class="flex items-center gap-3 px-4 py-1.5 transition-colors hover:bg-muted/60 sm:px-5"
-                            >
-                                <span class="w-32 shrink-0 truncate text-sm text-foreground">{{
-                                    errorCategoryLabel(category.category)
-                                }}</span>
-                                <span class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                                    <span
-                                        class="block h-full rounded-full bg-destructive/70"
-                                        :style="{ width: categoryWidth(category.count) }"
-                                    />
-                                </span>
-                                <span
-                                    class="w-12 shrink-0 text-right text-sm font-medium text-foreground tabular-nums"
-                                    >{{ formatFullNumber(category.count) }}</span
-                                >
-                            </Link>
-                        </li>
-                    </ul>
+                        :rows="categoryRows"
+                        label-class="w-32"
+                        test-id="admin-publishing-categories"
+                    />
                 </AnalyticsSection>
 
                 <AnalyticsSection
@@ -333,43 +316,26 @@ const hasPosts = computed(() => filled(props.stats.networks));
                     subtitle="Where the posts were made: share of posts, published, failure rate"
                     flush
                 >
-                    <p
-                        v-if="!hasOrigins"
-                        class="mx-4 mb-4 rounded-lg border border-dashed border-border-strong px-5 py-10 text-center text-sm text-muted-foreground sm:mx-5 sm:mb-5"
-                    >
-                        No posts in this period.
-                    </p>
-                    <ul
+                    <AdminEmptyState v-if="!hasOrigins" variant="section">No posts in this period.</AdminEmptyState>
+                    <AdminBarRows
                         v-else
-                        class="flex flex-col border-t border-border py-2"
-                        data-testid="admin-publishing-origins"
+                        :rows="originRows"
+                        label-class="w-28"
+                        test-id="admin-publishing-origins"
                     >
-                        <li
-                            v-for="origin in originRows"
-                            :key="origin.origin"
-                            class="flex items-center gap-3 px-4 py-1.5 sm:px-5"
-                        >
-                            <span class="w-28 shrink-0 truncate text-sm text-foreground">{{
-                                origin.origin_label
-                            }}</span>
-                            <span class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                                <span
-                                    class="block h-full rounded-full bg-primary-text"
-                                    :style="{ width: shareWidth(origin.share) }"
-                                />
-                            </span>
+                        <template #value="{ row }">
                             <span
                                 class="w-16 shrink-0 text-right text-sm font-medium text-foreground tabular-nums"
-                                >{{ formatFullNumber(origin.published) }}</span
+                                >{{ formatFullNumber(row.count) }}</span
                             >
                             <span
                                 class="w-12 shrink-0 text-right text-xs tabular-nums"
-                                :class="rateClass(origin.failure_rate)"
+                                :class="rateClass(originFailureRate(row))"
                                 title="Failure rate"
-                                >{{ formatPercent(origin.failure_rate, 1) }}</span
+                                >{{ formatPercent(originFailureRate(row), 1) }}</span
                             >
-                        </li>
-                    </ul>
+                        </template>
+                    </AdminBarRows>
                 </AnalyticsSection>
             </div>
 
@@ -378,12 +344,7 @@ const hasPosts = computed(() => filled(props.stats.networks));
                 :subtitle="rangeSubtitle"
                 flush
             >
-                <p
-                    v-if="!hasTypes"
-                    class="mx-4 mb-4 rounded-lg border border-dashed border-border-strong px-5 py-10 text-center text-sm text-muted-foreground sm:mx-5 sm:mb-5"
-                >
-                    No posts in this period.
-                </p>
+                <AdminEmptyState v-if="!hasTypes" variant="section">No posts in this period.</AdminEmptyState>
                 <AdminSortableTable
                     v-else
                     :columns="TYPE_COLUMNS"
@@ -421,12 +382,7 @@ const hasPosts = computed(() => filled(props.stats.networks));
                 :subtitle="rangeSubtitle"
                 flush
             >
-                <p
-                    v-if="!hasErrors"
-                    class="mx-4 mb-4 rounded-lg border border-dashed border-border-strong px-5 py-10 text-center text-sm text-muted-foreground sm:mx-5 sm:mb-5"
-                >
-                    No failures in this period.
-                </p>
+                <AdminEmptyState v-if="!hasErrors" variant="section">No failures in this period.</AdminEmptyState>
                 <AdminSortableTable
                     v-else
                     :columns="ERROR_COLUMNS"
@@ -435,11 +391,11 @@ const hasPosts = computed(() => filled(props.stats.networks));
                     default-sort="count"
                     test-id="admin-publishing-errors"
                 >
-                    <template #cell-network="{ row }">
+                    <template #cell-network_label="{ row }">
                         <span class="flex items-center gap-2.5">
                             <PlatformLogo :platform="row.platform" size="xs" />
                             <span class="text-sm font-medium whitespace-nowrap text-foreground">{{
-                                row.network
+                                row.network_label
                             }}</span>
                         </span>
                     </template>

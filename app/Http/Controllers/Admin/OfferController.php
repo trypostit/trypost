@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Admin\Offers\DeleteOffer;
 use App\Actions\Admin\Offers\SaveOffer;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Offer\DestroyOfferRequest;
 use App\Http\Requests\Admin\Offer\StoreOfferRequest;
 use App\Http\Requests\Admin\Offer\UpdateOfferRequest;
 use App\Http\Resources\Admin\AdminOfferResource;
@@ -46,7 +47,7 @@ class OfferController extends Controller
         return redirect()->route('admin.billing.offers.index');
     }
 
-    public function destroy(Request $request, Offer $offer, DeleteOffer $deleteOffer): RedirectResponse
+    public function destroy(DestroyOfferRequest $request, Offer $offer, DeleteOffer $deleteOffer): RedirectResponse
     {
         $deleteOffer->execute($request->user(), $offer);
 

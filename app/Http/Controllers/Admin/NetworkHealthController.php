@@ -17,23 +17,13 @@ class NetworkHealthController extends Controller
 {
     public function index(IndexNetworkHealthRequest $request): Response
     {
-        $dates = $request->dates();
-
         return Inertia::render('admin/networks/Index', [
             'networks' => BuildNetworkHealth::execute(),
             'distribution' => BuildChannelDistribution::execute(),
             'permissions' => BuildNetworkPermissions::execute(),
-            'growth' => BuildChannelGrowth::execute($dates['start'], $dates['end'], $request->timezone()),
-            'range' => $dates,
-            'bounds' => [
-                'min' => IndexNetworkHealthRequest::earliest($request->timezone())->toDateString(),
-                'max' => now($request->timezone())->toDateString(),
-            ],
-            'filters' => [
-                'range' => $request->range(),
-                'start' => $dates['start'],
-                'end' => $dates['end'],
-            ],
+            'growth' => BuildChannelGrowth::execute($request->dateRange()),
+            ...$request->rangeProps(),
+            'filters' => $request->rangeFilters(),
         ]);
     }
 }

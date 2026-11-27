@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Actions\Admin\Users;
 
 use App\Actions\Account\ResolveLifecycleStage;
+use App\Dto\Analytics\DateRange;
 use App\Enums\Account\LifecycleStage;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\PublishStatus;
 use App\Models\Account;
 use App\Models\Post;
-use App\Models\SocialAccount;
+use App\Support\Admin\KeyLabel;
+use App\Support\Admin\PublishingCounts;
 use App\Support\Percent;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -37,31 +40,24 @@ class BuildUsageInsights
     private const array POST_BUCKETS = ['1 to 5' => [1, 5], '6 to 20' => [6, 20], '21 to 100' => [21, 100], '101 or more' => [101, PHP_INT_MAX]];
 
     /**
-     * How the accounts use TryPost between two days of the viewer's zone:
+     * How the accounts use TryPost over the range's days of the viewer's zone:
      * how many sent a post and how much, set against the period before; the
      * accounts by lifecycle stage; who sends, connects, automates and fails
      * the most; and how the accounts spread by channels and posts.
      *
      * @return array<string, mixed>
      */
-    public static function execute(string $start, string $end, string $timezone): array
+    public static function execute(DateRange $range): array
     {
-        $first = CarbonImmutable::parse($start, $timezone)->startOfDay();
-        $last = CarbonImmutable::parse($end, $timezone)->endOfDay();
-        $length = (int) $first->diffInDays($last->startOfDay()) + 1;
+        $first = $range->startsAt();
+        $last = $range->endsAt();
+        $previous = $range->previous();
 
         $sent = self::postsPerAccount($first, $last, PublishStatus::wentOutCases());
-        $previousSent = self::postsPerAccount($first->subDays($length), $first->subSecond(), PublishStatus::wentOutCases());
-        $failed = self::postsPerAccount($first, $last, [PublishStatus::Failed]);
+        $previousSent = self::postsPerAccount($previous->startsAt(), $previous->endsAt(), PublishStatus::wentOutCases());
+        $failed = self::postsPerAccount($first, $last, PublishingCounts::failedStatuses());
         $automated = self::postsPerAccount($first, $last, PublishStatus::wentOutCases(), [CreatedVia::Api, CreatedVia::Mcp]);
-        $channels = SocialAccount::query()
-            ->withoutGlobalScopes()
-            ->join('workspaces', 'workspaces.id', '=', 'social_accounts.workspace_id')
-            ->toBase()
-            ->selectRaw('workspaces.account_id, count(*) as total')
-            ->groupBy('workspaces.account_id')
-            ->pluck('total', 'account_id')
-            ->map(fn (mixed $total): int => (int) $total);
+        $channels = BuildChurnRisk::channelHealth()->map(fn (array $health): int => data_get($health, 'total'));
 
         $topIds = collect([$sent, $failed, $automated, $channels])
             ->flatMap(fn (Collection $counts): array => $counts->sortDesc()->take(self::TOP_PER_MEASURE)->keys()->all())
@@ -70,8 +66,11 @@ class BuildUsageInsights
         $accounts = self::accounts($topIds);
 
         return [
-            'totals' => self::totals($sent, $channels),
-            'previous' => self::totals($previousSent, $channels),
+            'totals' => [
+                ...self::sending($sent),
+                'channels_per_account' => self::average($channels),
+            ],
+            'previous' => self::sending($previousSent),
             'lifecycle' => self::lifecycle(),
             'top_accounts' => $topIds
                 ->map(fn (string $accountId): array => [
@@ -106,41 +105,58 @@ class BuildUsageInsights
             ->join('workspaces', 'workspaces.id', '=', 'posts.workspace_id')
             ->whereIn('posts.publish_status', $statuses)
             ->whereBetween('posts.publication_updated_at', [$from, $until])
-            ->when(filled($via), fn ($query) => $query->whereIn('posts.created_via', $via))
-            ->when(filled($accountId), fn ($query) => $query->where('workspaces.account_id', $accountId))
+            ->when(filled($via), fn (Builder $query): Builder => $query->whereIn('posts.created_via', $via))
+            ->when(filled($accountId), fn (Builder $query): Builder => $query->where('workspaces.account_id', $accountId))
+            ->tallyBy(['workspaces.account_id'])
             ->toBase()
-            ->selectRaw('workspaces.account_id, count(*) as total')
-            ->groupBy('workspaces.account_id')
             ->pluck('total', 'account_id')
             ->map(fn (mixed $total): int => (int) $total);
     }
 
     /**
+     * How many accounts sent a post and how much.
+     *
      * @param  Collection<string, int>  $sent
-     * @param  Collection<string, int>  $channels
-     * @return array{active_accounts: int, posts: int, posts_per_active: float, channels_per_account: float}
+     * @return array{active_accounts: int, posts: int, posts_per_active: float}
      */
-    private static function totals(Collection $sent, Collection $channels): array
+    private static function sending(Collection $sent): array
     {
         return [
             'active_accounts' => $sent->count(),
-            'posts' => $sent->sum(),
-            'posts_per_active' => round($sent->count() === 0 ? 0 : $sent->sum() / $sent->count(), 1),
-            'channels_per_account' => round($channels->count() === 0 ? 0 : $channels->sum() / $channels->count(), 1),
+            'posts' => (int) $sent->sum(),
+            'posts_per_active' => self::average($sent),
         ];
+    }
+
+    /**
+     * @param  Collection<string, int>  $counts
+     */
+    private static function average(Collection $counts): float
+    {
+        if ($counts->isEmpty()) {
+            return 0.0;
+        }
+
+        return round($counts->sum() / $counts->count(), 1);
     }
 
     /**
      * Every account's lifecycle stage now, worked out by the app's own rule
      * from its access, channels and last post. The stage stored on the
      * account is only refreshed by the PostHog sync, which a self-hosted
-     * install never runs, so it is not read here.
+     * install never runs, so it is not read here. Only an account with a
+     * subscription not yet ended or a trial still running may have access,
+     * so only those are read.
      *
      * @return Collection<string, LifecycleStage>
      */
-    public static function liveStages(): Collection
+    private static function liveStages(): Collection
     {
         return Account::query()
+            ->where(fn (Builder $query): Builder => $query
+                ->whereHas('subscriptions', fn (Builder $subscriptions): Builder => $subscriptions
+                    ->where(fn (Builder $live): Builder => $live->whereNull('ends_at')->orWhere('ends_at', '>', now())))
+                ->orWhere('trial_ends_at', '>', now()))
             ->with('subscriptions')
             ->withLifecycleActivity()
             ->get()
@@ -165,7 +181,7 @@ class BuildUsageInsights
             'stages' => collect(self::CUSTOMER_STAGES)
                 ->map(fn (LifecycleStage $stage): array => [
                     'key' => $stage->value,
-                    'label' => str($stage->value)->replace('_', ' ')->ucfirst()->toString(),
+                    'label' => KeyLabel::of($stage->value),
                     'count' => (int) $counts->get($stage->value, 0),
                     'share' => Percent::of((int) $counts->get($stage->value, 0), $customers),
                 ])
@@ -223,12 +239,16 @@ class BuildUsageInsights
     private static function buckets(Collection $counts, array $ranges): array
     {
         return collect($ranges)
-            ->map(fn (array $range, string $label): array => [
-                'key' => $label,
-                'label' => $label,
-                'count' => $counts->filter(fn (int $count): bool => $count >= $range[0] && $count <= $range[1])->count(),
-                'share' => Percent::of($counts->filter(fn (int $count): bool => $count >= $range[0] && $count <= $range[1])->count(), $counts->count()),
-            ])
+            ->map(function (array $range, string $label) use ($counts): array {
+                $inRange = $counts->filter(fn (int $count): bool => $count >= $range[0] && $count <= $range[1])->count();
+
+                return [
+                    'key' => $label,
+                    'label' => $label,
+                    'count' => $inRange,
+                    'share' => Percent::of($inRange, $counts->count()),
+                ];
+            })
             ->values()
             ->all();
     }

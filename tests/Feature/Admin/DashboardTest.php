@@ -9,7 +9,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\Post;
 use App\Models\SocialAccount;
-use App\Models\User;
 use App\Support\Admin\QuotaSnapshots;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia;
@@ -66,9 +65,7 @@ test('flags a network failing often, posts stuck publishing and quotas running o
 });
 
 test('the admin dashboard renders the summary', function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-
-    $this->actingAs(User::factory()->create(['email' => 'admin@trypost.test']))
+    $this->actingAs(backofficeAdmin())
         ->get(route('admin.dashboard'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
@@ -76,4 +73,11 @@ test('the admin dashboard renders the summary', function () {
             ->has('dashboard.channels')
             ->has('dashboard.publishing.days', 14),
         );
+});
+
+test('raises no quota alert while YouTube is under the warning share and X credits are not low', function () {
+    QuotaSnapshots::put(QuotaSource::YouTube, ['quotas' => [['metric' => 'youtube.googleapis.com/default', 'usage' => 7900, 'limits' => [['name' => 'defaultPerDayPerProject', 'value' => 10000]]]]]);
+    QuotaSnapshots::put(QuotaSource::X, ['credits' => ['total_balance' => BuildDashboard::X_LOW_BALANCE]]);
+
+    expect(BuildDashboard::execute('UTC')['attention']['quotas'])->toBe([]);
 });

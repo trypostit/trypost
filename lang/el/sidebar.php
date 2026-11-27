@@ -19,7 +19,6 @@ return [
     ],
     'settings' => 'Ρυθμίσεις',
     'plans_billing' => 'Πακέτα & χρέωση',
-    'backoffice' => 'Back office',
     'log_out' => 'Αποσύνδεση',
     'help' => 'Βοήθεια',
     'language' => 'Γλώσσα: :name',

@@ -21,6 +21,12 @@ final class SubscriptionPlans
     /** Stripe statuses of a subscription that is paid for. */
     public const array PAYING_STATUSES = ['active', 'past_due'];
 
+    /** Stripe statuses of a checkout that never billed. */
+    public const array NEVER_BILLED_STATUSES = ['incomplete', 'incomplete_expired'];
+
+    /** How many months one of each Stripe billing interval lasts. */
+    public const array MONTHS_PER_INTERVAL = ['day' => 12 / 365, 'week' => 12 / 52, 'month' => 1, 'year' => 12];
+
     /**
      * Every plan's prices, by price id.
      *

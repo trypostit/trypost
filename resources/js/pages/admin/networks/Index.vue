@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 import AdminBarRows from '@/components/admin/AdminBarRows.vue';
@@ -7,24 +7,21 @@ import AdminDailyBarChart, {
     type AdminChartSeries,
 } from '@/components/admin/AdminDailyBarChart.vue';
 import AdminDailyLineChart from '@/components/admin/AdminDailyLineChart.vue';
-import AdminMetricTabs, {
-    type AdminMetricTab,
-} from '@/components/admin/AdminMetricTabs.vue';
-import AdminSortableTable, {
-    type AdminTableColumn,
-} from '@/components/admin/AdminSortableTable.vue';
-import AdminStatGrid, {
-    type AdminStat,
-} from '@/components/admin/AdminStatGrid.vue';
+import AdminMetricTabs from '@/components/admin/AdminMetricTabs.vue';
+import AdminSortableTable from '@/components/admin/AdminSortableTable.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import NetworkPermissionsCard from '@/components/admin/NetworkPermissionsCard.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUrlTab } from '@/composables/admin/useUrlTab';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
+import { NO_VALUE } from '@/lib/adminFormat';
+import { ALARMING_FAILURE_RATE } from '@/lib/adminPublishing';
 import { accountColor } from '@/lib/analyticsColors';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
@@ -33,13 +30,14 @@ import type {
     AdminBarRow,
     AdminChannelDistribution,
     AdminChannelGrowth,
+    AdminMetricTab,
     AdminNetworkHealth,
     AdminNetworkPermissions,
+    AdminStat,
+    AdminTableColumn,
+    BadgeVariant,
 } from '@/types/admin';
 import type { AnalyticsFilters, DateRange } from '@/types/analytics';
-
-/** A failure rate at or above this reads as a network in trouble. */
-const ALARMING_FAILURE_RATE = 10;
 
 const props = defineProps<{
     networks: AdminNetworkHealth[];
@@ -51,33 +49,11 @@ const props = defineProps<{
     filters: AnalyticsFilters;
 }>();
 
-type NetworksTab = 'health' | 'permissions';
-
-const page = usePage();
-
 /** Health opens by default. */
-const networksTab = (value: unknown): NetworksTab => {
-    if (value === 'permissions') {
-        return 'permissions';
-    }
-
-    return 'health';
-};
-
-/** The open tab is read from the URL, like the Billing tabs. */
-const tab = ref<NetworksTab>(
-    networksTab(new URL(page.url, window.location.origin).searchParams.get('tab')),
-);
-
-const selectTab = (value: string | number): void => {
-    tab.value = networksTab(value);
-
-    router.replace({
-        url: networksIndex.url({ mergeQuery: { tab: tab.value } }),
-        preserveScroll: true,
-        preserveState: true,
-    });
-};
+const { tab, selectTab } = useUrlTab({
+    tabs: ['health', 'permissions'] as const,
+    url: (mergeQuery) => networksIndex.url({ mergeQuery }),
+});
 
 const growthSeries = computed((): AdminChartSeries[] =>
     Object.entries(props.growth.by_network).map(([network, perDay], index) => ({
@@ -91,9 +67,9 @@ const growthSeries = computed((): AdminChartSeries[] =>
 type GrowthView = 'total' | 'new';
 
 /** The total opens first: it answers whether the app is growing. */
-const growthView = ref<string>('total');
+const growthView = ref<GrowthView>('total');
 
-const growthViews = computed((): AdminMetricTab[] => [
+const growthViews = computed((): AdminMetricTab<GrowthView>[] => [
     {
         value: 'total',
         label: 'Total channels now',
@@ -112,10 +88,12 @@ const isGrowthView = (value: GrowthView): boolean => growthView.value === value;
 
 const growthSubtitle = computed((): string => date.formatDayMonthYearRange(props.range));
 
-/** Channels open first: the count the rest of the page reads. */
-const distributionView = ref<string>('channels');
+type DistributionView = 'channels' | 'accounts' | 'first';
 
-const distributionViews = computed((): AdminMetricTab[] => [
+/** Channels open first: the count the rest of the page reads. */
+const distributionView = ref<DistributionView>('channels');
+
+const distributionViews = computed((): AdminMetricTab<DistributionView>[] => [
     {
         value: 'channels',
         label: 'Connected channels',
@@ -157,7 +135,6 @@ const sum = (pick: (network: AdminNetworkHealth) => number): number =>
 const toReconnect = (network: AdminNetworkHealth): number =>
     network.channels.token_expired + network.channels.disconnected;
 
-
 const summary = computed((): AdminStat[] => {
     const published = sum((network) => network.last_24h.published);
     const failed = sum((network) => network.last_24h.failed);
@@ -187,8 +164,6 @@ const summary = computed((): AdminStat[] => {
     ];
 });
 
-type RateVariant = 'success' | 'warning' | 'destructive' | 'secondary';
-
 /** One row of the table, flat so every column can sort. */
 type NetworkRow = {
     platform: string;
@@ -213,6 +188,15 @@ const COLUMNS: AdminTableColumn[] = [
     { key: 'last_failure_at', label: 'Last failure' },
 ];
 
+/** A network that never failed sorts first in the Last failure column. */
+const lastFailureAt = (network: AdminNetworkHealth): string => {
+    if (filled(network.last_failure_at)) {
+        return network.last_failure_at;
+    }
+
+    return '';
+};
+
 const rows = computed((): NetworkRow[] =>
     props.networks.map((network) => ({
         platform: network.platform,
@@ -223,13 +207,13 @@ const rows = computed((): NetworkRow[] =>
         failed: network.last_24h.failed,
         failure_rate: network.last_24h.failure_rate,
         failure_rate_7d: network.last_7d.failure_rate,
-        last_failure_at: network.last_failure_at ?? '',
+        last_failure_at: lastFailureAt(network),
     })),
 );
 
 const rowKey = (row: NetworkRow): string => row.platform;
 
-const rateVariant = (row: NetworkRow): RateVariant => {
+const rateVariant = (row: NetworkRow): BadgeVariant => {
     if (row.published + row.failed === 0) {
         return 'secondary';
     }
@@ -259,7 +243,7 @@ const lastFailure = (row: NetworkRow): string => {
         return date.diffForHumans(row.last_failure_at);
     }
 
-    return '—';
+    return NO_VALUE;
 };
 </script>
 

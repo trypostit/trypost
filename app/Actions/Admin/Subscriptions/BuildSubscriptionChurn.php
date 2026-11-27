@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Admin\Subscriptions;
 
+use App\Dto\Analytics\DateRange;
 use App\Models\Subscription;
 use App\Support\Admin\SubscriptionPlans;
 use App\Support\Percent;
@@ -23,7 +24,7 @@ class BuildSubscriptionChurn
     ];
 
     /**
-     * Who left and when: the subscriptions that ended between two days of the viewer's zone
+     * Who left and when: the subscriptions that ended on the range's days of the viewer's zone
      * (the latest first), how long every ended subscription lasted, and, per
      * month an account first subscribed in, how many accounts still pay and
      * have not asked to cancel (one cancelling at its period end is lost; a
@@ -31,21 +32,18 @@ class BuildSubscriptionChurn
      *
      * @return array<string, mixed>
      */
-    public static function execute(string $start, string $end, string $timezone): array
+    public static function execute(DateRange $range): array
     {
         $now = CarbonImmutable::now('UTC');
-        $first = CarbonImmutable::parse($start, $timezone)->startOfDay();
-        $last = CarbonImmutable::parse($end, $timezone)->endOfDay();
+        $first = $range->startsAt();
         $subscriptions = BuildSubscriptionOverview::billable();
         $ended = $subscriptions->filter(fn (Subscription $subscription): bool => $subscription->ends_at !== null && $subscription->ends_at->lte($now));
+        $endedInPeriod = $ended->filter(fn (Subscription $subscription): bool => $subscription->ends_at->between($first, $range->endsAt()));
         $prices = SubscriptionPlans::byPrice();
-
-        $days = collect(range(0, (int) $first->diffInDays($last->startOfDay())))
-            ->map(fn (int $offset): CarbonImmutable => $first->addDays($offset));
-        $endedInPeriod = $ended->filter(fn (Subscription $subscription): bool => $subscription->ends_at->between($first, $last));
+        $days = collect($range->calendarDays());
 
         $recent = Subscription::query()
-            ->whereIn('id', $ended->filter(fn (Subscription $subscription): bool => $subscription->ends_at->between($first, $last))->pluck('id'))
+            ->whereIn('id', $endedInPeriod->pluck('id'))
             ->with(['owner.owner', 'owner.offers'])
             ->orderByDesc('ends_at')
             ->limit(self::RECENT)
@@ -61,11 +59,9 @@ class BuildSubscriptionChurn
                 'average_lifetime_days' => (int) round((float) $endedInPeriod->avg(fn (Subscription $subscription): int => (int) $subscription->created_at->diffInDays($subscription->ends_at))),
                 'cancelling' => $subscriptions->filter(fn (Subscription $subscription): bool => $subscription->ends_at !== null && $subscription->ends_at->gt($now))->count(),
             ],
-            'days' => $days->map(fn (CarbonImmutable $day): string => $day->toDateString())->all(),
-            'canceled_by_day' => $days->map(fn (CarbonImmutable $day): int => $ended
-                ->filter(fn (Subscription $subscription): bool => $subscription->ends_at->setTimezone($timezone)->toDateString() === $day->toDateString())
-                ->count())->all(),
-            'churn_rate_by_day' => $days->map(fn (CarbonImmutable $day): float => BuildSubscriptionOverview::rollingChurn($subscriptions, $ended, $day->endOfDay()))->all(),
+            'days' => $days->all(),
+            'canceled_by_day' => BuildSubscriptionOverview::perDay($days, $endedInPeriod->map(fn (Subscription $subscription): string => $range->localDate($subscription->ends_at))),
+            'churn_rate_by_day' => $days->map(fn (string $day): float => BuildSubscriptionOverview::rollingChurn($subscriptions, $ended, BuildSubscriptionOverview::endOfDay($range, $day)))->all(),
             'recent' => $recent->map(fn (Subscription $subscription): array => [
                 'id' => $subscription->id,
                 'user_id' => $subscription->owner?->owner?->id,
@@ -87,7 +83,7 @@ class BuildSubscriptionChurn
             'cohorts' => $subscriptions
                 ->groupBy('account_id')
                 ->map(fn (Collection $account): array => [
-                    'month' => $account->min('created_at')->setTimezone($timezone)->format('Y-m'),
+                    'month' => $account->min('created_at')->setTimezone($range->timezone)->format('Y-m'),
                     'stays' => $account->contains(fn (Subscription $subscription): bool => self::stays($subscription, $now)),
                 ])
                 ->groupBy('month')

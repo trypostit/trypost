@@ -49,7 +49,7 @@ const { isMobile, state: sidebarState } = useSidebar();
                         <h3
                             class="text-base leading-5 font-semibold group-data-[collapsible=icon]:sr-only"
                         >
-                            Backoffice
+                            Admin
                         </h3>
                     </Link>
                 </TooltipTrigger>

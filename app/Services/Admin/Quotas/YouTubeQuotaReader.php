@@ -9,6 +9,7 @@ use Google\Client as GoogleClient;
 use Google\Service\Monitoring;
 use Google\Service\Monitoring\TimeSeries;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * YouTube's project quota as Google Cloud Monitoring reports it: the units
@@ -41,8 +42,8 @@ class YouTubeQuotaReader
         $since = $now->setTimezone((string) config('trypost.admin.quotas.youtube.timezone'))->startOfDay()->utc();
         $alignmentPeriod = max(60, (int) $now->diffInSeconds($since, true));
         $interval = [
-            'interval.startTime' => $since->format('Y-m-d\TH:i:s\Z'),
-            'interval.endTime' => $now->format('Y-m-d\TH:i:s\Z'),
+            'interval.startTime' => $since->toIso8601ZuluString(),
+            'interval.endTime' => $now->toIso8601ZuluString(),
         ];
 
         $usage = collect($this->fetchTimeSeries([
@@ -67,11 +68,11 @@ class YouTubeQuotaReader
             'quotas' => $usage
                 ->map(fn (array $series): array => [
                     'metric' => (string) data_get($series, 'labels.quota_metric'),
-                    'usage' => (int) $series['value'],
+                    'usage' => (int) data_get($series, 'value'),
                     'limits' => $limits->get((string) data_get($series, 'labels.quota_metric'), collect())
                         ->map(fn (array $limit): array => [
                             'name' => (string) data_get($limit, 'labels.limit_name'),
-                            'value' => (int) $limit['value'],
+                            'value' => (int) data_get($limit, 'value'),
                         ])
                         ->values()
                         ->all(),
@@ -136,7 +137,7 @@ class YouTubeQuotaReader
     private function client(): GoogleClient
     {
         $client = app(GoogleClient::class);
-        $client->setAuthConfig((array) json_decode((string) base64_decode((string) config('trypost.admin.quotas.youtube.credentials')), true));
+        $client->setAuthConfig(Collection::fromJson(Str::fromBase64(config()->string('trypost.admin.quotas.youtube.credentials')))->all());
         $client->setScopes([Monitoring::MONITORING_READ]);
 
         return $client;

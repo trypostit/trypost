@@ -19,7 +19,6 @@ return [
     ],
     'settings' => 'Pengaturan',
     'plans_billing' => 'Paket dan tagihan',
-    'backoffice' => 'Backoffice',
     'log_out' => 'Keluar',
     'help' => 'Bantuan',
     'language' => 'Bahasa: :name',

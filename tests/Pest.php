@@ -16,12 +16,14 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Http\HostResolver;
 use App\Support\ChannelPermissions;
 use App\Support\Social\PendingConnection;
 use App\Support\Social\Poll;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpClientRequest;
 use Illuminate\Support\Facades\Bus;
@@ -32,6 +34,7 @@ use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Laravel\Mcp\Server\Testing\TestResponse as McpTestResponse;
 use Stripe\ApiRequestor;
+use Stripe\Exception\ApiConnectionException;
 use Stripe\HttpClient\ClientInterface;
 use Tests\BrowserTestCase;
 use Tests\TestCase;
@@ -372,16 +375,77 @@ function fakePublicDns(string $address = '93.184.216.34'): void
 }
 
 /**
- * Attach an active default subscription to the given account.
+ * Attach a subscription to the given account: active on `price_123` unless the
+ * attributes say otherwise.
+ *
+ * @param  array<string, mixed>  $attributes
  */
-function subscribeAccount(Account $account): void
+function subscribeAccount(Account $account, array $attributes = []): Subscription
 {
-    $account->subscriptions()->create([
+    $stripeId = fake()->uuid();
+
+    return $account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_id' => "sub_{$stripeId}",
         'stripe_status' => 'active',
         'stripe_price' => 'price_123',
+        ...$attributes,
     ]);
+}
+
+/**
+ * A user on their own account who owns a workspace, is its admin and has it as
+ * their current workspace.
+ *
+ * @param  array<string, mixed>  $attributes
+ * @param  array<string, mixed>  $workspaceAttributes
+ */
+function workspaceOwner(array $attributes = [], array $workspaceAttributes = []): User
+{
+    $user = User::factory()->create($attributes);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id, ...$workspaceAttributes]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    return $user->fresh();
+}
+
+/**
+ * A backoffice admin: a user whose email is the only one in ADMIN_EMAILS.
+ *
+ * @param  array<string, mixed>  $attributes
+ */
+function backofficeAdmin(array $attributes = []): User
+{
+    $admin = User::factory()->create(['email' => 'admin@trypost.test', ...$attributes]);
+    config()->set('trypost.admin.emails', [$admin->email]);
+
+    return $admin;
+}
+
+/**
+ * Moves a subscription's start to the given moment, as the backoffice counts
+ * subscriptions by the day they started.
+ */
+function adminBackdateSubscription(Subscription $subscription, CarbonInterface $at): Subscription
+{
+    Subscription::query()->whereKey($subscription->id)->toBase()->update(['created_at' => $at]);
+
+    return $subscription->refresh();
+}
+
+/**
+ * A post of the channel in the given factory state (`published`, `failed`, …)
+ * that went out at the given moment, as the backoffice counts posts by day.
+ *
+ * @param  array<string, mixed>  $attributes
+ */
+function adminPostSentAt(SocialAccount $channel, CarbonInterface $at, string $state = 'published', array $attributes = []): Post
+{
+    $post = Post::factory()->forAccount($channel)->{$state}()->create($attributes);
+    Post::query()->whereKey($post->id)->toBase()->update(['publication_updated_at' => $at, 'published_at' => $at]);
+
+    return $post->refresh();
 }
 
 /**
@@ -431,7 +495,8 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
                     'discounts' => blank($this->coupon) ? [] : [[
                         'id' => 'di_fake',
                         'object' => 'discount',
-                        'coupon' => ['object' => 'coupon', 'id' => 'FAKE', ...$this->coupon],
+                        'coupon' => ['object' => 'coupon', 'id' => 'FAKE', 'amount_off' => null, ...$this->coupon],
+                        'promotion_code' => null,
                         'start' => now()->subDay()->timestamp,
                         'end' => $this->discountEndsAt,
                     ]],
@@ -455,28 +520,12 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
 
         /**
          * The paid invoices, newest first, paged the way Stripe pages them:
-         * `limit` and `starting_after`, and only when `status` is `paid`.
+         * `limit` and `starting_after`, for a request with no `status` or
+         * with `status` `paid`.
          *
          * @param  array<string, mixed>  $params
          * @return array<string, mixed>
          */
-        /**
-         * The first invoice took the coupon off, as Stripe returns it with `discounts` expanded.
-         *
-         * @return array<string, mixed>
-         */
-        private function invoiceDiscount(int $number): array
-        {
-            if ($number !== 1 || $this->coupon === null) {
-                return [];
-            }
-
-            return [
-                'discounts' => [['id' => 'di_fake', 'object' => 'discount', 'coupon' => ['id' => 'coupon_fake', 'object' => 'coupon', ...$this->coupon]]],
-                'total_discount_amounts' => [['amount' => 1800, 'discount' => 'di_fake']],
-            ];
-        }
-
         private function invoices(array $params): array
         {
             $invoices = collect($this->paidInvoices > 0 ? range($this->paidInvoices, 1) : [])
@@ -505,7 +554,87 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
                 'url' => '/v1/invoices',
             ];
         }
+
+        /**
+         * The first invoice took the coupon off, as Stripe returns it with `discounts` expanded.
+         *
+         * @return array<string, mixed>
+         */
+        private function invoiceDiscount(int $number): array
+        {
+            if ($number !== 1 || blank($this->coupon)) {
+                return [];
+            }
+
+            return [
+                'discounts' => [['id' => 'di_fake', 'object' => 'discount', 'coupon' => ['id' => 'coupon_fake', 'object' => 'coupon', ...$this->coupon]]],
+                'total_discount_amounts' => [['amount' => 1800, 'discount' => 'di_fake']],
+            ];
+        }
     });
+}
+
+/**
+ * Answers Stripe from memory for the backoffice's reads: each price of
+ * `$prices` (id => [unit amount, interval, interval count]) and, for the
+ * subscription list, `$subscriptions` (Stripe subscription objects). With
+ * `$down`, every request fails as when Stripe is unreachable. The returned
+ * client counts the requests it answered. Reset with
+ * ApiRequestor::setHttpClient(null).
+ *
+ * @param  array<string, array{0: int, 1: string, 2?: int}>  $prices
+ * @param  list<array<string, mixed>>  $subscriptions
+ */
+function fakeStripeReads(array $prices = [], array $subscriptions = [], bool $down = false): object
+{
+    config(['cashier.secret' => 'sk_test_fake']);
+
+    $client = new class($prices, $subscriptions, $down) implements ClientInterface
+    {
+        public int $requests = 0;
+
+        public function __construct(private array $prices, private array $subscriptions, private bool $down) {}
+
+        public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
+        {
+            $this->requests++;
+
+            if ($this->down) {
+                throw ApiConnectionException::factory('Stripe is unreachable.');
+            }
+
+            if (Str::contains($absUrl, '/v1/prices/')) {
+                return $this->price(Str::afterLast($absUrl, '/'));
+            }
+
+            $subscriptions = collect($this->subscriptions)->where('status', data_get($params, 'status'))->values()->all();
+
+            return [json_encode(['object' => 'list', 'data' => $subscriptions, 'has_more' => false, 'url' => '/v1/subscriptions']), 200, []];
+        }
+
+        /**
+         * @return array{0: string, 1: int, 2: array<string, string>}
+         */
+        private function price(string $id): array
+        {
+            $price = data_get($this->prices, $id);
+
+            if ($price === null) {
+                return [json_encode(['error' => ['type' => 'invalid_request_error', 'message' => "No such price: '{$id}'"]]), 404, []];
+            }
+
+            return [json_encode([
+                'id' => $id,
+                'object' => 'price',
+                'unit_amount' => $price[0],
+                'recurring' => ['interval' => $price[1], 'interval_count' => $price[2] ?? 1],
+            ]), 200, []];
+        }
+    };
+
+    ApiRequestor::setHttpClient($client);
+
+    return $client;
 }
 
 /**

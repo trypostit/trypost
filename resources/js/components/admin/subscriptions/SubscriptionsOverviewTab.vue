@@ -1,19 +1,28 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
+import AdminBarRows from '@/components/admin/AdminBarRows.vue';
 import AdminDailyBarChart, {
     type AdminChartSeries,
 } from '@/components/admin/AdminDailyBarChart.vue';
 import AdminDailyLineChart from '@/components/admin/AdminDailyLineChart.vue';
-import AdminMetricTabs, { type AdminMetricTab } from '@/components/admin/AdminMetricTabs.vue';
-import AdminStatGrid, { type AdminStat } from '@/components/admin/AdminStatGrid.vue';
+import AdminMetricTabs from '@/components/admin/AdminMetricTabs.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
+import { valueAt } from '@/composables/admin/useAdminDayAxis';
 import { metricChange } from '@/lib/adminChange';
-import { planLabel, usd } from '@/lib/adminSubscriptions';
+import { formatUsd, NO_VALUE } from '@/lib/adminFormat';
+import { planLabel } from '@/lib/adminSubscriptions';
 import { accountColor } from '@/lib/analyticsColors';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
-import type { AdminNetMrr, AdminSubscriptionOverview } from '@/types/admin';
+import type {
+    AdminBarRow,
+    AdminMetricTab,
+    AdminNetMrr,
+    AdminStat,
+    AdminSubscriptionOverview,
+} from '@/types/admin';
 
 const props = defineProps<{
     overview: AdminSubscriptionOverview;
@@ -30,7 +39,7 @@ const now = computed((): AdminStat[] => [
     {
         key: 'subs-mrr',
         label: 'MRR (list price)',
-        value: usd(props.overview.mrr.cents),
+        value: formatUsd(props.overview.mrr.cents),
         hint: mrrHint.value,
         change: metricChange(props.overview.mrr.cents, props.overview.previous.mrr_cents),
     },
@@ -43,13 +52,13 @@ const now = computed((): AdminStat[] => [
     {
         key: 'subs-past-due',
         label: 'Past due',
-        value: `${usd(props.overview.at_risk.past_due_cents)}/mo`,
+        value: `${formatUsd(props.overview.at_risk.past_due_cents)}/mo`,
         hint: subscriptionsCount(props.overview.now.past_due, 'unpaid'),
     },
     {
         key: 'subs-cancelling',
         label: 'Cancelling',
-        value: `${usd(props.overview.at_risk.cancelling_cents)}/mo`,
+        value: `${formatUsd(props.overview.at_risk.cancelling_cents)}/mo`,
         hint: subscriptionsCount(props.overview.now.cancelling, 'cancelling'),
     },
 ]);
@@ -62,32 +71,37 @@ const subscriptionsCount = (count: number, state: string): string => {
     return `${formatFullNumber(count)} subscriptions ${state}`;
 };
 
-const netMrrValue = computed((): string => {
-    const netMrr = props.netMrr;
-
-    if (!filled(netMrr)) {
-        return '…';
-    }
-
+const readNetMrr = (netMrr: AdminNetMrr): string => {
     if ('error' in netMrr) {
-        return '—';
+        return NO_VALUE;
     }
 
-    return usd(netMrr.cents);
-});
+    return formatUsd(netMrr.cents);
+};
 
-const netMrrHint = computed((): string => {
-    const netMrr = props.netMrr;
-
-    if (!filled(netMrr)) {
-        return 'Reading Stripe…';
-    }
-
+const readNetMrrHint = (netMrr: AdminNetMrr): string => {
     if ('error' in netMrr) {
         return "Couldn't read Stripe";
     }
 
     return 'Coupons taken off';
+};
+
+/** Stripe is read after the page loads, so the figure waits for it. */
+const netMrrValue = computed((): string => {
+    if (filled(props.netMrr)) {
+        return readNetMrr(props.netMrr);
+    }
+
+    return '…';
+});
+
+const netMrrHint = computed((): string => {
+    if (filled(props.netMrr)) {
+        return readNetMrrHint(props.netMrr);
+    }
+
+    return 'Reading Stripe…';
 });
 
 const mrrHint = computed((): string => {
@@ -101,9 +115,9 @@ const mrrHint = computed((): string => {
 type TrendView = 'alive' | 'new' | 'canceled' | 'net' | 'churn';
 
 /** The total opens first: it answers whether subscriptions are growing. */
-const trendView = ref<string>('alive');
+const trendView = ref<TrendView>('alive');
 
-const trends = computed((): AdminMetricTab[] => [
+const trends = computed((): AdminMetricTab<TrendView>[] => [
     {
         value: 'alive',
         label: 'Subscriptions',
@@ -147,7 +161,7 @@ const TREND_NOTES: Record<TrendView, string> = {
 
 const trendSubtitle = computed(
     (): string =>
-        `${props.subtitle} · ${TREND_NOTES[trendView.value as TrendView]} · changes against the period before`,
+        `${props.subtitle} · ${TREND_NOTES[trendView.value]} · changes against the period before`,
 );
 
 /** The period's net, added up day by day from zero. */
@@ -155,7 +169,7 @@ const netByDay = computed((): number[] => {
     let total = 0;
 
     return props.overview.new_by_day.map((count, index) => {
-        total += count - (props.overview.canceled_by_day[index] ?? 0);
+        total += count - valueAt(props.overview.canceled_by_day, index);
 
         return total;
     });
@@ -179,20 +193,24 @@ const netLabel = computed((): string => {
     return formatFullNumber(net);
 });
 
-
-const maxPlan = computed(() =>
-    Math.max(1, ...props.overview.plans.map((plan) => plan.count)),
+const planRows = computed((): AdminBarRow[] =>
+    props.overview.plans.map((plan) => ({
+        key: `${plan.plan}-${plan.interval}`,
+        label: planLabel(plan),
+        count: plan.count,
+        share: percentOf(plan.count, props.overview.now.alive),
+    })),
 );
-
-const barWidth = (count: number, max: number): string => `${(count / max) * 100}%`;
-
-const planShare = (count: number): string =>
-    formatPercent(percentOf(count, props.overview.now.alive), 1);
 
 const hasOffers = computed(() => filled(props.overview.offers));
 
-const offerRetention = (redeemed: number, stillSubscribed: number): string =>
-    formatPercent(percentOf(stillSubscribed, redeemed), 1);
+const offerRows = computed(() =>
+    props.overview.offers.map((offer) => ({
+        slug: offer.slug,
+        redeemed: `${formatFullNumber(offer.redeemed)} redeemed`,
+        retained: `${formatFullNumber(offer.still_subscribed)} · ${formatPercent(percentOf(offer.still_subscribed, offer.redeemed), 1)}`,
+    })),
+);
 </script>
 
 <template>
@@ -250,30 +268,7 @@ const offerRetention = (redeemed: number, stillSubscribed: number): string =>
 
         <div class="grid gap-6 lg:grid-cols-2">
             <AnalyticsSection title="By plan" subtitle="Subscriptions alive now" flush>
-                <ul class="flex flex-col border-t border-border py-2" data-testid="admin-subscriptions-plans">
-                    <li
-                        v-for="plan in overview.plans"
-                        :key="`${plan.plan}-${plan.interval}`"
-                        class="flex items-center gap-3 px-4 py-1.5 sm:px-5"
-                    >
-                        <span class="w-40 shrink-0 truncate text-sm text-foreground">{{
-                            planLabel(plan)
-                        }}</span>
-                        <span class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                            <span
-                                class="block h-full rounded-full bg-primary-text"
-                                :style="{ width: barWidth(plan.count, maxPlan) }"
-                            />
-                        </span>
-                        <span
-                            class="w-10 shrink-0 text-right text-sm font-medium text-foreground tabular-nums"
-                            >{{ formatFullNumber(plan.count) }}</span
-                        >
-                        <span class="w-10 shrink-0 text-right text-xs text-muted-foreground tabular-nums">{{
-                            planShare(plan.count)
-                        }}</span>
-                    </li>
-                </ul>
+                <AdminBarRows :rows="planRows" label-class="w-40" test-id="admin-subscriptions-plans" />
             </AnalyticsSection>
 
             <AnalyticsSection title="Offers" subtitle="Redeemed, and still subscribed now" flush>
@@ -285,20 +280,17 @@ const offerRetention = (redeemed: number, stillSubscribed: number): string =>
                 </p>
                 <ul v-else class="divide-y divide-border border-t border-border" data-testid="admin-subscriptions-offers">
                     <li
-                        v-for="offer in overview.offers"
+                        v-for="offer in offerRows"
                         :key="offer.slug"
                         class="flex items-center gap-3 px-4 py-2.5 sm:px-5"
                     >
                         <code class="min-w-0 flex-1 truncate font-mono text-sm text-foreground">{{
                             offer.slug
                         }}</code>
-                        <span class="text-sm text-muted-foreground tabular-nums"
-                            >{{ formatFullNumber(offer.redeemed) }} redeemed</span
-                        >
-                        <span class="w-24 text-right text-sm font-medium text-foreground tabular-nums"
-                            >{{ formatFullNumber(offer.still_subscribed) }} ·
-                            {{ offerRetention(offer.redeemed, offer.still_subscribed) }}</span
-                        >
+                        <span class="text-sm text-muted-foreground tabular-nums">{{ offer.redeemed }}</span>
+                        <span class="w-24 text-right text-sm font-medium text-foreground tabular-nums">{{
+                            offer.retained
+                        }}</span>
                     </li>
                 </ul>
             </AnalyticsSection>

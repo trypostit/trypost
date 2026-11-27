@@ -19,7 +19,6 @@ return [
     ],
     'settings' => 'Настройки',
     'plans_billing' => 'Тарифы и оплата',
-    'backoffice' => 'Бэк-офис',
     'log_out' => 'Выйти',
     'help' => 'Помощь',
     'language' => 'Язык: :name',

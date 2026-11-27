@@ -11,7 +11,6 @@ use App\Actions\Admin\UserProfile\BuildUserIntegrations;
 use App\Actions\Admin\UserProfile\BuildUserOverview;
 use App\Actions\Admin\UserProfile\BuildUserPosts;
 use App\Actions\Admin\UserProfile\BuildUserWorkspaces;
-use App\Enums\Admin\UserStatusFilter;
 use App\Enums\Admin\UserTab;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\IndexUserRequest;
@@ -25,16 +24,13 @@ class UserController extends Controller
 {
     public function index(IndexUserRequest $request): Response
     {
-        $search = $request->validated('search');
-        $status = UserStatusFilter::tryFrom((string) $request->validated('status')) ?? UserStatusFilter::All;
-
-        $users = ListUsers::execute($search, $status)->paginate((int) config('app.pagination.default'));
-
         return Inertia::render('admin/users/Index', [
-            'users' => Inertia::scroll(fn () => AdminUserResource::collection($users)),
+            'users' => Inertia::scroll(fn () => AdminUserResource::collection(
+                ListUsers::execute($request->search(), $request->status())->paginate((int) config('app.pagination.default')),
+            )),
             'filters' => [
-                'search' => $search ?? '',
-                'status' => $status->value,
+                'search' => $request->search() ?? '',
+                'status' => $request->status()->value,
             ],
         ]);
     }

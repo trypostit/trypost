@@ -19,7 +19,6 @@ return [
     ],
     'settings' => 'Impostazioni',
     'plans_billing' => 'Piani e fatturazione',
-    'backoffice' => 'Backoffice',
     'log_out' => 'Esci',
     'help' => 'Aiuto',
     'language' => 'Lingua: :name',

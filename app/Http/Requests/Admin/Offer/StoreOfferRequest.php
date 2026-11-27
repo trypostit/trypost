@@ -24,8 +24,8 @@ class StoreOfferRequest extends FormRequest
             'slug' => ['required', 'string', 'max:50', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'unique:offers,slug'],
             'stripe_coupon_id' => ['nullable', 'string', 'max:255', 'prohibited_if_declined:requires_card', new StripeCouponExists],
             'trial_days' => ['nullable', 'integer', 'min:0', 'max:365', 'required_if_declined:requires_card'],
-            'starts_at' => ['required', 'date_format:Y-m-d'],
-            'ends_at' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:starts_at'],
+            'starts_at' => ['required', 'date_format:Y-m-d', 'before_or_equal:2037-12-31'],
+            'ends_at' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:starts_at', 'before_or_equal:2037-12-31'],
             'max_redemptions' => ['nullable', 'integer', 'min:1'],
             'allow_promotion_codes' => ['required', 'boolean'],
             'first_subscription_only' => ['required', 'boolean'],
@@ -43,6 +43,8 @@ class StoreOfferRequest extends FormRequest
             'slug.regex' => 'Use lowercase letters, numbers and dashes, like bf26 or free-trial-14-days.',
             'stripe_coupon_id.prohibited_if_declined' => 'A trial without a card never opens Stripe, so it cannot carry a coupon.',
             'trial_days.required_if_declined' => 'A trial without a card needs its number of days.',
+            'starts_at.before_or_equal' => 'An offer must start by December 31, 2037.',
+            'ends_at.before_or_equal' => 'An offer must end by December 31, 2037.',
         ];
     }
 

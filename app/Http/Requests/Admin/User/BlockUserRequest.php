@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\Admin\User;
 
 use App\Models\User;
-use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class BlockUserRequest extends FormRequest
 {
@@ -16,27 +16,34 @@ class BlockUserRequest extends FormRequest
     }
 
     /**
-     * @return array<string, array<int, mixed>>
+     * @return array<string, array<int, string>>
      */
     public function rules(): array
     {
         return [
-            'reason' => [
-                'required',
-                'string',
-                'max:500',
-                function (string $attribute, mixed $value, Closure $fail): void {
-                    $target = $this->route('user');
+            'reason' => ['required', 'string', 'max:500'],
+        ];
+    }
 
-                    if (! $target instanceof User) {
-                        return;
-                    }
+    /**
+     * An admin can block neither themselves nor another admin.
+     *
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $target = $this->route('user');
 
-                    if ($target->is($this->user()) || $target->isBackofficeAdmin()) {
-                        $fail('A backoffice admin cannot be blocked.');
-                    }
-                },
-            ],
+                if (! $target instanceof User) {
+                    return;
+                }
+
+                if ($target->is($this->user()) || $target->isBackofficeAdmin()) {
+                    $validator->errors()->add('user', 'A backoffice admin cannot be blocked.');
+                }
+            },
         ];
     }
 }

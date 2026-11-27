@@ -9,13 +9,13 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia;
 use Stripe\ApiRequestor;
+use Stripe\Exception\ApiConnectionException;
 use Stripe\HttpClient\ClientInterface;
 
 beforeEach(function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
     config()->set('cashier.secret', 'sk_test_fake');
-    $this->admin = User::factory()->create(['email' => 'admin@trypost.test', 'timezone' => 'UTC']);
-    fakeStripeCoupons(['REAL']);
+    $this->admin = backofficeAdmin(['timezone' => 'UTC']);
+    adminFakeStripeCoupons(['REAL']);
 });
 
 afterEach(function () {
@@ -27,7 +27,7 @@ afterEach(function () {
  *
  * @param  list<string>  $coupons
  */
-function fakeStripeCoupons(array $coupons): void
+function adminFakeStripeCoupons(array $coupons): void
 {
     ApiRequestor::setHttpClient(new class($coupons) implements ClientInterface
     {
@@ -48,7 +48,7 @@ function fakeStripeCoupons(array $coupons): void
 }
 
 /** @return array<string, mixed> */
-function offerForm(array $overrides = []): array
+function adminOfferForm(array $overrides = []): array
 {
     return [
         'slug' => 'spring-sale',
@@ -82,7 +82,7 @@ test('lists every offer with its redemptions and the locales its copy is missing
 
 test('an admin creates an offer whose coupon exists in Stripe, and it is recorded', function () {
     $this->actingAs($this->admin)
-        ->post(route('admin.billing.offers.store'), offerForm())
+        ->post(route('admin.billing.offers.store'), adminOfferForm())
         ->assertRedirect(route('admin.billing.offers.index'));
 
     $offer = Offer::query()->where('slug', 'spring-sale')->firstOrFail();
@@ -95,7 +95,7 @@ test('an admin creates an offer whose coupon exists in Stripe, and it is recorde
 
 test('an offer is refused when its coupon is not in Stripe, or when its parts do not go together', function (array $overrides, string $field) {
     $this->actingAs($this->admin)
-        ->post(route('admin.billing.offers.store'), offerForm($overrides))
+        ->post(route('admin.billing.offers.store'), adminOfferForm($overrides))
         ->assertSessionHasErrors($field);
 
     expect(Offer::query()->where('slug', 'spring-sale')->exists())->toBeFalse();
@@ -113,7 +113,7 @@ test('saving an offer without touching its dates keeps their exact moment', func
     $offer = Offer::factory()->create(['slug' => 'kept', 'stripe_coupon_id' => 'REAL', 'starts_at' => $startsAt]);
 
     $this->actingAs($this->admin)
-        ->put(route('admin.billing.offers.update', $offer), offerForm(['starts_at' => $startsAt->toDateString(), 'max_redemptions' => 10]))
+        ->put(route('admin.billing.offers.update', $offer), adminOfferForm(['starts_at' => $startsAt->toDateString(), 'max_redemptions' => 10]))
         ->assertRedirect(route('admin.billing.offers.index'));
 
     expect($offer->refresh()->starts_at->equalTo($startsAt))->toBeTrue()
@@ -122,13 +122,14 @@ test('saving an offer without touching its dates keeps their exact moment', func
 });
 
 test('an admin ends an offer now, and deletes only one nobody redeemed', function () {
+    $this->freezeSecond();
     $redeemed = Offer::factory()->create(['slug' => 'used']);
     $user = User::factory()->create();
     $user->account->offers()->attach($redeemed->id, ['claimed_at' => now(), 'redeemed_at' => now()]);
     $unused = Offer::factory()->create(['slug' => 'unused']);
 
     $this->actingAs($this->admin)->post(route('admin.billing.offers.end.store', $redeemed))->assertRedirect();
-    expect($redeemed->refresh()->ends_at->isPast() || $redeemed->ends_at->isCurrentSecond())->toBeTrue();
+    expect($redeemed->refresh()->ends_at->equalTo(now()))->toBeTrue();
 
     $this->actingAs($this->admin)->delete(route('admin.billing.offers.destroy', $redeemed))->assertSessionHasErrors('offer');
     expect(Offer::query()->whereKey($redeemed->id)->exists())->toBeTrue();
@@ -142,6 +143,114 @@ test('a user who is not an admin cannot see or change offers', function () {
     $this->actingAs(User::factory()->create());
 
     $this->get(route('admin.billing.offers.index'))->assertForbidden();
-    $this->post(route('admin.billing.offers.store'), offerForm())->assertForbidden();
+    $this->post(route('admin.billing.offers.store'), adminOfferForm())->assertForbidden();
     $this->delete(route('admin.billing.offers.destroy', $offer))->assertForbidden();
+});
+
+test('an offer can be set to start or end by the end of 2037 only', function (array $overrides, string $field) {
+    $this->actingAs($this->admin)
+        ->post(route('admin.billing.offers.store'), adminOfferForm($overrides))
+        ->assertSessionHasErrors($field);
+
+    expect(Offer::query()->where('slug', 'spring-sale')->exists())->toBeFalse();
+})->with([
+    'a start in 2038' => [['starts_at' => CarbonImmutable::parse('2037-12-31')->addDay()->toDateString()], 'starts_at'],
+    'an end in 2038' => [['ends_at' => CarbonImmutable::parse('2037-12-31')->addDay()->toDateString()], 'ends_at'],
+]);
+
+test('an offer whose end comes before its start is refused', function () {
+    $this->actingAs($this->admin)
+        ->post(route('admin.billing.offers.store'), adminOfferForm(['ends_at' => CarbonImmutable::now('UTC')->subDay()->toDateString()]))
+        ->assertSessionHasErrors('ends_at');
+});
+
+test('an offer reusing a slug is refused', function () {
+    Offer::factory()->create(['slug' => 'spring-sale']);
+
+    $this->actingAs($this->admin)
+        ->post(route('admin.billing.offers.store'), adminOfferForm())
+        ->assertSessionHasErrors('slug');
+
+    expect(Offer::query()->where('slug', 'spring-sale')->count())->toBe(1);
+});
+
+test('a trial without a card saves', function () {
+    $this->actingAs($this->admin)
+        ->post(route('admin.billing.offers.store'), adminOfferForm(['stripe_coupon_id' => null, 'trial_days' => 7, 'requires_card' => false]))
+        ->assertSessionHasNoErrors();
+
+    $offer = Offer::query()->where('slug', 'spring-sale')->sole();
+
+    expect($offer->requires_card)->toBeFalse()
+        ->and($offer->trial_days)->toBe(7)
+        ->and($offer->startsWithoutCard())->toBeTrue();
+});
+
+test('an offer that only shows the promotion code field saves', function () {
+    $this->actingAs($this->admin)
+        ->post(route('admin.billing.offers.store'), adminOfferForm(['stripe_coupon_id' => null, 'allow_promotion_codes' => true]))
+        ->assertSessionHasNoErrors();
+
+    $offer = Offer::query()->where('slug', 'spring-sale')->sole();
+
+    expect($offer->allow_promotion_codes)->toBeTrue()
+        ->and($offer->stripe_coupon_id)->toBeNull();
+});
+
+test('a coupon cannot be checked while Stripe is unreachable', function () {
+    ApiRequestor::setHttpClient(new class implements ClientInterface
+    {
+        public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
+        {
+            throw new ApiConnectionException('Could not connect to Stripe.');
+        }
+    });
+
+    $this->actingAs($this->admin)
+        ->post(route('admin.billing.offers.store'), adminOfferForm())
+        ->assertSessionHasErrors(['stripe_coupon_id' => "Couldn't reach Stripe to check this coupon. Try again."]);
+});
+
+test('editing an offer records what changed', function () {
+    $offer = Offer::factory()->create(['slug' => 'kept', 'stripe_coupon_id' => 'REAL', 'max_redemptions' => null]);
+
+    $this->actingAs($this->admin)
+        ->put(route('admin.billing.offers.update', $offer), adminOfferForm(['starts_at' => $offer->starts_at->toDateString(), 'max_redemptions' => 10]));
+
+    $activity = Activity::query()->inLog(LogName::Admin)->forSubject($offer)->where('event', 'offer.updated')->sole();
+
+    expect($activity->getProperty('changes'))->toHaveKey('max_redemptions', 10);
+});
+
+test('ending an offer records it and nobody can find it any more', function () {
+    $offer = Offer::factory()->create(['slug' => 'ending']);
+
+    expect(Offer::findAvailable('ending'))->not->toBeNull();
+
+    $this->actingAs($this->admin)->post(route('admin.billing.offers.end.store', $offer))->assertRedirect();
+
+    expect(Offer::findAvailable('ending'))->toBeNull()
+        ->and(Activity::query()->inLog(LogName::Admin)->forSubject($offer)->where('event', 'offer.ended')->exists())->toBeTrue();
+});
+
+test('ending an offer that already ended keeps its end', function () {
+    $endedAt = now()->subDays(3)->startOfSecond();
+    $offer = Offer::factory()->create(['slug' => 'over', 'ends_at' => $endedAt]);
+
+    $this->actingAs($this->admin)->post(route('admin.billing.offers.end.store', $offer))->assertRedirect();
+    $this->actingAs($this->admin)->post(route('admin.billing.offers.end.store', $offer))->assertRedirect();
+
+    expect($offer->refresh()->ends_at->equalTo($endedAt))->toBeTrue()
+        ->and(Activity::query()->forSubject($offer)->exists())->toBeFalse();
+});
+
+test('deleting an offer nobody redeemed drops its claims and records it', function () {
+    $offer = Offer::factory()->create(['slug' => 'claimed']);
+    $user = User::factory()->create();
+    $user->account->offers()->attach($offer->id, ['claimed_at' => now()]);
+
+    $this->actingAs($this->admin)->delete(route('admin.billing.offers.destroy', $offer))->assertRedirect();
+
+    expect($user->account->offers()->count())->toBe(0)
+        ->and(Activity::query()->inLog(LogName::Admin)->where('event', 'offer.deleted')->sole()->getProperty('slug'))->toBe('claimed');
 });

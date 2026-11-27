@@ -5,8 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 
 test('an admin blocks a user with a reason and unblocks them from the user page', function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $admin = User::factory()->create(['email' => 'admin@trypost.test']);
+    $admin = backofficeAdmin();
     $user = User::factory()->create(['name' => 'Spammer']);
 
     $this->actingAs($admin);
@@ -34,9 +33,9 @@ test('an admin blocks a user with a reason and unblocks them from the user page'
 });
 
 test('the users tabs follow the selected status', function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $this->actingAs(User::factory()->create(['email' => 'admin@trypost.test']));
-    User::factory()->blocked()->create();
+    $admin = backofficeAdmin();
+    $blocked = User::factory()->blocked()->create();
+    $this->actingAs($admin);
 
     $page = visit(route('admin.users.index'));
 
@@ -45,8 +44,11 @@ test('the users tabs follow the selected status', function () {
 
     waitForState($page, '@admin-users-filter-blocked', "element.dataset.state === 'active'");
     waitForCondition($page, "location.search.includes('status=blocked')");
+    waitForGone($page, "@admin-user-{$admin->id}");
+    waitForCount($page, '@admin-users [data-testid^="admin-user-blocked-"]', 1);
     letPageRun($page, 1000);
 
     waitForState($page, '@admin-users-filter-blocked', "element.dataset.state === 'active'");
-    $page->assertNoJavaScriptErrors();
+    $page->assertVisible("@admin-user-blocked-{$blocked->id}")
+        ->assertNoJavaScriptErrors();
 });

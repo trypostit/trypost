@@ -4,6 +4,7 @@ import { useElementSize } from '@vueuse/core';
 import { computed, ref, useId, useTemplateRef } from 'vue';
 
 import { buildFunnelColumnPaths, funnelShade } from '@/lib/funnelRibbon';
+import { blank, clamp, filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
 
 export interface AdminFunnelStep {
@@ -52,21 +53,40 @@ const columnWidth = computed((): number => contentWidth.value / Math.max(props.s
 const centerY = RIBBON_HEIGHT / 2;
 const maxHalfHeight = centerY - PADDING;
 
-const first = computed((): number => Math.max(props.steps[0]?.count ?? 0, 1));
+/** The first step's count, the one every share is of; never below 1, so an empty funnel draws nothing. */
+const first = computed((): number => {
+    const [firstStep] = props.steps;
+
+    if (filled(firstStep)) {
+        return Math.max(firstStep.count, 1);
+    }
+
+    return 1;
+});
 
 const halfHeight = (count: number): number => {
     if (count <= 0) {
         return 0;
     }
 
-    return Math.min(Math.max(count / first.value, MIN_VISIBLE_RATIO), 1) * maxHalfHeight;
+    return clamp(count / first.value, MIN_VISIBLE_RATIO, 1) * maxHalfHeight;
+};
+
+/** Where a column ends: at the next step's height, or flat when it is the last. */
+const rightHalfHeight = (index: number, halfLeft: number): number => {
+    const next = props.steps[index + 1];
+
+    if (filled(next)) {
+        return halfHeight(next.count);
+    }
+
+    return halfLeft;
 };
 
 const columns = computed(() =>
     props.steps.map((step, index) => {
-        const next = props.steps[index + 1];
         const halfLeft = halfHeight(step.count);
-        const halfRight = next === undefined ? halfLeft : halfHeight(next.count);
+        const halfRight = rightHalfHeight(index, halfLeft);
         const x0 = index * columnWidth.value;
 
         return {
@@ -77,10 +97,18 @@ const columns = computed(() =>
     }),
 );
 
-/** The share of the step before that did not go on, to one decimal; a step that lost nobody reads 0%, never −0%. */
+/**
+ * The share of the step before that did not go on, to one decimal. A step
+ * that lost nobody reads 0%, never −0%; the steps are counted on their own,
+ * so a step bigger than the one before reads as a gain.
+ */
 const lostLabel = (lost: number): string => {
     if (Math.round(lost * 10) === 0) {
         return formatPercent(0, 1);
+    }
+
+    if (lost < 0) {
+        return `+${formatPercent(-lost, 1)}`;
     }
 
     return `−${formatPercent(lost, 1)}`;
@@ -128,20 +156,30 @@ const leave = (): void => {
 };
 
 const opacity = (index: number, base: number): number => {
-    if (hovered.value === null || hovered.value === index) {
+    if (blank(hovered.value)) {
+        return base;
+    }
+
+    if (hovered.value === index) {
         return base;
     }
 
     return base * DIMMED_OPACITY;
 };
+
+const contentStyle = computed(() => ({ width: `${contentWidth.value}px` }));
+
+const RIBBON_STYLE = { height: `${RIBBON_HEIGHT}px` };
+
+const viewBox = computed((): string => `0 0 ${contentWidth.value} ${RIBBON_HEIGHT}`);
 </script>
 
 <template>
     <div ref="viewport" class="overflow-x-auto" :data-testid="testId" @mouseleave="leave">
-        <div :style="{ width: `${contentWidth}px` }">
-            <div class="relative" :style="{ height: `${RIBBON_HEIGHT}px` }">
+        <div :style="contentStyle">
+            <div class="relative" :style="RIBBON_STYLE">
                 <svg
-                    :viewBox="`0 0 ${contentWidth} ${RIBBON_HEIGHT}`"
+                    :viewBox="viewBox"
                     preserveAspectRatio="none"
                     class="block h-full w-full overflow-visible"
                     role="img"

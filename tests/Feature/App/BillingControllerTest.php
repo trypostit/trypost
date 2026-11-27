@@ -503,6 +503,24 @@ test('billing index marks the subscription card as the default when the customer
         );
 });
 
+test('billing index reads the subscription card when the account also has an ended subscription', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account, cardBrand: 'visa', secondCardBrand: 'mastercard', customerHasDefault: false, subscriptionCard: 'pm_fake');
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_ended',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_ended',
+        'quantity' => 1,
+        'ends_at' => now()->subMonth(),
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('paymentMethods.0.id', 'pm_fake'));
+});
+
 test('billing index lists no cards without any', function () {
     config(['trypost.self_hosted' => false]);
     fakeStripeBilling($this->account);

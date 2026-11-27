@@ -27,11 +27,11 @@ class BuildXCostEstimate
      */
     public static function execute(array $days, array $readsByDay): array
     {
-        if ($days === []) {
+        if (blank($days)) {
             return [];
         }
 
-        $created = self::createdByDay(min($days), max($days));
+        $created = self::createdByDay(collect($days)->min(), collect($days)->max());
 
         return collect($days)
             ->map(function (string $day) use ($created, $readsByDay): array {
@@ -85,7 +85,7 @@ class BuildXCostEstimate
      */
     private static function textsSent(Post $post): array
     {
-        $liveReplies = count((array) $post->thread_reply_ids);
+        $liveReplies = collect($post->thread_reply_ids)->count();
 
         return [
             (string) $post->content,

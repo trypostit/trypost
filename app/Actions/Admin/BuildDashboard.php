@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Admin;
 
+use App\Dto\Analytics\DateRange;
 use App\Enums\Admin\QuotaSource;
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
@@ -84,11 +85,11 @@ class BuildDashboard
                 'retrying' => Post::query()->where('publish_status', PublishStatus::Retrying)->count(),
                 'pending_review' => Post::query()->where('publish_status', PublishStatus::PendingReview)->count(),
             ],
-            'publishing' => BuildPublishingStats::execute(
+            'publishing' => BuildPublishingStats::execute(DateRange::fromDates(
                 $now->setTimezone($timezone)->subDays(self::CHART_DAYS - 1)->toDateString(),
                 $now->setTimezone($timezone)->toDateString(),
                 $timezone,
-            ),
+            )),
             'channels' => [
                 'total' => SocialAccount::query()->count(),
                 'last_7_days' => SocialAccount::query()->where('created_at', '>=', $now->subDays(7))->count(),
@@ -122,10 +123,12 @@ class BuildDashboard
         $balance = data_get(QuotaSnapshots::latest(QuotaSource::X), 'data.credits.total_balance');
 
         if (is_numeric($balance) && (float) $balance < self::X_LOW_BALANCE) {
+            $formattedBalance = Number::currency((float) $balance, 'USD', 'en');
+
             $alerts->push([
                 'source' => QuotaSource::X->value,
                 'label' => 'X credits',
-                'detail' => Number::currency((float) $balance, 'USD', 'en').' left',
+                'detail' => "{$formattedBalance} left",
             ]);
         }
 

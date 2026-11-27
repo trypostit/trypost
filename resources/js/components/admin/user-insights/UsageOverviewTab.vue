@@ -2,11 +2,14 @@
 import { computed } from 'vue';
 
 import AdminBarList from '@/components/admin/AdminBarList.vue';
-import AdminStatGrid, { type AdminStat } from '@/components/admin/AdminStatGrid.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import { metricChange } from '@/lib/adminChange';
 import { formatFullNumber } from '@/lib/utils';
-import type { AdminUsageInsights } from '@/types/admin';
+import type {
+    AdminStat,
+    AdminUsageInsights,
+} from '@/types/admin';
 
 const props = defineProps<{
     usage: AdminUsageInsights;

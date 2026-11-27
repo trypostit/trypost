@@ -20,7 +20,6 @@ test('it records who did what to whom', function () {
         ->and($activity->causer->is($admin))->toBeTrue()
         ->and($activity->subject->is($user))->toBeTrue()
         ->and($activity->subject_type)->toBe('user')
-        ->and($activity->workspace_id)->toBeNull()
         ->and($activity->getProperty('reason'))->toBe('Spam')
         ->and($activity->getProperty('ip'))->toBe('127.0.0.1');
 });

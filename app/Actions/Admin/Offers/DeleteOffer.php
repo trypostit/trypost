@@ -13,22 +13,26 @@ use Illuminate\Validation\ValidationException;
 
 class DeleteOffer
 {
+    public const string REDEEMED_MESSAGE = 'This offer was redeemed, so it can only end.';
+
     public function __construct(private readonly RecordAdminAction $recordAdminAction) {}
 
     /**
-     * Deletes an offer nobody redeemed, with its claims. One that was
-     * redeemed keeps its history: it can only end.
+     * Deletes an offer nobody redeemed, with its claims. The request checks it
+     * first; the locked read here catches a redemption that landed since.
      */
     public function execute(User $admin, Offer $offer): void
     {
-        if ($offer->redemptions()->exists()) {
-            throw ValidationException::withMessages(['offer' => 'This offer was redeemed, so it can only end.']);
-        }
-
         DB::transaction(function () use ($admin, $offer): void {
-            $this->recordAdminAction->execute($admin, AdminActionType::DeleteOffer, $offer, ['slug' => $offer->slug]);
-            $offer->accounts()->detach();
-            $offer->delete();
+            $locked = Offer::query()->lockForUpdate()->findOrFail($offer->id);
+
+            if ($locked->redemptions()->exists()) {
+                throw ValidationException::withMessages(['offer' => self::REDEEMED_MESSAGE]);
+            }
+
+            $this->recordAdminAction->execute($admin, AdminActionType::DeleteOffer, $locked, ['slug' => $locked->slug]);
+            $locked->accounts()->detach();
+            $locked->delete();
         });
     }
 }

@@ -35,31 +35,33 @@ class BuildChannelDistribution
      */
     public static function execute(): array
     {
-        $channels = SocialAccount::query()
-            ->withoutGlobalScopes()
+        $groups = SocialAccount::query()
             ->join('workspaces', 'workspaces.id', '=', 'social_accounts.workspace_id')
+            ->tallyBy(['workspaces.account_id', 'social_accounts.platform', 'social_accounts.status'])
+            ->withEarliest('social_accounts.created_at', 'first_created_at')
             ->toBase()
-            ->get(['workspaces.account_id', 'social_accounts.platform', 'social_accounts.status', 'social_accounts.created_at'])
-            ->map(fn (object $channel): array => [
-                'account_id' => (string) $channel->account_id,
-                'network' => Platform::from((string) $channel->platform)->network(),
-                'connected' => $channel->status === Status::Connected->value,
-                'created_at' => CarbonImmutable::parse($channel->created_at),
+            ->get()
+            ->map(fn (object $group): array => [
+                'account_id' => (string) $group->account_id,
+                'network' => Platform::from((string) $group->platform)->network(),
+                'connected' => $group->status === Status::Connected->value,
+                'total' => (int) $group->total,
+                'first_created_at' => CarbonImmutable::parse($group->first_created_at, 'UTC'),
             ]);
 
-        $connected = $channels->where('connected', true);
-        $channelCounts = $connected->countBy('network');
+        $connected = $groups->where('connected', true);
+        $channelCounts = $connected->groupBy('network')->map(fn (Collection $rows): int => (int) $rows->sum('total'));
         $accountCounts = $connected->groupBy('network')->map(fn (Collection $rows): int => $rows->unique('account_id')->count());
         $accountsWithChannel = $connected->unique('account_id')->count();
-        $firstCounts = $channels->sortBy('created_at')->unique('account_id')->countBy('network');
+        $firstCounts = $groups->sortBy('first_created_at')->unique('account_id')->countBy('network');
 
         return [
             'totals' => [
-                'channels' => $connected->count(),
+                'channels' => (int) $connected->sum('total'),
                 'accounts' => $accountsWithChannel,
                 'first' => $firstCounts->sum(),
             ],
-            'channels' => self::rows($channelCounts, $connected->count()),
+            'channels' => self::rows($channelCounts, (int) $connected->sum('total')),
             'accounts' => collect(self::rows($accountCounts, $accountsWithChannel))
                 ->map(fn (array $row): array => [
                     ...$row,

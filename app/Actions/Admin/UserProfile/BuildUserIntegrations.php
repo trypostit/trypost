@@ -63,7 +63,7 @@ class BuildUserIntegrations
                 ->map(fn (Webhook $webhook): array => [
                     'id' => $webhook->id,
                     'endpoint' => $webhook->endpoint,
-                    'events' => array_values((array) $webhook->events),
+                    'events' => collect($webhook->events)->values()->all(),
                     'status' => $webhook->status?->value,
                     'workspace_name' => $webhook->workspace?->name,
                     'consecutive_failures' => (int) $webhook->consecutive_failures,

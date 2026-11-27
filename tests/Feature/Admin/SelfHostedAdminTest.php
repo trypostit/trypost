@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
 use App\Models\Offer;
-use App\Models\User;
 
 beforeEach(function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $this->admin = User::factory()->create(['email' => 'admin@trypost.test']);
+    $this->admin = backofficeAdmin();
 });
 
 test('a self-hosted install has no backoffice: every page answers 404, even to an admin', function () {

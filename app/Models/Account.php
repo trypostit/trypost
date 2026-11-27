@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Laravel\Cashier\Cashier;
 
 class Account extends Model
 {
@@ -52,6 +53,19 @@ class Account extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    /**
+     * Cashier's subscriptions relation, with each subscription's owner set to
+     * this account as it loads. Cashier reads the owner for every Stripe call
+     * on a subscription (its card, discount, swap), and an account with more
+     * than one subscription would otherwise lazy load it.
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Cashier::$subscriptionModel, $this->getForeignKey())
+            ->orderBy('created_at', 'desc')
+            ->chaperone('owner');
     }
 
     public function plan(): BelongsTo

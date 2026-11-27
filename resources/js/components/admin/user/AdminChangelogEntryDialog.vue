@@ -9,6 +9,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import date from '@/date';
+import { CHANGELOG_REACTIONS } from '@/lib/adminChangelog';
 import { filled } from '@/lib/helpers';
 import type { ChangelogEntry } from '@/types/changelog';
 
@@ -30,12 +31,12 @@ const isOpen = computed(() => filled(props.entry));
 const hasTags = computed(() => filled(props.entry?.tags));
 
 const reactionLabel = computed((): string => {
-    if (props.entry?.reaction === 'like') {
-        return `👍 ${props.userName} liked it`;
-    }
+    const reaction = props.entry?.reaction;
 
-    if (props.entry?.reaction === 'dislike') {
-        return `👎 ${props.userName} disliked it`;
+    if (filled(reaction)) {
+        const { emoji, verb } = CHANGELOG_REACTIONS[reaction];
+
+        return `${emoji} ${props.userName} ${verb} it`;
     }
 
     return `${props.userName} opened it without reacting`;

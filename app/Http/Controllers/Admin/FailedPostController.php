@@ -16,12 +16,12 @@ class FailedPostController extends Controller
 {
     public function index(IndexFailedPostRequest $request): Response
     {
-        $posts = ListFailedPosts::execute($request->platforms(), $request->category())->paginate((int) config('app.pagination.default'));
-
         return Inertia::render('admin/posts/Failed', [
-            'posts' => Inertia::scroll(fn () => AdminFailedPostResource::collection($posts)),
+            'posts' => Inertia::scroll(fn () => AdminFailedPostResource::collection(
+                ListFailedPosts::execute($request->platforms(), $request->category())->paginate((int) config('app.pagination.default')),
+            )),
             'networks' => AdminNetworks::options(),
-            'categories' => ListFailedPosts::categoryCounts($request->platforms()),
+            'categories' => fn (): array => ListFailedPosts::categoryCounts($request->platforms()),
             'filters' => [
                 'networks' => $request->networks(),
                 'category' => $request->category()?->value,

@@ -2,11 +2,12 @@
 import { Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
+import AdminBarRows from '@/components/admin/AdminBarRows.vue';
 import AdminDailyBarChart, {
     type AdminChartSeries,
 } from '@/components/admin/AdminDailyBarChart.vue';
 import AdminDailyLineChart from '@/components/admin/AdminDailyLineChart.vue';
-import AdminStatGrid, { type AdminStat } from '@/components/admin/AdminStatGrid.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,11 +20,16 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import date from '@/date';
+import dayjs from '@/dayjs';
 import { planLabel } from '@/lib/adminSubscriptions';
+import { billingUrl, customerName } from '@/lib/adminUsers';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent } from '@/lib/utils';
-import { show as userShow } from '@/routes/admin/users';
-import type { AdminSubscriptionChurn } from '@/types/admin';
+import type {
+    AdminBarRow,
+    AdminStat,
+    AdminSubscriptionChurn,
+} from '@/types/admin';
 
 type Cancellation = AdminSubscriptionChurn['recent'][number];
 
@@ -90,11 +96,14 @@ const canceledSeries = computed((): AdminChartSeries[] => [
     },
 ]);
 
-const maxLifetime = computed(() =>
-    Math.max(1, ...props.churn.lifetimes.map((lifetime) => lifetime.count)),
+const lifetimeRows = computed((): AdminBarRow[] =>
+    props.churn.lifetimes.map((lifetime) => ({
+        key: lifetime.label,
+        label: lifetime.label,
+        count: lifetime.count,
+        barClass: 'bg-destructive/70',
+    })),
 );
-
-const barWidth = (value: number, max: number): string => `${(value / max) * 100}%`;
 
 const lasted = (cancellation: Cancellation): string => {
     if (cancellation.lifetime_days === 1) {
@@ -104,22 +113,13 @@ const lasted = (cancellation: Cancellation): string => {
     return `${formatFullNumber(cancellation.lifetime_days)} days`;
 };
 
-const customer = (cancellation: Cancellation): string => {
-    if (filled(cancellation.user_name)) {
-        return cancellation.user_name;
-    }
-
-    return 'Deleted user';
-};
-
-const billingUrl = (userId: string): string =>
-    userShow.url(userId, { query: { tab: 'billing' } });
+const customer = (cancellation: Cancellation): string => customerName(cancellation.user_name);
 
 /** A cohort's `YYYY-MM` as "Nov 2026". */
 const cohortMonth = (month: string): string => {
-    const [year, monthNumber] = month.split('-').map(Number);
+    const start = dayjs(`${month}-01`);
 
-    return date.formatMonthYear(monthNumber, year);
+    return date.formatMonthYear(start.month() + 1, start.year());
 };
 
 const retentionClass = (retention: number): string => {
@@ -133,6 +133,19 @@ const retentionClass = (retention: number): string => {
 
     return 'bg-destructive';
 };
+
+/** Each start month, its bar the share still paying, colored by how much is left. */
+const cohortRows = computed((): AdminBarRow[] =>
+    props.churn.cohorts.map((cohort) => ({
+        key: cohort.month,
+        label: cohortMonth(cohort.month),
+        count: cohort.alive,
+        hint: `${formatFullNumber(cohort.alive)} of ${formatFullNumber(cohort.started)}`,
+        share: cohort.retention,
+        bar: cohort.retention,
+        barClass: retentionClass(cohort.retention),
+    })),
+);
 </script>
 
 <template>
@@ -164,55 +177,17 @@ const retentionClass = (retention: number): string => {
 
         <div class="grid gap-6 lg:grid-cols-2">
             <AnalyticsSection title="How long canceled subscriptions lasted" subtitle="Every subscription that ended" flush>
-                <ul class="flex flex-col border-t border-border py-2" data-testid="admin-subscriptions-lifetimes">
-                    <li
-                        v-for="lifetime in churn.lifetimes"
-                        :key="lifetime.label"
-                        class="flex items-center gap-3 px-4 py-1.5 sm:px-5"
-                    >
-                        <span class="w-32 shrink-0 truncate text-sm text-foreground">{{
-                            lifetime.label
-                        }}</span>
-                        <span class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                            <span
-                                class="block h-full rounded-full bg-destructive/70"
-                                :style="{ width: barWidth(lifetime.count, maxLifetime) }"
-                            />
-                        </span>
-                        <span
-                            class="w-10 shrink-0 text-right text-sm font-medium text-foreground tabular-nums"
-                            >{{ formatFullNumber(lifetime.count) }}</span
-                        >
-                    </li>
-                </ul>
+                <AdminBarRows :rows="lifetimeRows" label-class="w-32" test-id="admin-subscriptions-lifetimes" />
             </AnalyticsSection>
 
             <AnalyticsSection title="Retention by start month" subtitle="Accounts still paying and not cancelling, by the month they first subscribed" flush>
-                <ul class="flex flex-col border-t border-border py-2" data-testid="admin-subscriptions-cohorts">
-                    <li
-                        v-for="cohort in churn.cohorts"
-                        :key="cohort.month"
-                        class="flex items-center gap-3 px-4 py-1.5 sm:px-5"
-                    >
-                        <span class="w-24 shrink-0 truncate text-sm text-foreground">{{
-                            cohortMonth(cohort.month)
+                <AdminBarRows :rows="cohortRows" label-class="w-24" test-id="admin-subscriptions-cohorts">
+                    <template #value="{ row }">
+                        <span class="w-14 shrink-0 text-right text-sm font-medium text-foreground tabular-nums">{{
+                            formatPercent(row.share, 1)
                         }}</span>
-                        <span class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                            <span
-                                class="block h-full rounded-full"
-                                :class="retentionClass(cohort.retention)"
-                                :style="{ width: barWidth(cohort.retention, 100) }"
-                            />
-                        </span>
-                        <span class="w-20 shrink-0 text-right text-xs text-muted-foreground tabular-nums"
-                            >{{ formatFullNumber(cohort.alive) }} of {{ formatFullNumber(cohort.started) }}</span
-                        >
-                        <span
-                            class="w-12 shrink-0 text-right text-sm font-medium text-foreground tabular-nums"
-                            >{{ formatPercent(cohort.retention, 1) }}</span
-                        >
-                    </li>
-                </ul>
+                    </template>
+                </AdminBarRows>
             </AnalyticsSection>
         </div>
 

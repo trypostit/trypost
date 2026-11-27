@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Queue a new publish attempt for a failed post, resuming an in-flight remote
- * publish when a checkpoint exists. Used by `posts:retry` and the backoffice.
+ * publish when a checkpoint exists. The backoffice's Retry button calls it.
  */
 class RetryFailedPost
 {
@@ -56,6 +56,10 @@ class RetryFailedPost
     {
         if (! $this->isRetryable($post)) {
             return RetryOutcome::NotRetryable;
+        }
+
+        if ($post->isOwnerBlocked()) {
+            return RetryOutcome::OwnerBlocked;
         }
 
         $previousContext = $post->error_context;

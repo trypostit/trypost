@@ -17,6 +17,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Models\Traits\TalliesRows;
 use App\Observers\PostObserver;
 use App\Support\Media\MediaCopyBatch;
 use Carbon\CarbonInterface;
@@ -39,7 +40,7 @@ use Illuminate\Support\Facades\Storage;
 class Post extends Model
 {
     /** @use HasFactory<PostFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, TalliesRows;
 
     public const int CONTENT_MAX_LENGTH = SocialAccount::X_LONG_POST_LENGTH;
 
@@ -462,6 +463,34 @@ class Post extends Model
     public function markAsFailed(): void
     {
         $this->update(['status' => PostStatus::Failed]);
+    }
+
+    /**
+     * The owner of the post's account is blocked, read through the same rule
+     * as {@see self::scopeOwnerNotBlocked()}.
+     */
+    public function isOwnerBlocked(): bool
+    {
+        return static::query()->whereKey($this->getKey())->ownerNotBlocked()->doesntExist();
+    }
+
+    /**
+     * A blocked owner's post waits as the scheduler leaves it: a limit retry
+     * goes back to being due, anything else back to scheduled, so it
+     * publishes once a backoffice admin unblocks the owner.
+     */
+    public function waitForOwnerUnblock(): void
+    {
+        if ($this->publish_status === PublishStatus::Retrying) {
+            $this->writePublication(['retry_at' => now()]);
+
+            return;
+        }
+
+        $this->update([
+            'status' => PostStatus::Scheduled,
+            'scheduled_at' => $this->scheduled_at ?? now(),
+        ]);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Admin;
 
+use App\Dto\Analytics\DateRange;
 use App\Enums\Post\PublishStatus;
 use App\Enums\User\Goal;
 use App\Models\Account;
@@ -11,11 +12,12 @@ use App\Models\Post;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Admin\KeyLabel;
 use App\Support\Admin\StripePriceAmounts;
+use App\Support\Admin\SubscriptionPlans;
 use App\Support\Percent;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
 class BuildSignupInsights
 {
@@ -29,7 +31,7 @@ class BuildSignupInsights
     private const array SIGNUP_METHODS = ['google' => 'Google', 'github' => 'GitHub', 'email' => 'Email and password'];
 
     /**
-     * Who signed up between two days of the viewer's zone and how far they
+     * Who signed up on the range's days of the viewer's zone and how far they
      * went: account owners only (an invited member skips Welcome and never
      * pays), followed as one cohort through the Welcome answers, a
      * subscription, a connected channel and a post sent. Each answer is split
@@ -38,19 +40,19 @@ class BuildSignupInsights
      *
      * @return array<string, mixed>
      */
-    public static function execute(string $start, string $end, string $timezone): array
+    public static function execute(DateRange $range): array
     {
-        $first = CarbonImmutable::parse($start, $timezone)->startOfDay();
-        $last = CarbonImmutable::parse($end, $timezone)->endOfDay();
-        $days = collect(range(0, (int) $first->diffInDays($last->startOfDay())))
-            ->map(fn (int $offset): CarbonImmutable => $first->addDays($offset));
-        $length = $days->count();
+        $days = collect($range->calendarDays());
+        $previous = $range->previous();
 
-        $owners = self::owners($first, $last);
+        $owners = self::owners($range->startsAt(), $range->endsAt());
         $subscribed = self::subscribedAccounts($owners);
-        $previousOwners = self::owners($first->subDays($length), $first->subSecond());
+        $previousOwners = self::owners($previous->startsAt(), $previous->endsAt());
         $previousSubscribed = self::subscribedAccounts($previousOwners);
-        $signupsPerDay = $owners->countBy(fn (User $user): string => $user->created_at->setTimezone($timezone)->toDateString());
+        $signupsPerDay = $owners->countBy(fn (User $user): string => $range->localDate($user->created_at));
+        $subscribedPerDay = $owners
+            ->filter(fn (User $user): bool => $subscribed->has($user->account_id))
+            ->countBy(fn (User $user): string => $range->localDate($user->created_at));
 
         return [
             'totals' => [
@@ -67,11 +69,9 @@ class BuildSignupInsights
                 'minutes_to_subscribe' => self::medianMinutesToSubscribe($previousOwners, $previousSubscribed),
                 'subscribed_rate' => Percent::of($previousSubscribed->count(), $previousOwners->count()),
             ],
-            'days' => $days->map(fn (CarbonImmutable $day): string => $day->toDateString())->all(),
-            'signups_by_day' => $days->map(fn (CarbonImmutable $day): int => (int) $signupsPerDay->get($day->toDateString(), 0))->all(),
-            'subscribed_by_day' => $days->map(fn (CarbonImmutable $day): int => $owners
-                ->filter(fn (User $user): bool => $subscribed->has($user->account_id) && $user->created_at->setTimezone($timezone)->toDateString() === $day->toDateString())
-                ->count())->all(),
+            'days' => $days->all(),
+            'signups_by_day' => $days->map(fn (string $day): int => (int) $signupsPerDay->get($day, 0))->all(),
+            'subscribed_by_day' => $days->map(fn (string $day): int => (int) $subscribedPerDay->get($day, 0))->all(),
             'funnel' => self::funnel($owners, $subscribed),
             'personas' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->persona?->value], fn (string $value): string => (string) __("welcome.personas.{$value}", [], 'en')),
             'software' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->previous_software?->value], fn (string $value): string => self::softwareName($value)),
@@ -112,7 +112,7 @@ class BuildSignupInsights
         return Subscription::query()
             ->whereIn('account_id', $owners->pluck('account_id'))
             ->where('type', Account::SUBSCRIPTION_NAME)
-            ->whereNotIn('stripe_status', ['incomplete', 'incomplete_expired'])
+            ->whereNotIn('stripe_status', SubscriptionPlans::NEVER_BILLED_STATUSES)
             ->orderBy('created_at')
             ->get(['id', 'account_id', 'stripe_price', 'quantity', 'created_at'])
             ->unique('account_id')
@@ -126,9 +126,7 @@ class BuildSignupInsights
      */
     private static function newMrrCents(Collection $subscriptions): int
     {
-        return (int) round($subscriptions
-            ->filter(fn (Subscription $subscription): bool => filled($subscription->stripe_price))
-            ->sum(fn (Subscription $subscription): float => (StripePriceAmounts::monthlyCents($subscription->stripe_price) ?? 0.0) * max(1, (int) $subscription->quantity)));
+        return (int) round($subscriptions->sum(fn (Subscription $subscription): float => StripePriceAmounts::forSubscription($subscription) ?? 0.0));
     }
 
     /**
@@ -154,7 +152,7 @@ class BuildSignupInsights
      * Each step the cohort reached, in the order Welcome and the app ask them.
      *
      * @param  Collection<int, User>  $owners
-     * @param  Collection<string, bool>  $subscribed
+     * @param  Collection<string, Subscription>  $subscribed
      * @return list<array{key: string, label: string, count: int}>
      */
     private static function funnel(Collection $owners, Collection $subscribed): array
@@ -194,7 +192,7 @@ class BuildSignupInsights
      * than the owners.
      *
      * @param  Collection<int, User>  $owners
-     * @param  Collection<string, bool>  $subscribed
+     * @param  Collection<string, Subscription>  $subscribed
      * @param  callable(User): list<string|null>  $answers
      * @param  callable(string): string  $label
      * @return list<array{value: string, label: string, count: int, subscribed: int, subscribed_rate: float}>
@@ -240,6 +238,6 @@ class BuildSignupInsights
             return $known;
         }
 
-        return Str::headline($value);
+        return KeyLabel::of($value);
     }
 }

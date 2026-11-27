@@ -4,11 +4,7 @@
  * label on the left, the value on the right. A row may hand its value to a
  * named slot (`#row-<key>`) for a badge or a link.
  */
-export interface AdminDetailRow {
-    key: string;
-    label: string;
-    value?: string;
-}
+import type { AdminDetailRow } from '@/types/admin';
 
 defineProps<{
     rows: AdminDetailRow[];

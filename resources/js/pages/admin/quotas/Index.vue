@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { Head, router, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { Head } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 import AdminDailyBarChart, {
     type AdminChartSeries,
 } from '@/components/admin/AdminDailyBarChart.vue';
-import AdminStatGrid, {
-    type AdminStat,
-} from '@/components/admin/AdminStatGrid.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import QuotaBar from '@/components/admin/QuotaBar.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
@@ -18,16 +16,21 @@ import {
     TabsList,
     TabsTrigger,
 } from '@/components/ui/tabs';
+import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
+import { formatUsd, joinFilled } from '@/lib/adminFormat';
 import { accountColor } from '@/lib/analyticsColors';
-import { blank, filled } from '@/lib/helpers';
-import { formatFullNumber } from '@/lib/utils';
+import { blank, filled, isNumber } from '@/lib/helpers';
+import { formatFullNumber, formatMoney } from '@/lib/utils';
 import { index as quotasIndex } from '@/routes/admin/quotas';
 import type {
     AdminQuotaCards,
+    AdminStat,
     AdminUsageDay,
     AdminXCostDay,
+    AdminXCredits,
+    AdminXUsage,
     AdminYouTubeQuota,
 } from '@/types/admin';
 import type {
@@ -49,7 +52,7 @@ const X_ENV = ['X_USAGE_MONITORING_ENABLED=true', 'X_BEARER_TOKEN='];
 
 type QuotaNetwork = 'youtube' | 'x';
 
-/** One tab per network that reports a quota, in this order. */
+/** One tab per network that reports a quota, in this order; X opens by default. */
 const QUOTA_NETWORKS: { value: QuotaNetwork; label: string; platform: string }[] = [
     { value: 'x', label: 'X', platform: 'x' },
     { value: 'youtube', label: 'YouTube', platform: 'youtube' },
@@ -68,44 +71,20 @@ const X_TAB_QUERY = { network: 'x' };
 /** X keeps 90 days, so there is no custom range: the bounds are never read. */
 const NO_BOUNDS = { min: null, max: null };
 
-const page = usePage();
+/** The open tab lives in the URL; the range buttons keep it. */
+const { tab: network, selectTab: selectNetwork } = useUrlTab({
+    tabs: QUOTA_NETWORKS.map((tab) => tab.value),
+    param: 'network',
+    url: (mergeQuery) => quotasIndex.url({ mergeQuery }),
+});
 
-/** X opens by default. */
-const quotaNetwork = (value: unknown): QuotaNetwork => {
-    if (value === 'youtube') {
-        return 'youtube';
-    }
+/** X reports its credits and prices in dollars; the money formatters take cents. */
+const toCents = (dollars: number): number => dollars * 100;
 
-    return 'x';
-};
-
-/** The open tab is read from the URL, like the Billing tabs. */
-const network = ref<QuotaNetwork>(
-    quotaNetwork(
-        new URL(page.url, window.location.origin).searchParams.get('network'),
-    ),
-);
-
-const selectNetwork = (value: string | number): void => {
-    network.value = quotaNetwork(value);
-
-    router.replace({
-        url: quotasIndex({ query: { network: network.value } }).url,
-        preserveScroll: true,
-        preserveState: true,
-    });
-};
-
-const money = (value: number): string =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+const money = (dollars: number): string => formatMoney(toCents(dollars));
 
 /** A unit price, to the tenth of a cent: X bills reads at $0.005. */
-const price = (value: number): string =>
-    new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        maximumFractionDigits: 3,
-    }).format(value);
+const price = (dollars: number): string => formatUsd(toCents(dollars), 3);
 
 const updatedLabel = (takenAt: string | null): string => {
     if (filled(takenAt)) {
@@ -173,33 +152,40 @@ const usage = computed(() => props.cards.x.usage);
 const creditStats = computed((): AdminStat[] => {
     const current = credits.value;
 
-    if (!filled(current)) {
-        return [];
+    if (filled(current)) {
+        return [
+            {
+                key: 'x-total-balance',
+                label: 'Credit balance',
+                value: money(current.total_balance),
+                hint: 'Prepaid plus free, never below zero',
+            },
+            {
+                key: 'x-prepaid-balance',
+                label: 'Prepaid',
+                value: money(current.prepaid_balance),
+                hint: 'Below zero when paid usage overdrew it',
+            },
+            {
+                key: 'x-free-balance',
+                label: 'Free credits',
+                value: money(current.free_balance),
+                hint: 'Left across unexpired free grants',
+            },
+        ];
     }
 
-    return [
-        {
-            key: 'x-total-balance',
-            label: 'Credit balance',
-            value: money(current.total_balance),
-            hint: 'Prepaid plus free, never below zero',
-        },
-        {
-            key: 'x-prepaid-balance',
-            label: 'Prepaid',
-            value: money(current.prepaid_balance),
-            hint: 'Below zero when paid usage overdrew it',
-        },
-        {
-            key: 'x-free-balance',
-            label: 'Free credits',
-            value: money(current.free_balance),
-            hint: 'Left across unexpired free grants',
-        },
-    ];
+    return [];
 });
 
-const freeGrants = computed(() => credits.value?.free_grants ?? []);
+const freeGrants = computed((): AdminXCredits['free_grants'] => {
+    if (filled(credits.value)) {
+        return credits.value.free_grants;
+    }
+
+    return [];
+});
+
 const hasFreeGrants = computed(() => filled(freeGrants.value));
 
 const grantExpiry = (expiresAt: string | null): string => {
@@ -212,43 +198,84 @@ const grantExpiry = (expiresAt: string | null): string => {
 
 const capSubtitle = computed((): string => {
     const current = usage.value;
-    const parts: string[] = [];
 
-    if (!filled(current)) {
-        return '';
+    if (filled(current)) {
+        return joinFilled([capResetLabel(current.cap_reset_day), projectLabel(current.project_id)]);
     }
 
-    if (filled(current.cap_reset_day)) {
-        parts.push(`Resets on day ${current.cap_reset_day} of the month`);
-    }
-
-    if (filled(current.project_id)) {
-        parts.push(`Project ${current.project_id}`);
-    }
-
-    return parts.join(' · ');
+    return '';
 });
+
+const capResetLabel = (day: number | null): string | null => {
+    if (isNumber(day)) {
+        return `Resets on day ${day} of the month`;
+    }
+
+    return null;
+};
+
+const projectLabel = (projectId: string | null): string | null => {
+    if (filled(projectId)) {
+        return `Project ${projectId}`;
+    }
+
+    return null;
+};
 
 const xSubtitle = computed((): string => updatedLabel(props.cards.x.taken_at));
 
-const usageDays = computed((): string[] =>
-    (usage.value?.daily_project_usage ?? []).map((day) => day.date),
-);
+const projectDays = computed((): AdminUsageDay[] => {
+    if (filled(usage.value)) {
+        return usage.value.daily_project_usage;
+    }
+
+    return [];
+});
+
+const usageDays = computed((): string[] => projectDays.value.map((day) => day.date));
 
 const valuesFor = (entries: AdminUsageDay[]): number[] => {
     const byDate = new Map(entries.map((entry) => [entry.date, entry.usage]));
 
-    return usageDays.value.map((day) => byDate.get(day) ?? 0);
+    return usageDays.value.map((day) => usageOn(byDate, day));
 };
+
+/** A day X reported no usage for reads 0. */
+const usageOn = (byDate: Map<string, number>, day: string): number => {
+    const value = byDate.get(day);
+
+    if (isNumber(value)) {
+        return value;
+    }
+
+    return 0;
+};
+
+/** An app X names by its id, else by its place in the list. */
+const appLabel = (clientAppId: string | null, index: number): string => {
+    if (filled(clientAppId)) {
+        return `App ${clientAppId}`;
+    }
+
+    return `App ${index + 1}`;
+};
+
+const clientApps = computed((): NonNullable<AdminXUsage['daily_client_app_usage']> => {
+    const apps = usage.value?.daily_client_app_usage;
+
+    if (filled(apps)) {
+        return apps;
+    }
+
+    return [];
+});
 
 /** Per client app when X breaks the usage down, else the project's daily total. */
 const usageSeries = computed((): AdminChartSeries[] => {
-    const apps = usage.value?.daily_client_app_usage ?? [];
-
-    if (filled(apps)) {
-        return apps.map((app, index) => ({
+    if (filled(clientApps.value)) {
+        return clientApps.value.map((app, index) => ({
             key: `app_${index}`,
-            label: `App ${app.client_app_id ?? index + 1}`,
+            label: appLabel(app.client_app_id, index),
             color: accountColor(index),
             values: valuesFor(app.usage),
         }));
@@ -259,27 +286,36 @@ const usageSeries = computed((): AdminChartSeries[] => {
             key: 'project',
             label: 'Posts read',
             color: 'var(--chart-3)',
-            values: valuesFor(usage.value?.daily_project_usage ?? []),
+            values: valuesFor(projectDays.value),
         },
     ];
 });
 
 const hasDailyUsage = computed(() => filled(usageDays.value));
 
+/** The daily usage chart shows once X is set up and reported a day. */
+const showsDailyUsage = computed((): boolean => {
+    if (!props.cards.x.configured) {
+        return false;
+    }
+
+    return hasDailyUsage.value;
+});
+
 const estimate = computed(() => props.cards.x.estimate);
 const prices = computed(() => props.cards.x.prices);
 const hasEstimate = computed(() => filled(estimate.value));
 const estimateDays = computed(() => estimate.value.map((day) => day.date));
 
-/** A series' line in the tooltip: how many posts, then what they cost. */
-const costLine = (pickCount: (day: AdminXCostDay) => number) => (index: number, cost: number): string => {
+/** A series' line in the tooltip: how many posts, then what they cost (the chart's values are cents). */
+const costLine = (pickCount: (day: AdminXCostDay) => number) => (index: number, cents: number): string => {
     const day = estimate.value[index];
 
-    if (blank(day)) {
-        return money(cost);
+    if (filled(day)) {
+        return `${formatFullNumber(pickCount(day))} posts · ${formatMoney(cents)}`;
     }
 
-    return `${formatFullNumber(pickCount(day))} posts · ${money(cost)}`;
+    return formatMoney(cents);
 };
 
 const costSeries = computed((): AdminChartSeries[] => [
@@ -287,21 +323,21 @@ const costSeries = computed((): AdminChartSeries[] => [
         key: 'cost_reads',
         label: `Posts read (${price(prices.value.read)} each)`,
         color: 'var(--chart-1)',
-        values: estimate.value.map((day) => day.cost_reads),
+        values: estimate.value.map((day) => toCents(day.cost_reads)),
         format: costLine((day) => day.reads),
     },
     {
         key: 'cost_created',
         label: `Posts created (${price(prices.value.create)} each)`,
         color: 'var(--chart-3)',
-        values: estimate.value.map((day) => day.cost_created),
+        values: estimate.value.map((day) => toCents(day.cost_created)),
         format: costLine((day) => day.created),
     },
     {
         key: 'cost_created_with_link',
         label: `Posts with a link (${price(prices.value.create_with_link)} each)`,
         color: 'var(--chart-5)',
-        values: estimate.value.map((day) => day.cost_created_with_link),
+        values: estimate.value.map((day) => toCents(day.cost_created_with_link)),
         format: costLine((day) => day.created_with_link),
     },
 ]);
@@ -346,8 +382,22 @@ const estimateStats = computed((): AdminStat[] => {
         },
     ];
 });
-const projectUsage = computed(() => usage.value?.project_usage ?? 0);
-const projectCap = computed(() => usage.value?.project_cap ?? null);
+
+const projectUsage = computed((): number => {
+    if (filled(usage.value)) {
+        return usage.value.project_usage;
+    }
+
+    return 0;
+});
+
+const projectCap = computed((): number | null => {
+    if (filled(usage.value)) {
+        return usage.value.project_cap;
+    }
+
+    return null;
+});
 </script>
 
 <template>
@@ -376,46 +426,46 @@ const projectCap = computed(() => usage.value?.project_cap ?? null);
                 </TabsList>
 
                 <TabsContent value="youtube" class="flex flex-col gap-6">
-                <AnalyticsSection
-                    title="YouTube API"
-                    :subtitle="youtubeSubtitle"
-                    flush
-                >
-                    <div
-                        v-if="!cards.youtube.configured"
-                        class="border-t border-border px-4 py-5 sm:px-5"
-                        data-testid="admin-quota-youtube-off"
+                    <AnalyticsSection
+                        title="YouTube API"
+                        :subtitle="youtubeSubtitle"
+                        flush
                     >
-                        <p class="text-sm text-muted-foreground">
-                            Reads the project quota from Google Cloud Monitoring.
-                            Create a service account with only the Monitoring Viewer
-                            role in the project of the YouTube app, then set:
-                        </p>
-                        <pre
-                            class="mt-3 overflow-x-auto rounded-lg bg-muted px-3 py-2 text-xs text-foreground"
-                        ><code v-for="line in YOUTUBE_ENV" :key="line" class="block">{{ line }}</code></pre>
-                    </div>
-                    <div
-                        v-else
-                        class="flex flex-col gap-5 border-t border-border px-4 py-5 sm:px-5"
-                        data-testid="admin-quota-youtube"
-                    >
-                        <p
-                            v-if="!hasYouTubeQuotas"
-                            class="text-sm text-muted-foreground"
+                        <div
+                            v-if="!cards.youtube.configured"
+                            class="border-t border-border px-4 py-5 sm:px-5"
+                            data-testid="admin-quota-youtube-off"
                         >
-                            No usage reported by Google yet.
-                        </p>
-                        <QuotaBar
-                            v-for="quota in cards.youtube.quotas"
-                            :key="quota.metric"
-                            :label="quotaLabel(quota)"
-                            :used="quota.usage"
-                            :limit="dailyLimit(quota)"
-                            :test-id="`admin-quota-youtube-${quotaKey(quota)}`"
-                        />
-                    </div>
-                </AnalyticsSection>
+                            <p class="text-sm text-muted-foreground">
+                                Reads the project quota from Google Cloud Monitoring.
+                                Create a service account with only the Monitoring Viewer
+                                role in the project of the YouTube app, then set:
+                            </p>
+                            <pre
+                                class="mt-3 overflow-x-auto rounded-lg bg-muted px-3 py-2 text-xs text-foreground"
+                            ><code v-for="line in YOUTUBE_ENV" :key="line" class="block">{{ line }}</code></pre>
+                        </div>
+                        <div
+                            v-else
+                            class="flex flex-col gap-5 border-t border-border px-4 py-5 sm:px-5"
+                            data-testid="admin-quota-youtube"
+                        >
+                            <p
+                                v-if="!hasYouTubeQuotas"
+                                class="text-sm text-muted-foreground"
+                            >
+                                No usage reported by Google yet.
+                            </p>
+                            <QuotaBar
+                                v-for="quota in cards.youtube.quotas"
+                                :key="quota.metric"
+                                :label="quotaLabel(quota)"
+                                :used="quota.usage"
+                                :limit="dailyLimit(quota)"
+                                :test-id="`admin-quota-youtube-${quotaKey(quota)}`"
+                            />
+                        </div>
+                    </AnalyticsSection>
                 </TabsContent>
 
                 <TabsContent value="x" class="flex flex-col gap-6">
@@ -437,97 +487,95 @@ const projectCap = computed(() => usage.value?.project_cap ?? null);
                         >
                     </div>
 
-                <AnalyticsSection title="X API" :subtitle="xSubtitle" flush>
-                    <div
-                        v-if="!cards.x.configured"
-                        class="border-t border-border px-4 py-5 sm:px-5"
-                        data-testid="admin-quota-x-off"
-                    >
-                        <p class="text-sm text-muted-foreground">
-                            Reads the credit balance and the post usage with the
-                            app's bearer token, from the X developer console. Set:
-                        </p>
-                        <pre
-                            class="mt-3 overflow-x-auto rounded-lg bg-muted px-3 py-2 text-xs text-foreground"
-                        ><code v-for="line in X_ENV" :key="line" class="block">{{ line }}</code></pre>
-                    </div>
-                    <template v-else>
-                        <AdminStatGrid
-                            v-if="credits"
-                            :stats="creditStats"
-                            data-testid="admin-quota-x-credits"
-                        />
-                        <ul
-                            v-if="hasFreeGrants"
-                            class="divide-y divide-border border-t border-border"
-                            data-testid="admin-quota-x-grants"
-                        >
-                            <li
-                                v-for="(grant, index) in freeGrants"
-                                :key="index"
-                                class="flex items-center justify-between px-4 py-2.5 text-sm sm:px-5"
-                            >
-                                <span class="text-foreground">Free grant</span>
-                                <span class="flex items-center gap-3 tabular-nums">
-                                    <span class="text-muted-foreground">{{
-                                        grantExpiry(grant.expires_at)
-                                    }}</span>
-                                    <span class="text-foreground">{{
-                                        money(grant.amount)
-                                    }}</span>
-                                </span>
-                            </li>
-                        </ul>
+                    <AnalyticsSection title="X API" :subtitle="xSubtitle" flush>
                         <div
-                            v-if="usage"
-                            class="flex flex-col gap-2 border-t border-border px-4 py-5 sm:px-5"
+                            v-if="!cards.x.configured"
+                            class="border-t border-border px-4 py-5 sm:px-5"
+                            data-testid="admin-quota-x-off"
                         >
-                            <QuotaBar
-                                label="Posts read this billing cycle"
-                                :used="projectUsage"
-                                :limit="projectCap"
-                                test-id="admin-quota-x-usage"
-                            />
-                            <p
-                                v-if="capSubtitle"
-                                class="text-xs text-muted-foreground"
-                            >
-                                {{ capSubtitle }}
+                            <p class="text-sm text-muted-foreground">
+                                Reads the credit balance and the post usage with the
+                                app's bearer token, from the X developer console. Set:
                             </p>
+                            <pre
+                                class="mt-3 overflow-x-auto rounded-lg bg-muted px-3 py-2 text-xs text-foreground"
+                            ><code v-for="line in X_ENV" :key="line" class="block">{{ line }}</code></pre>
                         </div>
-                    </template>
-                </AnalyticsSection>
+                        <template v-else>
+                            <AdminStatGrid
+                                v-if="credits"
+                                :stats="creditStats"
+                                data-testid="admin-quota-x-credits"
+                            />
+                            <ul
+                                v-if="hasFreeGrants"
+                                class="divide-y divide-border border-t border-border"
+                                data-testid="admin-quota-x-grants"
+                            >
+                                <li
+                                    v-for="(grant, index) in freeGrants"
+                                    :key="index"
+                                    class="flex items-center justify-between px-4 py-2.5 text-sm sm:px-5"
+                                >
+                                    <span class="text-foreground">Free grant</span>
+                                    <span class="flex items-center gap-3 tabular-nums">
+                                        <span class="text-muted-foreground">{{
+                                            grantExpiry(grant.expires_at)
+                                        }}</span>
+                                        <span class="text-foreground">{{
+                                            money(grant.amount)
+                                        }}</span>
+                                    </span>
+                                </li>
+                            </ul>
+                            <div
+                                v-if="usage"
+                                class="flex flex-col gap-2 border-t border-border px-4 py-5 sm:px-5"
+                            >
+                                <QuotaBar
+                                    label="Posts read this billing cycle"
+                                    :used="projectUsage"
+                                    :limit="projectCap"
+                                    test-id="admin-quota-x-usage"
+                                />
+                                <p
+                                    v-if="capSubtitle"
+                                    class="text-xs text-muted-foreground"
+                                >
+                                    {{ capSubtitle }}
+                                </p>
+                            </div>
+                        </template>
+                    </AnalyticsSection>
 
-                <AnalyticsSection
-                    v-if="hasEstimate"
-                    title="Estimated cost per day"
-                    subtitle="An estimate from X's public prices, not what X billed: the X developer console has that"
-                    flush
-                >
-                    <AdminStatGrid :stats="estimateStats" />
-                    <div class="border-t border-border px-4 py-4 sm:px-5">
+                    <AnalyticsSection
+                        v-if="hasEstimate"
+                        title="Estimated cost per day"
+                        subtitle="An estimate from X's public prices, not what X billed: the X developer console has that"
+                        flush
+                    >
+                        <AdminStatGrid :stats="estimateStats" />
+                        <div class="border-t border-border px-4 py-4 sm:px-5">
+                            <AdminDailyBarChart
+                                :days="estimateDays"
+                                :series="costSeries"
+                                currency
+                                test-id="admin-quota-x-cost"
+                            />
+                        </div>
+                    </AnalyticsSection>
+
+                    <AnalyticsSection
+                        v-if="showsDailyUsage"
+                        title="X posts read per day"
+                        subtitle="Deduplicated per UTC day, as X bills them"
+                    >
                         <AdminDailyBarChart
-                            :days="estimateDays"
-                            :series="costSeries"
-                            currency
-                            test-id="admin-quota-x-cost"
+                            :days="usageDays"
+                            :series="usageSeries"
+                            test-id="admin-quota-x-daily"
                         />
-                    </div>
-                </AnalyticsSection>
-
-                <AnalyticsSection
-                    v-if="cards.x.configured && hasDailyUsage"
-                    title="X posts read per day"
-                    subtitle="Deduplicated per UTC day, as X bills them"
-                >
-                    <AdminDailyBarChart
-                        :days="usageDays"
-                        :series="usageSeries"
-                        test-id="admin-quota-x-daily"
-                    />
-                </AnalyticsSection>
-
-
+                    </AnalyticsSection>
                 </TabsContent>
             </Tabs>
         </div>

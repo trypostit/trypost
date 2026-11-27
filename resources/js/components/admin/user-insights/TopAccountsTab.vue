@@ -2,12 +2,17 @@
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
-import AdminSortableTable, { type AdminTableColumn } from '@/components/admin/AdminSortableTable.vue';
+import AdminSortableTable from '@/components/admin/AdminSortableTable.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
+import { joinFilled } from '@/lib/adminFormat';
+import { customerName } from '@/lib/adminUsers';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber } from '@/lib/utils';
 import { show as userShow } from '@/routes/admin/users';
-import type { AdminUsageInsights } from '@/types/admin';
+import type {
+    AdminTableColumn,
+    AdminUsageInsights,
+} from '@/types/admin';
 
 type TopAccount = AdminUsageInsights['top_accounts'][number];
 
@@ -24,21 +29,24 @@ const COLUMNS: AdminTableColumn[] = [
     { key: 'failed', label: 'Posts failed', numeric: true },
 ];
 
-const rows = computed(() => props.accounts.map((account) => ({ ...account, customer: account.name ?? '' })));
+/** Each account with what its customer cell shows: the name to sort on, and email and plan under it. */
+const rows = computed(() =>
+    props.accounts.map((account) => ({
+        ...account,
+        customer: customerName(account.name),
+        detail: joinFilled([account.email, account.plan]),
+    })),
+);
 
 const hasRows = computed(() => filled(props.accounts));
 
 const rowKey = (row: TopAccount): string => row.account_id;
 
-const nameOf = (row: TopAccount): string => {
-    if (filled(row.name)) {
-        return row.name;
-    }
-
-    return 'Deleted user';
-};
-
 const profileUrl = (userId: string): string => userShow.url(userId);
+
+const sectionSubtitle = computed(
+    (): string => `${props.subtitle} · posts are counted in the period, channels as they are now · click a column to sort`,
+);
 
 /** Failures stand out only when there are some. */
 const failedClass = (failed: number): string => {
@@ -53,7 +61,7 @@ const failedClass = (failed: number): string => {
 <template>
     <AnalyticsSection
         title="Top accounts"
-        :subtitle="`${subtitle} · posts are counted in the period, channels as they are now · click a column to sort`"
+        :subtitle="sectionSubtitle"
         flush
     >
         <p
@@ -76,10 +84,10 @@ const failedClass = (failed: number): string => {
                         v-if="row.user_id"
                         :href="profileUrl(row.user_id)"
                         class="truncate text-sm font-emphasis text-foreground hover:underline"
-                        >{{ nameOf(row) }}</Link
+                        >{{ row.customer }}</Link
                     >
-                    <span v-else class="truncate text-sm text-muted-foreground">{{ nameOf(row) }}</span>
-                    <span class="truncate text-xs text-muted-foreground">{{ row.email }}<template v-if="row.plan"> · {{ row.plan }}</template></span>
+                    <span v-else class="truncate text-sm text-muted-foreground">{{ row.customer }}</span>
+                    <span class="truncate text-xs text-muted-foreground">{{ row.detail }}</span>
                 </div>
             </template>
             <template #cell-posts="{ row }">

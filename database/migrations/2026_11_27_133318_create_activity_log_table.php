@@ -17,12 +17,9 @@ return new class extends Migration
             $table->nullableUuidMorphs('subject', 'subject');
             $table->string('event')->nullable();
             $table->nullableUuidMorphs('causer', 'causer');
-            $table->foreignUuid('workspace_id')->nullable()->constrained()->nullOnDelete();
             $table->json('attribute_changes')->nullable();
             $table->json('properties')->nullable();
             $table->timestamps();
-
-            $table->index(['workspace_id', 'created_at']);
         });
     }
 

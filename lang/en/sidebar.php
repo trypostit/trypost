@@ -19,7 +19,6 @@ return [
     ],
     'settings' => 'Settings',
     'plans_billing' => 'Plans and billing',
-    'backoffice' => 'Backoffice',
     'log_out' => 'Log out',
     'help' => 'Help',
     'language' => 'Language: :name',

@@ -10,17 +10,14 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { blank, filled } from '@/lib/helpers';
+import type { AdminTableColumn } from '@/types/admin';
 
 /**
  * A full-width table drawn like the Insights performance table: a muted
  * header whose columns sort on click (numbers high first, text A to Z), and
  * a slot per column (`#cell-<key>`) for how a value shows.
  */
-export interface AdminTableColumn {
-    key: string;
-    label: string;
-    numeric?: boolean;
-}
 
 type SortDirection = 'asc' | 'desc';
 
@@ -35,18 +32,43 @@ const props = defineProps<{
 const sortKey = ref<string>(props.defaultSort);
 const sortDirection = ref<SortDirection>('desc');
 
-const isNumeric = (key: string): boolean =>
-    props.columns.find((column) => column.key === key)?.numeric === true;
+const isNumeric = (key: string): boolean => {
+    const column = props.columns.find((candidate) => candidate.key === key);
+
+    if (filled(column)) {
+        return Boolean(column.numeric);
+    }
+
+    return false;
+};
+
+/** A cell as a number to sort on; an empty one sorts as zero. */
+const numberOf = (value: unknown): number => {
+    if (blank(value)) {
+        return 0;
+    }
+
+    return Number(value);
+};
+
+/** A cell as text to sort on; an empty one sorts first. */
+const textOf = (value: unknown): string => {
+    if (blank(value)) {
+        return '';
+    }
+
+    return String(value);
+};
 
 const compare = (left: Row, right: Row): number => {
     const a = left[sortKey.value];
     const b = right[sortKey.value];
 
     if (isNumeric(sortKey.value)) {
-        return Number(a ?? 0) - Number(b ?? 0);
+        return numberOf(a) - numberOf(b);
     }
 
-    return String(a ?? '').localeCompare(String(b ?? ''));
+    return textOf(a).localeCompare(textOf(b));
 };
 
 const sorted = computed((): Row[] => {
@@ -59,15 +81,32 @@ const sorted = computed((): Row[] => {
     return rows;
 });
 
+const flipped = (direction: SortDirection): SortDirection => {
+    if (direction === 'asc') {
+        return 'desc';
+    }
+
+    return 'asc';
+};
+
+/** Numbers sort high first, text A to Z. */
+const firstDirection = (key: string): SortDirection => {
+    if (isNumeric(key)) {
+        return 'desc';
+    }
+
+    return 'asc';
+};
+
 const sortOn = (key: string): void => {
     if (sortKey.value === key) {
-        sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+        sortDirection.value = flipped(sortDirection.value);
 
         return;
     }
 
     sortKey.value = key;
-    sortDirection.value = isNumeric(key) ? 'desc' : 'asc';
+    sortDirection.value = firstDirection(key);
 };
 
 const isSorted = (key: string): boolean => sortKey.value === key;
@@ -100,7 +139,7 @@ const sortIconClass = (key: string): string => {
     return 'size-3 opacity-30 transition-opacity group-hover:opacity-60';
 };
 
-const headClass = (column: AdminTableColumn, index: number): string => {
+const headClass = (index: number): string => {
     const base = 'h-10 border-r-0 px-4 py-2 text-xs font-medium whitespace-nowrap text-muted-foreground';
 
     if (index === 0) {
@@ -132,7 +171,7 @@ const cellClass = (column: AdminTableColumn, index: number): string => {
                         <TableHead
                             v-for="(column, index) in columns"
                             :key="column.key"
-                            :class="headClass(column, index)"
+                            :class="headClass(index)"
                             :aria-sort="ariaSort(column.key)"
                         >
                             <button

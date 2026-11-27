@@ -40,6 +40,14 @@ final readonly class DateRange
         }
     }
 
+    /**
+     * The range between two calendar days of the viewer's zone (`Y-m-d`), both included.
+     */
+    public static function fromDates(string $start, string $end, string $timezone): self
+    {
+        return new self(CarbonImmutable::parse($start, 'UTC'), CarbonImmutable::parse($end, 'UTC'), timezone: $timezone);
+    }
+
     public function days(): int
     {
         return (int) $this->start->diffInDays($this->end->addDay());
@@ -50,6 +58,18 @@ final readonly class DateRange
         $end = $this->start->subDay();
 
         return new self($this->start->subDays($this->days()), $end, timezone: $this->timezone);
+    }
+
+    /**
+     * Every calendar day of the range, first to last, as `Y-m-d`.
+     *
+     * @return list<string>
+     */
+    public function calendarDays(): array
+    {
+        return collect(range(0, $this->days() - 1))
+            ->map(fn (int $offset): string => $this->start->addDays($offset)->toDateString())
+            ->all();
     }
 
     /** The UTC instant the range's first day begins in the viewer's zone. */

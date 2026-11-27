@@ -12,6 +12,7 @@ use App\Enums\Post\CreatedVia;
 use App\Enums\Post\PublishStatus;
 use App\Models\Account;
 use App\Models\User;
+use App\Support\Admin\PublishingCounts;
 use App\Support\Percent;
 use Illuminate\Support\Collection;
 
@@ -45,7 +46,7 @@ class BuildUserHealth
 
         $sent = self::count(BuildUsageInsights::postsPerAccount($first, $last, PublishStatus::wentOutCases(), [], $account->id), $account);
         $previousSent = self::count(BuildUsageInsights::postsPerAccount($first->subDays(self::WINDOW_DAYS), $first->subSecond(), PublishStatus::wentOutCases(), [], $account->id), $account);
-        $failed = self::count(BuildUsageInsights::postsPerAccount($first, $last, [PublishStatus::Failed], [], $account->id), $account);
+        $failed = self::count(BuildUsageInsights::postsPerAccount($first, $last, PublishingCounts::failedStatuses(), [], $account->id), $account);
         $automated = self::count(BuildUsageInsights::postsPerAccount($first, $last, PublishStatus::wentOutCases(), [CreatedVia::Api, CreatedVia::Mcp], $account->id), $account);
         $channels = BuildChurnRisk::channelHealth($account->id)->get($account->id);
         $stage = ResolveLifecycleStage::execute($account, $account->last_published_at, (bool) $account->has_social_account);

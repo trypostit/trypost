@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import AdminDetailList, { type AdminDetailRow } from '@/components/admin/AdminDetailList.vue';
+import AdminDetailList from '@/components/admin/AdminDetailList.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -11,11 +11,14 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import date from '@/date';
 import { errorCategoryLabel } from '@/lib/adminErrorCategories';
+import { dateTimeOrDash, joinFilled, orDash } from '@/lib/adminFormat';
 import { filled } from '@/lib/helpers';
 import { isVideo } from '@/lib/mediaType';
-import type { AdminFailedPost } from '@/types/admin';
+import type {
+    AdminDetailRow,
+    AdminFailedPost,
+} from '@/types/admin';
 
 /** A failed post as it was sent: its text, media, when and how, and what the network answered. */
 const props = defineProps<{
@@ -28,53 +31,70 @@ const emit = defineEmits<{
 
 const isOpen = computed(() => filled(props.post));
 
-const when = (value: string | null | undefined): string => {
-    if (filled(value)) {
-        return date.formatDateTime(value);
+const platformLabel = computed((): string => {
+    if (filled(props.post)) {
+        return getPlatformLabel(props.post.platform);
     }
 
-    return '—';
-};
-
-const orDash = (value: string | null | undefined): string => {
-    if (filled(value)) {
-        return value;
-    }
-
-    return '—';
-};
+    return '';
+});
 
 const channelLabel = computed((): string => {
-    if (filled(props.post?.channel_name)) {
-        return props.post.channel_name;
+    const name = props.post?.channel_name;
+
+    if (filled(name)) {
+        return name;
     }
 
-    return getPlatformLabel(props.post?.platform ?? '');
+    return platformLabel.value;
 });
 
-const subtitle = computed((): string => {
-    const workspace = props.post?.workspace_name;
-
-    if (filled(workspace)) {
-        return `${getPlatformLabel(props.post?.platform ?? '')} · ${workspace}`;
-    }
-
-    return getPlatformLabel(props.post?.platform ?? '');
-});
+const subtitle = computed((): string => joinFilled([platformLabel.value, props.post?.workspace_name]));
 
 const hasContent = computed(() => filled(props.post?.content));
 const hasMedia = computed(() => filled(props.post?.media));
 
+/** An attachment whose file is gone links nowhere. */
+const mediaUrl = (url: string | null): string | undefined => {
+    if (filled(url)) {
+        return url;
+    }
+
+    return undefined;
+};
+
+/** Each attachment with the link it opens and what a screen reader names it. */
+const mediaItems = computed(() => {
+    if (filled(props.post)) {
+        return props.post.media.map((item, index) => ({
+            key: index,
+            url: mediaUrl(item.url),
+            isVideo: isVideo(item),
+            label: `Open attachment ${index + 1} in a new tab`,
+        }));
+    }
+
+    return [];
+});
+
 const detailRows = computed((): AdminDetailRow[] => [
     { key: 'type', label: 'Post type', value: orDash(props.post?.content_type_label) },
     { key: 'via', label: 'Created via', value: orDash(props.post?.created_via) },
-    { key: 'scheduled', label: 'Scheduled for', value: when(props.post?.scheduled_at) },
-    { key: 'failed', label: 'Failed', value: when(props.post?.failed_at) },
+    { key: 'scheduled', label: 'Scheduled for', value: dateTimeOrDash(props.post?.scheduled_at) },
+    { key: 'failed', label: 'Failed', value: dateTimeOrDash(props.post?.failed_at) },
     { key: 'channel', label: 'Channel status', value: orDash(props.post?.channel_status) },
 ]);
 
 /** What the network answered, as TryPost stored it, for debugging. */
-const rawContext = computed((): string => JSON.stringify(props.post?.error_context ?? {}, null, 2));
+const rawContext = computed((): string => {
+    const context = props.post?.error_context;
+
+    if (filled(context)) {
+        return JSON.stringify(context, null, 2);
+    }
+
+    return '{}';
+});
 
 const onOpenChange = (open: boolean): void => {
     if (!open) {
@@ -123,23 +143,24 @@ const onOpenChange = (open: boolean): void => {
                     <p v-else class="text-sm text-muted-foreground">No text.</p>
                     <div v-if="hasMedia" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
                         <a
-                            v-for="(item, index) in post.media"
-                            :key="index"
-                            :href="item.url ?? undefined"
+                            v-for="item in mediaItems"
+                            :key="item.key"
+                            :href="item.url"
                             target="_blank"
                             rel="noopener noreferrer"
+                            :aria-label="item.label"
                             class="aspect-square overflow-hidden rounded-lg border border-border bg-muted"
                         >
                             <video
-                                v-if="isVideo(item)"
-                                :src="item.url ?? undefined"
+                                v-if="item.isVideo"
+                                :src="item.url"
                                 class="size-full object-cover"
                                 muted
                                 preload="metadata"
                             />
                             <img
                                 v-else
-                                :src="item.url ?? undefined"
+                                :src="item.url"
                                 alt=""
                                 class="size-full object-cover"
                                 loading="lazy"

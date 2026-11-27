@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 
 import { activeLocale } from '@/language';
+import { filled } from '@/lib/helpers';
 
 import type { ChartConfig, ChartTooltipDetail } from '.';
 
@@ -23,6 +24,15 @@ const props = withDefaults(
     { payload: () => ({}), config: () => ({}) },
 );
 
+/** How an entry's value reads: through `valueFormatter`, else as a plain number in the reader's language. */
+const displayValue = (key: string, value: number): string => {
+    if (filled(props.valueFormatter)) {
+        return props.valueFormatter(key, value);
+    }
+
+    return value.toLocaleString(activeLocale.value);
+};
+
 const entries = computed(() =>
     Object.entries(props.config).flatMap(([key, item]) => {
         const value = props.payload[key];
@@ -32,7 +42,7 @@ const entries = computed(() =>
                       key,
                       item,
                       value,
-                      display: props.valueFormatter?.(key, value) ?? value.toLocaleString(activeLocale.value),
+                      display: displayValue(key, value),
                       details: props.detailFormatter?.(key, value) ?? [],
                   },
               ]

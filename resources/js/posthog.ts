@@ -19,7 +19,8 @@ let impersonating = false;
 
 /**
  * PostHog keeps an opt-out in the browser, so leaving an impersonation (even
- * by closing the tab midway) is caught on the next page and opts back in.
+ * by closing the tab midway) is caught on the next page and opts back in,
+ * quietly: opting in sends no `$opt_in` event of its own.
  */
 const syncImpersonation = (page: Page): void => {
     impersonating = filled(page.props.impersonating);
@@ -31,7 +32,7 @@ const syncImpersonation = (page: Page): void => {
     }
 
     if (posthog.has_opted_out_capturing()) {
-        posthog.opt_in_capturing();
+        posthog.opt_in_capturing({ captureEventName: false });
     }
 };
 

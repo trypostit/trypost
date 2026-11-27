@@ -438,9 +438,6 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 
 Route::middleware(['auth'])->group(function () {
     Route::delete('impersonation', [ImpersonationController::class, 'destroy'])->name('app.impersonation.destroy');
-});
-
-Route::middleware(['auth'])->group(function () {
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('app.profile.edit');
     Route::put('settings/profile', [ProfileController::class, 'update'])->name('app.profile.update');

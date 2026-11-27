@@ -19,7 +19,6 @@ return [
     ],
     'settings' => '設定',
     'plans_billing' => 'プランと請求',
-    'backoffice' => '管理画面',
     'log_out' => 'ログアウト',
     'help' => 'ヘルプ',
     'language' => '言語: :name',

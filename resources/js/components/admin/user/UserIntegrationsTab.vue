@@ -8,15 +8,15 @@ import McpModelContextProtocol from '@thesvg/vue/mcp-model-context-protocol';
 import Unsplash from '@thesvg/vue/unsplash';
 import { computed, type Component } from 'vue';
 
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Badge } from '@/components/ui/badge';
 import date from '@/date';
-import { filled } from '@/lib/helpers';
+import { humanize, joinFilled } from '@/lib/adminFormat';
+import { filled, transform } from '@/lib/helpers';
 import { mcpAppLogos } from '@/lib/mcpClients';
-import type { AdminUserIntegrationsData } from '@/types/admin';
-
-type BadgeVariant = 'success' | 'warning' | 'destructive' | 'secondary';
+import type { AdminUserIntegrationsData, BadgeVariant } from '@/types/admin';
 
 /** The media sources a user links, with the logos the composer shows. */
 const MEDIA_SOURCES: Record<string, { label: string; logo: Component }> = {
@@ -50,12 +50,12 @@ const lastUsed = (value: string | null): string => {
     return 'Never used';
 };
 
-const created = (value: string | null): string => {
+const created = (value: string | null): string | null => {
     if (filled(value)) {
         return `Created ${date.formatDate(value)}`;
     }
 
-    return '';
+    return null;
 };
 
 const orUnnamed = (value: string | null): string => {
@@ -66,19 +66,9 @@ const orUnnamed = (value: string | null): string => {
     return 'Unnamed';
 };
 
-const humanize = (value: string | null): string => {
-    if (!filled(value)) {
-        return '—';
-    }
-
-    const words = value.replaceAll('_', ' ');
-
-    return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
-};
-
 /** The AI app's own mark when its name is one we know, else the MCP mark. */
 const mcpLogo = (client: string | null): { logo: Component; logoClass?: string } => {
-    const name = (client ?? '').toLowerCase();
+    const name = transform(client, (value) => value.toLowerCase(), '');
     const brand = mcpAppLogos.find((app) => name.includes(app.name));
 
     if (filled(brand)) {
@@ -89,7 +79,7 @@ const mcpLogo = (client: string | null): { logo: Component; logoClass?: string }
 };
 
 const mediaSource = (source: string | null): { label: string; logo: Component | null } => {
-    const known = MEDIA_SOURCES[source ?? ''];
+    const known = transform(source, (value) => MEDIA_SOURCES[value]);
 
     if (filled(known)) {
         return known;
@@ -99,7 +89,7 @@ const mediaSource = (source: string | null): { label: string; logo: Component | 
 };
 
 const webhookBadge = (status: string | null): { label: string; variant: BadgeVariant } => {
-    const badge = WEBHOOK_STATUS_BADGES[status ?? ''];
+    const badge = transform(status, (value) => WEBHOOK_STATUS_BADGES[value]);
 
     if (filled(badge)) {
         return badge;
@@ -127,29 +117,64 @@ const failuresLabel = (failures: number): string => {
 
     return `${failures} failures in a row`;
 };
+
+const apiKeys = computed(() =>
+    props.data.api_keys.map((key) => ({
+        id: key.id,
+        name: orUnnamed(key.name),
+        detail: joinFilled([key.workspace_name, created(key.created_at), lastUsed(key.last_used_at)]),
+        revoked: key.revoked,
+    })),
+);
+
+const mcpApps = computed(() =>
+    props.data.mcp_apps.map((app) => {
+        const { logo, logoClass } = mcpLogo(app.client);
+
+        return {
+            id: app.id,
+            name: orUnnamed(app.client),
+            logo,
+            logoClass: ['size-5 text-foreground', logoClass],
+            detail: joinFilled([app.workspace_name, created(app.created_at), lastUsed(app.last_used_at)]),
+        };
+    }),
+);
+
+const webhooks = computed(() =>
+    props.data.webhooks.map((webhook) => ({
+        id: webhook.id,
+        endpoint: webhook.endpoint,
+        detail: joinFilled([
+            webhook.workspace_name,
+            eventsLabel(webhook.events),
+            failuresLabel(webhook.consecutive_failures),
+        ]),
+        badge: webhookBadge(webhook.status),
+    })),
+);
+
+const mediaSources = computed(() =>
+    props.data.media_sources.map((source) => ({
+        id: source.id,
+        testId: `admin-user-media-source-${source.source}`,
+        ...mediaSource(source.source),
+        connected: created(source.connected_at),
+    })),
+);
 </script>
 
 <template>
     <div class="flex flex-col gap-10" data-testid="admin-user-integrations">
         <SettingsSection title="API keys">
-            <p
-                v-if="!hasApiKeys"
-                class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"
-            >
-                No API keys.
-            </p>
+            <AdminEmptyState v-if="!hasApiKeys">No API keys.</AdminEmptyState>
             <ul v-else class="flex flex-col gap-2">
-                <SettingsListRow
-                    v-for="key in data.api_keys"
-                    :key="key.id"
-                    :icon="IconKey"
-                >
+                <SettingsListRow v-for="key in apiKeys" :key="key.id" :icon="IconKey">
                     <p class="truncate text-sm font-emphasis text-foreground">
-                        {{ orUnnamed(key.name) }}
+                        {{ key.name }}
                     </p>
                     <p class="text-xs text-muted-foreground">
-                        {{ key.workspace_name }} · {{ created(key.created_at) }} ·
-                        {{ lastUsed(key.last_used_at) }}
+                        {{ key.detail }}
                     </p>
                     <template #actions>
                         <Badge v-if="key.revoked" variant="secondary">Revoked</Badge>
@@ -163,15 +188,10 @@ const failuresLabel = (failures: number): string => {
             title="AI apps (MCP)"
             description="The AI apps connected to TryPost with this user's account."
         >
-            <p
-                v-if="!hasMcpApps"
-                class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"
-            >
-                No AI app connected.
-            </p>
+            <AdminEmptyState v-if="!hasMcpApps">No AI app connected.</AdminEmptyState>
             <ul v-else class="flex flex-col gap-2">
                 <SettingsListRow
-                    v-for="app in data.mcp_apps"
+                    v-for="app in mcpApps"
                     :key="app.id"
                     :data-testid="`admin-user-mcp-${app.id}`"
                 >
@@ -179,19 +199,14 @@ const failuresLabel = (failures: number): string => {
                         <span
                             class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
                         >
-                            <component
-                                :is="mcpLogo(app.client).logo"
-                                aria-hidden="true"
-                                :class="['size-5 text-foreground', mcpLogo(app.client).logoClass]"
-                            />
+                            <component :is="app.logo" aria-hidden="true" :class="app.logoClass" />
                         </span>
                     </template>
                     <p class="truncate text-sm font-emphasis text-foreground">
-                        {{ orUnnamed(app.client) }}
+                        {{ app.name }}
                     </p>
                     <p class="text-xs text-muted-foreground">
-                        {{ app.workspace_name }} · {{ created(app.created_at) }} ·
-                        {{ lastUsed(app.last_used_at) }}
+                        {{ app.detail }}
                     </p>
                 </SettingsListRow>
             </ul>
@@ -201,65 +216,39 @@ const failuresLabel = (failures: number): string => {
             title="Webhooks"
             description="In the workspaces this user is in."
         >
-            <p
-                v-if="!hasWebhooks"
-                class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"
-            >
-                No webhooks.
-            </p>
+            <AdminEmptyState v-if="!hasWebhooks">No webhooks.</AdminEmptyState>
             <ul v-else class="flex flex-col gap-2">
-                <SettingsListRow
-                    v-for="webhook in data.webhooks"
-                    :key="webhook.id"
-                    :icon="IconWebhook"
-                >
+                <SettingsListRow v-for="webhook in webhooks" :key="webhook.id" :icon="IconWebhook">
                     <p class="truncate text-sm font-emphasis text-foreground">
                         {{ webhook.endpoint }}
                     </p>
                     <p class="text-xs text-muted-foreground">
-                        {{ webhook.workspace_name }} · {{ eventsLabel(webhook.events) }}
-                        · {{ failuresLabel(webhook.consecutive_failures) }}
+                        {{ webhook.detail }}
                     </p>
                     <template #actions>
-                        <Badge :variant="webhookBadge(webhook.status).variant">{{
-                            webhookBadge(webhook.status).label
-                        }}</Badge>
+                        <Badge :variant="webhook.badge.variant">{{ webhook.badge.label }}</Badge>
                     </template>
                 </SettingsListRow>
             </ul>
         </SettingsSection>
 
         <SettingsSection title="Media sources">
-            <p
-                v-if="!hasMediaSources"
-                class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"
-            >
-                No media source connected.
-            </p>
+            <AdminEmptyState v-if="!hasMediaSources">No media source connected.</AdminEmptyState>
             <ul v-else class="flex flex-col gap-2">
-                <SettingsListRow
-                    v-for="source in data.media_sources"
-                    :key="source.id"
-                    :data-testid="`admin-user-media-source-${source.source}`"
-                >
+                <SettingsListRow v-for="source in mediaSources" :key="source.id" :data-testid="source.testId">
                     <template #media>
                         <span
                             class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
                         >
-                            <component
-                                :is="mediaSource(source.source).logo"
-                                v-if="mediaSource(source.source).logo"
-                                aria-hidden="true"
-                                class="size-5"
-                            />
+                            <component :is="source.logo" v-if="source.logo" aria-hidden="true" class="size-5" />
                             <IconPhoto v-else class="size-5 text-muted-foreground" />
                         </span>
                     </template>
                     <p class="truncate text-sm font-emphasis text-foreground">
-                        {{ mediaSource(source.source).label }}
+                        {{ source.label }}
                     </p>
                     <p class="text-xs text-muted-foreground">
-                        {{ created(source.connected_at) }}
+                        {{ source.connected }}
                     </p>
                 </SettingsListRow>
             </ul>

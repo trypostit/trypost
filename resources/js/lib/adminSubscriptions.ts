@@ -1,7 +1,6 @@
+import { humanize } from '@/lib/adminFormat';
 import { filled } from '@/lib/helpers';
-import type { AdminSubscriptionPlan } from '@/types/admin';
-
-type BadgeVariant = 'success' | 'info' | 'warning' | 'destructive-subtle' | 'secondary';
+import type { AdminSubscriptionPlan, BadgeVariant } from '@/types/admin';
 
 /** How the backoffice shows where a subscription stands. */
 const STATES: Record<string, { label: string; variant: BadgeVariant }> = {
@@ -9,6 +8,8 @@ const STATES: Record<string, { label: string; variant: BadgeVariant }> = {
     trialing: { label: 'Trialing', variant: 'info' },
     past_due: { label: 'Past due', variant: 'destructive-subtle' },
     unpaid: { label: 'Unpaid', variant: 'destructive-subtle' },
+    incomplete: { label: 'Incomplete', variant: 'destructive-subtle' },
+    incomplete_expired: { label: 'Incomplete expired', variant: 'destructive-subtle' },
     cancelling: { label: 'Cancelling', variant: 'warning' },
     canceled: { label: 'Canceled', variant: 'secondary' },
 };
@@ -20,7 +21,7 @@ export const subscriptionState = (state: string): { label: string; variant: Badg
         return known;
     }
 
-    return { label: state, variant: 'secondary' };
+    return { label: humanize(state), variant: 'secondary' };
 };
 
 const INTERVALS: Record<string, string> = { monthly: 'monthly', yearly: 'yearly' };
@@ -35,6 +36,3 @@ export const planLabel = (plan: AdminSubscriptionPlan): string => {
 
     return plan.name;
 };
-
-export const usd = (cents: number): string =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cents / 100);

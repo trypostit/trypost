@@ -14,10 +14,9 @@ import Github from '@thesvg/vue/github';
 import Google from '@thesvg/vue/google';
 import { computed, type Component } from 'vue';
 
-import AdminDetailList, {
-    type AdminDetailRow,
-} from '@/components/admin/AdminDetailList.vue';
-import AdminStatGrid, { type AdminStat } from '@/components/admin/AdminStatGrid.vue';
+import AdminDetailList from '@/components/admin/AdminDetailList.vue';
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import ChurnSignalChip from '@/components/admin/ChurnSignalChip.vue';
 import RiskLevelLabel from '@/components/admin/RiskLevelLabel.vue';
 import StripeCustomerLink from '@/components/admin/StripeCustomerLink.vue';
@@ -26,54 +25,42 @@ import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import date from '@/date';
 import { metricChange } from '@/lib/adminChange';
-import { usd } from '@/lib/adminSubscriptions';
-import { blank, filled } from '@/lib/helpers';
+import { dateTimeOrDash, formatUsd, humanize, NO_VALUE, orDash } from '@/lib/adminFormat';
+import { blank, filled, transform } from '@/lib/helpers';
 import { formatFullNumber, formatPercent } from '@/lib/utils';
 import type { Language } from '@/types';
-import type { AdminUserHealth, AdminUserOverview } from '@/types/admin';
+import type {
+    AdminDetailRow,
+    AdminStat,
+    AdminUserHealth,
+    AdminUserOverview,
+} from '@/types/admin';
 
 const props = defineProps<{
     data: AdminUserOverview;
 }>();
 
-const orDash = (value: string | null | undefined): string => {
-    if (filled(value)) {
-        return value;
+/** Whether the user signs in at all: a password, Google or GitHub. */
+const hasSignInMethod = computed((): boolean => {
+    if (props.data.sign_in.password) {
+        return true;
     }
 
-    return '—';
-};
-
-const when = (value: string | null): string => {
-    if (filled(value)) {
-        return date.formatDateTime(value);
+    if (props.data.sign_in.google) {
+        return true;
     }
 
-    return '—';
-};
-
-const humanize = (value: string | null): string => {
-    if (!filled(value)) {
-        return '—';
-    }
-
-    const words = value.replaceAll('_', ' ');
-
-    return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
-};
-
-const hasSignInMethod = computed(
-    (): boolean => props.data.sign_in.password || props.data.sign_in.google || props.data.sign_in.github,
-);
+    return props.data.sign_in.github;
+});
 
 const hasLastSession = computed(() => filled(props.data.last_seen.user_agent));
 
 const account = computed((): AdminDetailRow[] => [
     { key: 'sign-in', label: 'Signs in with' },
-    { key: 'verified', label: 'Email verified', value: when(props.data.sign_in.email_verified_at) },
-    { key: 'signup', label: 'Signed up', value: when(props.data.signup.at) },
+    { key: 'verified', label: 'Email verified', value: dateTimeOrDash(props.data.sign_in.email_verified_at) },
+    { key: 'signup', label: 'Signed up', value: dateTimeOrDash(props.data.signup.at) },
     { key: 'signup-ip', label: 'Signup IP', value: orDash(props.data.signup.ip) },
-    { key: 'last-seen', label: 'Last seen', value: when(props.data.last_seen.at) },
+    { key: 'last-seen', label: 'Last seen', value: dateTimeOrDash(props.data.last_seen.at) },
     { key: 'last-ip', label: 'Last IP', value: orDash(props.data.last_seen.ip) },
     { key: 'device', label: 'Last device' },
     { key: 'stripe', label: 'Stripe customer' },
@@ -112,7 +99,7 @@ const healthStats = (health: AdminUserHealth): AdminStat[] => {
         stats.push({
             key: 'health-mrr',
             label: 'MRR',
-            value: usd(health.risk.mrr_cents),
+            value: formatUsd(health.risk.mrr_cents),
             hint: 'At list price',
         });
     }
@@ -130,9 +117,9 @@ const lastPost = (value: string | null): string => {
 
 const lifecycle = computed((): AdminDetailRow[] => [
     { key: 'stage', label: 'Lifecycle stage', value: humanize(props.data.lifecycle.stage) },
-    { key: 'activated', label: 'Activated', value: when(props.data.lifecycle.activated_at) },
-    { key: 'first-paid', label: 'First paid', value: when(props.data.lifecycle.first_paid_at) },
-    { key: 'onboarding', label: 'Finished onboarding', value: when(props.data.lifecycle.onboarding_completed_at) },
+    { key: 'activated', label: 'Activated', value: dateTimeOrDash(props.data.lifecycle.activated_at) },
+    { key: 'first-paid', label: 'First paid', value: dateTimeOrDash(props.data.lifecycle.first_paid_at) },
+    { key: 'onboarding', label: 'Finished onboarding', value: dateTimeOrDash(props.data.lifecycle.onboarding_completed_at) },
 ]);
 
 const welcome = computed((): AdminDetailRow[] => [
@@ -144,20 +131,21 @@ const welcome = computed((): AdminDetailRow[] => [
 
 const goalsLabel = computed((): string => {
     if (blank(props.data.welcome.goals)) {
-        return '—';
+        return NO_VALUE;
     }
 
     return props.data.welcome.goals.map(humanize).join(', ');
 });
 
-const preferences = computed((): AdminDetailRow[] => [
-    { key: 'locale', label: 'Language', value: orDash(props.data.signup.locale) },
-    { key: 'timezone', label: 'Time zone', value: orDash(props.data.signup.timezone) },
-    { key: 'theme', label: 'Theme', value: humanize(props.data.preferences.theme ?? null) },
-    { key: 'time-format', label: 'Time format', value: orDash(props.data.preferences.time_format) },
-    { key: 'week', label: 'Week starts on', value: humanize(props.data.preferences.week_starts_on ?? null) },
-    { key: 'post-action', label: 'Default posting action', value: humanize(props.data.preferences.default_post_action ?? null) },
-]);
+/** Every preference shows through a slot below; the rows only give the labels. */
+const preferences: AdminDetailRow[] = [
+    { key: 'locale', label: 'Language' },
+    { key: 'timezone', label: 'Time zone' },
+    { key: 'theme', label: 'Theme' },
+    { key: 'time-format', label: 'Time format' },
+    { key: 'week', label: 'Week starts on' },
+    { key: 'post-action', label: 'Default posting action' },
+];
 
 const page = usePage();
 
@@ -165,11 +153,11 @@ const page = usePage();
 const language = computed((): Language | undefined => {
     const languages = page.props.languages as Language[] | undefined;
 
-    if (!filled(languages)) {
-        return undefined;
+    if (filled(languages)) {
+        return languages.find((option) => option.code === props.data.signup.locale);
     }
 
-    return languages.find((option) => option.code === props.data.signup.locale);
+    return undefined;
 });
 
 const THEME_ICONS: Record<string, Component> = {
@@ -178,9 +166,11 @@ const THEME_ICONS: Record<string, Component> = {
     system: IconDeviceDesktop,
 };
 
-const themeIcon = (theme: string | null | undefined): Component => {
-    if (filled(theme) && filled(THEME_ICONS[theme])) {
-        return THEME_ICONS[theme];
+const themeIcon = (theme: string | null): Component => {
+    const icon = transform(theme, (value) => THEME_ICONS[value]);
+
+    if (filled(icon)) {
+        return icon;
     }
 
     return IconDeviceDesktop;
@@ -189,10 +179,10 @@ const themeIcon = (theme: string | null | undefined): Component => {
 /** Each preference row's icon, as the app's preferences page draws it. */
 const preferenceIcons = computed((): { key: string; icon: Component; value: string }[] => [
     { key: 'timezone', icon: IconWorld, value: orDash(props.data.signup.timezone) },
-    { key: 'theme', icon: themeIcon(props.data.preferences.theme), value: humanize(props.data.preferences.theme ?? null) },
+    { key: 'theme', icon: themeIcon(props.data.preferences.theme), value: humanize(props.data.preferences.theme) },
     { key: 'time-format', icon: IconClock, value: orDash(props.data.preferences.time_format) },
-    { key: 'week', icon: IconCalendarWeek, value: humanize(props.data.preferences.week_starts_on ?? null) },
-    { key: 'post-action', icon: IconSend, value: humanize(props.data.preferences.default_post_action ?? null) },
+    { key: 'week', icon: IconCalendarWeek, value: humanize(props.data.preferences.week_starts_on) },
+    { key: 'post-action', icon: IconSend, value: humanize(props.data.preferences.default_post_action) },
 ]);
 
 const attribution = computed((): AdminDetailRow[] =>
@@ -304,12 +294,7 @@ const hasAttribution = computed(() => filled(attribution.value));
             description="Where the signup came from (UTM and ad click ids)."
         >
             <AdminDetailList v-if="hasAttribution" :rows="attribution" />
-            <p
-                v-else
-                class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"
-            >
-                No attribution recorded.
-            </p>
+            <AdminEmptyState v-else>No attribution recorded.</AdminEmptyState>
         </SettingsSection>
 
         <SettingsSection title="Preferences">

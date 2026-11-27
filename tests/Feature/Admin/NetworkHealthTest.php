@@ -6,18 +6,11 @@ use App\Actions\Admin\BuildChannelDistribution;
 use App\Actions\Admin\BuildNetworkHealth;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
-use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia;
-
-function postOnNetwork(SocialAccount $channel, string $state, CarbonImmutable $at): void
-{
-    $post = Post::factory()->forAccount($channel)->{$state}()->create();
-    Post::query()->whereKey($post->id)->toBase()->update(['publication_updated_at' => $at]);
-}
 
 test('counts channels by status and failure rates per network', function () {
     $now = CarbonImmutable::now('UTC');
@@ -25,10 +18,10 @@ test('counts channels by status and failure rates per network', function () {
     SocialAccount::factory()->create(['platform' => Platform::X, 'status' => Status::TokenExpired]);
     SocialAccount::factory()->create(['platform' => Platform::X, 'status' => Status::Disconnected]);
 
-    postOnNetwork($x, 'published', $now->subHour());
-    postOnNetwork($x, 'failed', $now->subHours(2));
-    postOnNetwork($x, 'failed', $now->subDays(3));
-    postOnNetwork($x, 'published', $now->subDays(9));
+    adminPostSentAt($x, $now->subHour(), 'published');
+    adminPostSentAt($x, $now->subHours(2), 'failed');
+    adminPostSentAt($x, $now->subDays(3), 'failed');
+    adminPostSentAt($x, $now->subDays(9), 'published');
 
     $x = collect(BuildNetworkHealth::execute())->firstWhere('platform', 'x');
 
@@ -41,8 +34,8 @@ test('counts channels by status and failure rates per network', function () {
 test('lists only the enabled networks, worst failure rate first', function () {
     config()->set('trypost.platforms.tiktok.enabled', false);
     $now = CarbonImmutable::now('UTC');
-    postOnNetwork(SocialAccount::factory()->create(['platform' => Platform::LinkedIn]), 'failed', $now->subHour());
-    postOnNetwork(SocialAccount::factory()->create(['platform' => Platform::X]), 'published', $now->subHour());
+    adminPostSentAt(SocialAccount::factory()->create(['platform' => Platform::LinkedIn]), $now->subHour(), 'failed');
+    adminPostSentAt(SocialAccount::factory()->create(['platform' => Platform::X]), $now->subHour(), 'published');
 
     $health = collect(BuildNetworkHealth::execute());
 
@@ -51,9 +44,7 @@ test('lists only the enabled networks, worst failure rate first', function () {
 });
 
 test('the admin networks page renders the health of every network', function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-
-    $this->actingAs(User::factory()->create(['email' => 'admin@trypost.test']))
+    $this->actingAs(backofficeAdmin())
         ->get(route('admin.networks.index'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page

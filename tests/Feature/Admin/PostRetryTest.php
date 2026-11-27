@@ -11,32 +11,29 @@ use App\Models\Activity;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
-use App\Models\Workspace;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $this->admin = User::factory()->create(['email' => 'admin@trypost.test']);
+    $this->admin = backofficeAdmin();
 });
 
-function failedPostOn(Platform $platform = Platform::X, array $attributes = []): Post
+function adminFailedPostOn(Platform $platform = Platform::X, array $attributes = []): Post
 {
-    $owner = User::factory()->create(['name' => 'Owner']);
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id, 'account_id' => $owner->account_id, 'name' => 'Acme']);
-    $channel = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => $platform]);
+    $owner = workspaceOwner(['name' => 'Owner'], ['name' => 'Acme']);
+    $channel = SocialAccount::factory()->create(['workspace_id' => $owner->current_workspace_id, 'platform' => $platform]);
 
     return Post::factory()->forAccount($channel)->failed()->create(['user_id' => $owner->id, ...$attributes]);
 }
 
 test('lists failed posts with their channel, workspace and error, newest first', function () {
-    $older = failedPostOn(Platform::X, ['error_message' => 'Older']);
+    $older = adminFailedPostOn(Platform::X, ['error_message' => 'Older']);
     $this->travel(1)->minute();
-    $newer = failedPostOn(Platform::LinkedIn, ['error_message' => 'Newer']);
+    $newer = adminFailedPostOn(Platform::LinkedIn, ['error_message' => 'Newer']);
     Post::query()->whereKey($newer->id)->toBase()->update(['publication_updated_at' => now()]);
-    failedPostOn(Platform::X)->forceFill(['status' => PostStatus::Published])->save();
+    adminFailedPostOn(Platform::X)->forceFill(['status' => PostStatus::Published])->save();
 
     $this->actingAs($this->admin)
         ->get(route('admin.posts.failed.index'))
@@ -54,10 +51,10 @@ test('lists failed posts with their channel, workspace and error, newest first',
 });
 
 test('filters failed posts by one or more networks, every way of connecting them', function () {
-    failedPostOn(Platform::X);
-    failedPostOn(Platform::LinkedIn);
-    failedPostOn(Platform::LinkedInPage);
-    failedPostOn(Platform::Threads);
+    adminFailedPostOn(Platform::X);
+    adminFailedPostOn(Platform::LinkedIn);
+    adminFailedPostOn(Platform::LinkedInPage);
+    adminFailedPostOn(Platform::Threads);
 
     $this->actingAs($this->admin)
         ->get(route('admin.posts.failed.index', ['networks' => ['linkedin', 'threads']]))
@@ -68,10 +65,10 @@ test('filters failed posts by one or more networks, every way of connecting them
 });
 
 test('filters failed posts by error category and counts each, an uncategorized failure as unknown', function () {
-    failedPostOn(Platform::X, ['error_context' => ['category' => 'rate_limit']]);
-    failedPostOn(Platform::X, ['error_context' => ['category' => 'rate_limit']]);
-    failedPostOn(Platform::X, ['error_context' => ['category' => 'unknown']]);
-    failedPostOn(Platform::X, ['error_context' => null]);
+    adminFailedPostOn(Platform::X, ['error_context' => ['category' => 'rate_limit']]);
+    adminFailedPostOn(Platform::X, ['error_context' => ['category' => 'rate_limit']]);
+    adminFailedPostOn(Platform::X, ['error_context' => ['category' => 'unknown']]);
+    adminFailedPostOn(Platform::X, ['error_context' => null]);
 
     $this->actingAs($this->admin)
         ->get(route('admin.posts.failed.index', ['category' => 'rate_limit']))
@@ -88,7 +85,7 @@ test('filters failed posts by error category and counts each, an uncategorized f
 });
 
 test('a failed post carries its content, how it was made and its channel status', function () {
-    $post = failedPostOn(Platform::X, ['content' => '<p>Hello <strong>world</strong></p>']);
+    $post = adminFailedPostOn(Platform::X, ['content' => '<p>Hello <strong>world</strong></p>']);
     $post->socialAccount->update(['status' => SocialAccountStatus::TokenExpired]);
 
     $this->actingAs($this->admin)
@@ -103,7 +100,7 @@ test('a failed post carries its content, how it was made and its channel status'
 
 test('an admin retries a failed post and it is recorded', function () {
     Queue::fake();
-    $post = failedPostOn();
+    $post = adminFailedPostOn();
 
     $this->actingAs($this->admin)
         ->post(route('admin.posts.retry.store', $post))
@@ -117,7 +114,7 @@ test('an admin retries a failed post and it is recorded', function () {
 
 test('a post that is no longer failed is not retried twice', function () {
     Queue::fake();
-    $post = failedPostOn();
+    $post = adminFailedPostOn();
 
     $this->actingAs($this->admin)->post(route('admin.posts.retry.store', $post));
     $this->actingAs($this->admin)
@@ -129,7 +126,7 @@ test('a post that is no longer failed is not retried twice', function () {
 
 test('an instagram post whose first comment may be live needs the admin to confirm', function () {
     Queue::fake();
-    $post = failedPostOn(Platform::Instagram, ['error_context' => [
+    $post = adminFailedPostOn(Platform::Instagram, ['error_context' => [
         PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => true,
         ThreadProgress::KEY => [['id' => 'ig-media-1', 'hash' => 'root-hash']],
     ]]);
@@ -149,8 +146,37 @@ test('an instagram post whose first comment may be live needs the admin to confi
 
 test('a user who is not an admin cannot list or retry', function () {
     $user = User::factory()->create();
-    $post = failedPostOn();
+    $post = adminFailedPostOn();
 
     $this->actingAs($user)->get(route('admin.posts.failed.index'))->assertForbidden();
     $this->actingAs($user)->post(route('admin.posts.retry.store', $post))->assertForbidden();
+});
+
+test('an instagram post whose first comment may be live while the post is not cannot be retried', function () {
+    Queue::fake();
+    $post = adminFailedPostOn(Platform::Instagram, ['error_context' => [
+        PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => true,
+    ]]);
+
+    $this->actingAs($this->admin)
+        ->post(route('admin.posts.retry.store', $post), ['instagram_comment_checked' => true])
+        ->assertSessionHasErrors(['post' => __('posts.errors.instagram.comment_unconfirmed')]);
+
+    Queue::assertNotPushed(PublishToSocialPlatform::class);
+    expect($post->fresh()->status)->toBe(PostStatus::Failed)
+        ->and(Activity::query()->inLog(LogName::Admin)->forSubject($post)->exists())->toBeFalse();
+});
+
+test('a post whose account owner is blocked is not retried', function () {
+    Queue::fake();
+    $post = adminFailedPostOn();
+    $post->user->forceFill(['blocked_at' => now(), 'blocked_reason' => 'Spam'])->save();
+
+    $this->actingAs($this->admin)
+        ->post(route('admin.posts.retry.store', $post))
+        ->assertSessionHasErrors(['post' => 'The account owner is blocked: unblock them to retry this post.']);
+
+    Queue::assertNotPushed(PublishToSocialPlatform::class);
+    expect($post->fresh()->status)->toBe(PostStatus::Failed)
+        ->and(Activity::query()->inLog(LogName::Admin)->forSubject($post)->exists())->toBeFalse();
 });

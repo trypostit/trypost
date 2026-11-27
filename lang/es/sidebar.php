@@ -19,7 +19,6 @@ return [
     ],
     'settings' => 'Configuración',
     'plans_billing' => 'Planes y facturación',
-    'backoffice' => 'Backoffice',
     'log_out' => 'Cerrar sesión',
     'help' => 'Ayuda',
     'language' => 'Idioma: :name',

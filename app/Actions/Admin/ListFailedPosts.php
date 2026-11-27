@@ -9,6 +9,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Models\Post;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class ListFailedPosts
 {
@@ -32,7 +33,8 @@ class ListFailedPosts
 
     /**
      * How many failed posts of the networks fall in each error category, the
-     * largest first. A failure recorded without a category counts as unknown.
+     * largest first, counted in SQL. A failure recorded without a category
+     * counts as unknown.
      *
      * @param  list<Platform>  $platforms  empty means every platform
      * @return array<string, int>
@@ -40,8 +42,11 @@ class ListFailedPosts
     public static function categoryCounts(array $platforms = []): array
     {
         return self::failed($platforms)
-            ->get(['posts.id', 'posts.error_context'])
-            ->countBy(fn (Post $post): string => ErrorCategory::tryFromContext($post->error_context)?->value ?? ErrorCategory::Unknown->value)
+            ->tallyBy(['posts.error_context->category as category'])
+            ->toBase()
+            ->get()
+            ->groupBy(fn (object $group): string => ErrorCategory::tryFrom((string) $group->category)?->value ?? ErrorCategory::Unknown->value)
+            ->map(fn (Collection $groups): int => (int) $groups->sum('total'))
             ->sortDesc()
             ->all();
     }

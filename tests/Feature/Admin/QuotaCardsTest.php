@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Actions\Admin\BuildQuotaCards;
 use App\Enums\Admin\QuotaSource;
-use App\Models\User;
 use App\Support\Admin\QuotaSnapshots;
 use App\Support\Admin\XPricing;
 use Inertia\Testing\AssertableInertia;
@@ -69,8 +68,7 @@ test('the x daily usage is cut to the chosen range', function () {
 });
 
 test('the quotas page shows 7, 30, 60 or 90 days of X, 30 by default', function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $this->actingAs(User::factory()->create(['email' => 'admin@trypost.test']));
+    $this->actingAs(backofficeAdmin());
 
     $this->get(route('admin.quotas.index'))
         ->assertInertia(fn (AssertableInertia $page) => $page
@@ -95,9 +93,7 @@ test('a source that is off reads as not configured', function () {
 });
 
 test('the admin quotas page renders both cards', function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-
-    $this->actingAs(User::factory()->create(['email' => 'admin@trypost.test']))
+    $this->actingAs(backofficeAdmin())
         ->get(route('admin.quotas.index'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page

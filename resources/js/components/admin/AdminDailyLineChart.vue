@@ -12,17 +12,15 @@ import {
     componentToString,
     numericTick,
 } from '@/components/ui/chart';
+import { DAILY_CHART_PADDING, useAdminDayAxis, valueAt } from '@/composables/admin/useAdminDayAxis';
 import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
-import date from '@/date';
+import { blank } from '@/lib/helpers';
+import { formatFullNumber, formatPercent } from '@/lib/utils';
 
 type ChartPoint = {
     index: number;
-    label: string;
     value: number;
 };
-
-/** One label every few days, so a long range stays readable. */
-const MAX_TICKS = 8;
 
 const props = defineProps<{
     /** Calendar days, `YYYY-MM-DD`, oldest first. */
@@ -36,12 +34,14 @@ const props = defineProps<{
     percent?: boolean;
 }>();
 
+const { ticks, formatDay } = useAdminDayAxis(() => props.days);
+
 const formatValue = (value: number): string => {
     if (props.percent) {
-        return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+        return formatPercent(value, 1);
     }
 
-    return value.toLocaleString();
+    return formatFullNumber(value);
 };
 
 const formatValueTick = numericTick((tick, index, ticks): string => {
@@ -57,15 +57,15 @@ const chartConfig = computed(
 );
 
 const chartData = computed<ChartPoint[]>(() =>
-    props.days.map((day, index) => ({
-        index,
-        label: date.formatMonthDay(day),
-        value: props.values[index] ?? 0,
-    })),
+    props.days.map((_, index) => ({ index, value: valueAt(props.values, index) })),
 );
 
-/** The axis starts near the lowest value, so a change of a few channels still shows. */
+/** The axis starts near the lowest value, so a change of a few channels still shows; no values give 0 to 1. */
 const yDomain = computed((): [number, number] => {
+    if (blank(props.values)) {
+        return [0, 1];
+    }
+
     const lowest = Math.min(...props.values);
     const highest = Math.max(...props.values);
     const margin = Math.max(1, Math.round((highest - lowest) * 0.1));
@@ -94,18 +94,6 @@ const areaHeight = (point: ChartPoint): number => point.value - yDomain.value[0]
 const xAccessor = (point: ChartPoint): number => point.index;
 const yAccessor = (point: ChartPoint): number => point.value;
 
-const formatDay = numericTick(
-    (tick): string => chartData.value[Math.round(tick)]?.label ?? '',
-);
-
-const ticks = computed((): number[] => {
-    const step = Math.max(1, Math.ceil(props.days.length / MAX_TICKS));
-
-    return props.days
-        .map((_, index) => index)
-        .filter((index) => index % step === 0);
-});
-
 const appContext = useChartAppContext();
 const tooltipTemplate = computed(() =>
     componentToString(
@@ -126,7 +114,7 @@ const tooltipTemplate = computed(() =>
             :data="chartData"
             :y-domain="yDomain"
             :svg-defs="svgDefs"
-            :padding="{ top: 14, right: 8, bottom: 8, left: 0 }"
+            :padding="DAILY_CHART_PADDING"
         >
             <VisArea
                 :x="xAccessor"

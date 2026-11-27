@@ -54,7 +54,7 @@ class BuildUserOverview
             ],
             'welcome' => [
                 'persona' => $user->persona?->value,
-                'goals' => array_values((array) $user->goals),
+                'goals' => collect($user->goals)->values()->all(),
                 'previous_software' => $user->previous_software?->value,
                 'referral_source' => $user->referral_source?->value,
             ],

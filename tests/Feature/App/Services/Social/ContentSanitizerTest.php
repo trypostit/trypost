@@ -410,3 +410,21 @@ test('telegram receives a typed less-than sign escaped for its html parser', fun
 test('content written by the former rich editor still loses its tags', function () {
     expect(app(ContentSanitizer::class)->sanitize('<p>Hello <strong>world</strong> &lt;3</p><p>Bye</p>', Platform::X))->toBe("Hello world <3\nBye");
 });
+
+test('containsXLink sees a scheme, a www. prefix or a bare host on a delegated TLD', function (string $text, bool $expected) {
+    expect((new ContentSanitizer)->containsXLink($text))->toBe($expected);
+})->with([
+    'scheme' => ['Read https://example.invalidtld/post', true],
+    'www prefix' => ['Visit www.example.invalidtld today', true],
+    'bare host on a TLD' => ['Read acme.com now', true],
+    'bare host on no TLD' => ['Built with Node.js', false],
+    'email address' => ['Write to team@acme.com', false],
+    'no link at all' => ['Just words here', false],
+]);
+
+test('containsXLink no longer sees a link the X sanitizer defused', function () {
+    $sanitizer = new ContentSanitizer;
+
+    expect($sanitizer->containsXLink($sanitizer->sanitize('Read https://acme.com/post', Platform::X)))->toBeFalse()
+        ->and($sanitizer->containsXLink($sanitizer->sanitize('Read https://acme.com/post', Platform::LinkedIn)))->toBeTrue();
+});

@@ -4,7 +4,7 @@ import { IconArrowRight } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import AdminBarList from '@/components/admin/AdminBarList.vue';
-import AdminStatGrid, { type AdminStat } from '@/components/admin/AdminStatGrid.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import ChurnSignalChip from '@/components/admin/ChurnSignalChip.vue';
 import RiskLevelLabel from '@/components/admin/RiskLevelLabel.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
@@ -17,12 +17,18 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import date from '@/date';
-import { usd } from '@/lib/adminSubscriptions';
+import { formatUsd } from '@/lib/adminFormat';
+import { customerName } from '@/lib/adminUsers';
 import { churnSignal } from '@/lib/churnRisk';
-import { filled } from '@/lib/helpers';
+import { filled, isNumber } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
 import { show as userShow } from '@/routes/admin/users';
-import type { AdminBarRow, AdminChurnRisk } from '@/types/admin';
+import type {
+    AdminBarRow,
+    AdminChurnRisk,
+    AdminRiskLevel,
+    AdminStat,
+} from '@/types/admin';
 
 type RiskRow = AdminChurnRisk['accounts'][number];
 const props = defineProps<{
@@ -52,7 +58,7 @@ const stats = computed((): AdminStat[] => [
     {
         key: 'churn-mrr',
         label: 'MRR at risk',
-        value: usd(props.churn.mrr_at_risk_cents),
+        value: formatUsd(props.churn.mrr_at_risk_cents),
         hint: 'At list price',
     },
 ]);
@@ -74,11 +80,19 @@ const postsClass = (row: RiskRow): string => {
     return 'text-foreground';
 };
 
-const levelsHint = computed((): string => {
-    const levels = props.churn.levels;
+const levelCount = (level: AdminRiskLevel): number => {
+    const count = props.churn.levels[level];
 
-    return `${formatFullNumber(levels.high ?? 0)} high, ${formatFullNumber(levels.medium ?? 0)} medium`;
-});
+    if (isNumber(count)) {
+        return count;
+    }
+
+    return 0;
+};
+
+const levelsHint = computed(
+    (): string => `${formatFullNumber(levelCount('high'))} high, ${formatFullNumber(levelCount('medium'))} medium`,
+);
 
 const signalRows = computed((): AdminBarRow[] =>
     Object.entries(props.churn.signals).map(([key, count]) => ({
@@ -91,13 +105,7 @@ const signalRows = computed((): AdminBarRow[] =>
 
 const hasAtRisk = computed(() => filled(props.churn.accounts));
 
-const nameOf = (row: RiskRow): string => {
-    if (filled(row.name)) {
-        return row.name;
-    }
-
-    return 'Deleted user';
-};
+const nameOf = (row: RiskRow): string => customerName(row.name);
 
 const profileUrl = (userId: string): string => userShow.url(userId);
 </script>
@@ -179,7 +187,7 @@ const profileUrl = (userId: string): string => userShow.url(userId);
                             <TableCell
                                 class="border-r-0 px-4 py-3 text-right align-top text-sm font-medium whitespace-nowrap text-foreground tabular-nums sm:px-5"
                             >
-                                {{ usd(row.mrr_cents) }}
+                                {{ formatUsd(row.mrr_cents) }}
                             </TableCell>
                         </TableRow>
                     </TableBody>

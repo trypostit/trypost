@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\RetryFailedPost;
 use App\Enums\Post\PublishStatus;
+use App\Enums\Post\RetryOutcome;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
@@ -24,7 +26,6 @@ use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -312,11 +313,7 @@ test('manual retry refuses an unconfirmed instagram comment after an interrupted
 
     $failed = $this->post->fresh();
     expect($failed->status)->toBe(PostStatus::Failed);
-    expect(Artisan::call('posts:retry', ['post' => $failed->id, '--no-interaction' => true]))->toBe(1);
-
-    $this->artisan('posts:retry', ['post' => $failed->id])
-        ->expectsConfirmation('Did you check Instagram and confirm the first comment is missing?', 'no')
-        ->assertFailed();
+    expect(app(RetryFailedPost::class)->execute($failed->fresh()))->toBe(RetryOutcome::NeedsInstagramConfirmation);
 
     expect($failed->fresh()->error_message)->toContain(__('posts.errors.instagram.comment_unconfirmed'))
         ->and($failed->fresh()->error_context)->toHaveKey(PublishCheckpoint::INSTAGRAM_COMMENT_PENDING, true);
@@ -351,9 +348,7 @@ test('manual retry refuses an unconfirmed instagram comment whose post was never
         'error_context' => [PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => true],
     ])->save();
 
-    $this->artisan('posts:retry', ['post' => $this->post->id])
-        ->expectsOutputToContain(__('posts.errors.instagram.comment_unconfirmed'))
-        ->assertFailed();
+    expect(app(RetryFailedPost::class)->execute($this->post->fresh(), instagramCommentChecked: true))->toBe(RetryOutcome::CommentUnconfirmed);
 
     expect($this->post->fresh()->status)->toBe(PostStatus::Failed);
     Queue::assertNotPushed(PublishToSocialPlatform::class);
@@ -388,13 +383,10 @@ test('manual retry uses the instagram comment checkpoint to choose the confirmat
     ])->save();
     Http::fake(['*/published-media/comments' => Http::response(['id' => 'first-comment'])]);
 
-    $confirmation = match ($commentAlreadyPublished) {
-        true => 'Queue a publish attempt for this post?',
-        false => 'Did you check Instagram and confirm the first comment is missing?',
-    };
-    $this->artisan('posts:retry', ['post' => $this->post->id])
-        ->expectsConfirmation($confirmation, 'yes')
-        ->assertSuccessful();
+    $retry = app(RetryFailedPost::class);
+
+    expect($retry->needsInstagramConfirmation($this->post))->toBe(! $commentAlreadyPublished)
+        ->and($retry->execute($this->post->fresh(), instagramCommentChecked: true))->toBe(RetryOutcome::Queued);
     Queue::pushed(PublishToSocialPlatform::class)->sole()->handle();
 
     $published = $this->post->fresh();
@@ -428,9 +420,7 @@ test('manual retry leaves a newer instagram checkpoint intact when the failure c
         }
     });
 
-    $this->artisan('posts:retry', ['post' => $this->post->id])
-        ->expectsConfirmation('Queue a publish attempt for this post?', 'yes')
-        ->assertFailed();
+    expect(app(RetryFailedPost::class)->execute($this->post->fresh()))->toBe(RetryOutcome::Changed);
 
     $post = $this->post->fresh();
     expect($post->status)->toBe(PostStatus::Failed)

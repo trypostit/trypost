@@ -25,4 +25,14 @@ class IndexUserRequest extends FormRequest
             'status' => ['nullable', Rule::enum(UserStatusFilter::class)],
         ];
     }
+
+    public function search(): ?string
+    {
+        return $this->validated('search');
+    }
+
+    public function status(): UserStatusFilter
+    {
+        return UserStatusFilter::tryFrom((string) $this->validated('status')) ?? UserStatusFilter::All;
+    }
 }

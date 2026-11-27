@@ -15,22 +15,14 @@ class UserInsightsController extends Controller
 {
     public function index(IndexUserInsightsRequest $request): Response
     {
-        $dates = $request->dates();
+        $range = $request->dateRange();
 
         return Inertia::render('admin/users/Insights', [
-            'usage' => BuildUsageInsights::execute($dates['start'], $dates['end'], $request->timezone()),
-            'churn' => BuildChurnRisk::execute($dates['start'], $dates['end'], $request->timezone()),
-            'range' => $dates,
+            'usage' => BuildUsageInsights::execute($range),
+            'churn' => BuildChurnRisk::execute($range),
             'ranges' => IndexUserInsightsRequest::RANGES,
-            'bounds' => [
-                'min' => IndexUserInsightsRequest::earliest($request->timezone())->toDateString(),
-                'max' => now($request->timezone())->toDateString(),
-            ],
-            'filters' => [
-                'range' => $request->range(),
-                'start' => $dates['start'],
-                'end' => $dates['end'],
-            ],
+            ...$request->rangeProps(),
+            'filters' => $request->rangeFilters(),
         ]);
     }
 }

@@ -16,7 +16,7 @@ import {
     IconMoon,
     IconPlus,
     IconSettings,
-    IconShieldLock,
+    IconLockSquareRounded,
     IconSparkles,
     IconSun,
     IconUsers,
@@ -349,8 +349,8 @@ const supportLinks = [
                 :href="adminDashboard.url()"
                 data-testid="sidebar-menu-backoffice"
             >
-                <IconShieldLock class="size-4" />
-                {{ $t('sidebar.backoffice') }}
+                <IconLockSquareRounded class="size-4" />
+                Admin
             </Link>
         </DropdownMenuItem>
     </DropdownMenuGroup>

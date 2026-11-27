@@ -2,17 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Models\User;
-use App\Models\Workspace;
-
 test('an admin views the app as a user and stops from the banner', function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $admin = User::factory()->create(['email' => 'admin@trypost.test']);
-    $user = User::factory()->create(['name' => 'Grace', 'email' => 'grace@example.test']);
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    connectAiTo($user->fresh());
+    $admin = backofficeAdmin();
+    $user = workspaceOwner(['name' => 'Grace', 'email' => 'grace@example.test']);
+    connectAiTo($user);
 
     $this->actingAs($admin);
 
@@ -28,18 +21,14 @@ test('an admin views the app as a user and stops from the banner', function () {
     $page->click('@impersonation-stop');
 
     waitFor($page, '@admin-user');
-    $page->assertPathIs("/admin/users/{$user->id}")
+    $page->assertPathIs(route('admin.users.show', $user, absolute: false))
         ->assertMissing('@impersonation-banner')
         ->assertNoJavaScriptErrors();
 });
 
 test('an admin viewing as a user without a plan can stop from the welcome steps', function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $admin = User::factory()->create(['email' => 'admin@trypost.test']);
-    $user = User::factory()->create(['name' => 'No Plan', 'email' => 'noplan@example.test']);
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
+    $admin = backofficeAdmin();
+    $user = workspaceOwner(['name' => 'No Plan', 'email' => 'noplan@example.test']);
 
     $this->actingAs($admin);
 
@@ -49,7 +38,7 @@ test('an admin viewing as a user without a plan can stop from the welcome steps'
     $page->click('@admin-impersonate-user');
 
     waitFor($page, '@impersonation-banner');
-    $page->assertPathBeginsWith('/welcome')
+    $page->assertPathBeginsWith(route('app.welcome', absolute: false))
         ->assertSeeIn('@impersonation-banner', 'noplan@example.test');
 
     $page->click('@impersonation-stop');

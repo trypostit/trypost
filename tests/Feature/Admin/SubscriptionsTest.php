@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Admin\Subscriptions\BuildSubscriptionChurn;
 use App\Actions\Admin\Subscriptions\BuildSubscriptionOverview;
+use App\Dto\Analytics\DateRange;
 use App\Enums\Plan\Slug;
 use App\Models\Offer;
 use App\Models\Plan;
@@ -11,50 +12,40 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Support\Admin\StripeNetMrr;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia;
+use Stripe\ApiRequestor;
 use Stripe\Subscription as StripeSubscription;
 
 beforeEach(function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $this->admin = User::factory()->create(['email' => 'admin@trypost.test']);
+    $this->admin = backofficeAdmin();
     $this->now = CarbonImmutable::now('UTC')->startOfDay()->addHours(12);
     $this->travelTo($this->now);
     Plan::query()->where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly', 'stripe_yearly_price_id' => 'price_socials_yearly']);
 });
 
-function subscriptionFor(string $name, array $attributes = []): Subscription
-{
-    $user = User::factory()->create(['name' => $name, 'email' => str($name)->slug().'@example.test']);
+afterEach(fn () => ApiRequestor::setHttpClient(null));
 
-    return $user->account->subscriptions()->create([
-        'type' => 'default',
-        'stripe_id' => 'sub_'.str()->random(8),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_socials_monthly',
-        'quantity' => 1,
-        ...$attributes,
-    ]);
-}
-
-function startedAt(Subscription $subscription, CarbonImmutable $at): void
+/** A subscription on the Socials monthly price of a new owner with that name. */
+function adminSubscriptionFor(string $name, array $attributes = []): Subscription
 {
-    Subscription::query()->whereKey($subscription->id)->toBase()->update(['created_at' => $at]);
+    $slug = str($name)->slug();
+    $user = User::factory()->create(['name' => $name, 'email' => "{$slug}@example.test"]);
+
+    return subscribeAccount($user->account, ['stripe_price' => 'price_socials_monthly', ...$attributes]);
 }
 
 test('counts subscriptions alive per day, new and canceled ones, churn and list-price MRR', function () {
-    $old = subscriptionFor('Old');
-    startedAt($old, $this->now->subDays(20));
-    $leaver = subscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2)]);
-    startedAt($leaver, $this->now->subDays(20));
-    $cancelling = subscriptionFor('Cancelling', ['ends_at' => $this->now->addDays(5)]);
-    startedAt($cancelling, $this->now->subDays(3));
-    subscriptionFor('Legacy', ['stripe_price' => 'price_gone', 'stripe_status' => 'past_due']);
-    subscriptionFor('Never paid', ['stripe_status' => 'incomplete']);
-    Cache::forever('admin:stripe-price-monthly:price_socials_monthly', 1900);
-    Cache::forever('admin:stripe-price-monthly:price_gone', 1200);
+    $old = adminSubscriptionFor('Old');
+    adminBackdateSubscription($old, $this->now->subDays(20));
+    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2)]);
+    adminBackdateSubscription($leaver, $this->now->subDays(20));
+    $cancelling = adminSubscriptionFor('Cancelling', ['ends_at' => $this->now->addDays(5)]);
+    adminBackdateSubscription($cancelling, $this->now->subDays(3));
+    adminSubscriptionFor('Legacy', ['stripe_price' => 'price_gone', 'stripe_status' => 'past_due']);
+    adminSubscriptionFor('Never paid', ['stripe_status' => 'incomplete']);
+    fakeStripeReads(['price_socials_monthly' => [1900, 'month'], 'price_gone' => [1200, 'month']]);
 
-    $overview = BuildSubscriptionOverview::execute($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC');
+    $overview = BuildSubscriptionOverview::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
 
     expect($overview['now'])->toMatchArray(['alive' => 3, 'active' => 1, 'past_due' => 1, 'cancelling' => 1])
         ->and($overview['period'])->toMatchArray(['new' => 2, 'canceled' => 1, 'alive_at_start' => 2, 'churn_rate' => 50.0])
@@ -68,22 +59,22 @@ test('counts subscriptions alive per day, new and canceled ones, churn and list-
 
 test('an offer counts its redemptions and the accounts still subscribed', function () {
     $offer = Offer::factory()->create(['slug' => 'fm1']);
-    $stayed = subscriptionFor('Stayed');
-    $left = subscriptionFor('Left', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
+    $stayed = adminSubscriptionFor('Stayed');
+    $left = adminSubscriptionFor('Left', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
     $stayed->owner->offers()->attach($offer->id, ['claimed_at' => $this->now, 'redeemed_at' => $this->now]);
     $left->owner->offers()->attach($offer->id, ['claimed_at' => $this->now, 'redeemed_at' => $this->now]);
 
-    $overview = BuildSubscriptionOverview::execute($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC');
+    $overview = BuildSubscriptionOverview::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
 
     expect($overview['offers'])->toBe([['slug' => 'fm1', 'redeemed' => 2, 'still_subscribed' => 1]]);
 });
 
 test('churn lists who left in the period, how long subscriptions lasted and retention by start month', function () {
-    $leaver = subscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2)]);
-    startedAt($leaver, $this->now->subDays(40));
-    subscriptionFor('Stayer');
+    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2)]);
+    adminBackdateSubscription($leaver, $this->now->subDays(40));
+    adminSubscriptionFor('Stayer');
 
-    $churn = BuildSubscriptionChurn::execute($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC');
+    $churn = BuildSubscriptionChurn::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
 
     expect($churn['recent'])->toHaveCount(1)
         ->and($churn['recent'][0])->toMatchArray(['user_name' => 'Leaver', 'lifetime_days' => 38])
@@ -92,14 +83,14 @@ test('churn lists who left in the period, how long subscriptions lasted and rete
 });
 
 test('retention counts accounts by their first month, and one cancelling at its period end as lost', function () {
-    $stayer = subscriptionFor('Stayer');
-    startedAt($stayer, $this->now->subDays(3));
-    subscriptionFor('Switcher', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
+    $stayer = adminSubscriptionFor('Stayer');
+    adminBackdateSubscription($stayer, $this->now->subDays(3));
+    adminSubscriptionFor('Switcher', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
     $switcher = User::query()->where('name', 'Switcher')->first()->account;
-    $switcher->subscriptions()->create(['type' => 'default', 'stripe_id' => 'sub_new', 'stripe_status' => 'active', 'stripe_price' => 'price_socials_yearly', 'quantity' => 1]);
-    subscriptionFor('Leaving', ['ends_at' => $this->now->addDays(4)]);
+    subscribeAccount($switcher, ['stripe_price' => 'price_socials_yearly']);
+    adminSubscriptionFor('Leaving', ['ends_at' => $this->now->addDays(4)]);
 
-    $churn = BuildSubscriptionChurn::execute($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC');
+    $churn = BuildSubscriptionChurn::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
     $cohorts = collect($churn['cohorts']);
 
     expect($cohorts->sum('started'))->toBe(3)
@@ -128,9 +119,9 @@ test('the MRR after coupons takes off the discounts still running, a yearly pric
 });
 
 test('the subscriptions table filters by where a subscription stands and searches its owner', function () {
-    subscriptionFor('Active Ann');
-    subscriptionFor('Cancelling Carl', ['ends_at' => $this->now->addDays(3)]);
-    subscriptionFor('Gone Gina', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
+    adminSubscriptionFor('Active Ann');
+    adminSubscriptionFor('Cancelling Carl', ['ends_at' => $this->now->addDays(3)]);
+    adminSubscriptionFor('Gone Gina', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
 
     $this->actingAs($this->admin)
         ->get(route('admin.billing.subscriptions.index', ['tab' => 'subscriptions', 'status' => 'cancelling']))
@@ -151,31 +142,32 @@ test('the subscriptions table filters by where a subscription stands and searche
         );
 });
 
-test('every subscription is in exactly one group, so the groups add up', function () {
-    subscriptionFor('Active Ann');
-    subscriptionFor('Late Leo', ['stripe_status' => 'past_due', 'ends_at' => $this->now->addDays(3)]);
-    subscriptionFor('Late Lia', ['stripe_status' => 'past_due']);
-    subscriptionFor('Gone Gina', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
+test('a subscription is in All and at most one other group; an unpaid one without an end is in All only', function () {
+    adminSubscriptionFor('Active Ann');
+    adminSubscriptionFor('Unpaid Uma', ['stripe_status' => 'unpaid']);
+    adminSubscriptionFor('Late Leo', ['stripe_status' => 'past_due', 'ends_at' => $this->now->addDays(3)]);
+    adminSubscriptionFor('Late Lia', ['stripe_status' => 'past_due']);
+    adminSubscriptionFor('Gone Gina', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
 
-    $now = BuildSubscriptionOverview::execute($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC')['now'];
+    $now = BuildSubscriptionOverview::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'))['now'];
 
-    expect($now)->toMatchArray(['alive' => 3, 'active' => 1, 'past_due' => 1, 'cancelling' => 1])
-        ->and($now['active'] + $now['past_due'] + $now['trialing'] + $now['cancelling'])->toBe($now['alive']);
+    expect($now)->toMatchArray(['alive' => 4, 'active' => 1, 'past_due' => 1, 'cancelling' => 1])
+        ->and($now['active'] + $now['past_due'] + $now['trialing'] + $now['cancelling'])->toBe($now['alive'] - 1);
 
     $this->actingAs($this->admin)
         ->get(route('admin.billing.subscriptions.index'))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('statusCounts', ['all' => 4, 'active' => 1, 'cancelling' => 1, 'past_due' => 1, 'trialing' => 0, 'canceled' => 1]),
+            ->where('statusCounts', ['all' => 5, 'active' => 1, 'cancelling' => 1, 'past_due' => 1, 'trialing' => 0, 'canceled' => 1]),
         );
 });
 
 test('churn sums up the period and draws the daily cancellations and the rolling rate', function () {
-    $leaver = subscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2)]);
-    startedAt($leaver, $this->now->subDays(40));
-    $stayer = subscriptionFor('Stayer');
-    startedAt($stayer, $this->now->subDays(40));
+    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2)]);
+    adminBackdateSubscription($leaver, $this->now->subDays(40));
+    $stayer = adminSubscriptionFor('Stayer');
+    adminBackdateSubscription($stayer, $this->now->subDays(40));
 
-    $churn = BuildSubscriptionChurn::execute($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC');
+    $churn = BuildSubscriptionChurn::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
 
     expect($churn['summary'])->toMatchArray(['canceled' => 1, 'churn_rate' => 50.0, 'average_lifetime_days' => 38])
         ->and(array_sum($churn['canceled_by_day']))->toBe(1)
@@ -189,13 +181,71 @@ test('a user who is not an admin cannot see subscriptions', function () {
 });
 
 test('the overview carries the period before, to compare with', function () {
-    $before = subscriptionFor('Before');
-    startedAt($before, $this->now->subDays(10));
-    $leftBefore = subscriptionFor('Left before', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(9)]);
-    startedAt($leftBefore, $this->now->subDays(20));
-    Cache::forever('admin:stripe-price-monthly:price_socials_monthly', 1900);
+    $before = adminSubscriptionFor('Before');
+    adminBackdateSubscription($before, $this->now->subDays(10));
+    $leftBefore = adminSubscriptionFor('Left before', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(9)]);
+    adminBackdateSubscription($leftBefore, $this->now->subDays(20));
+    fakeStripeReads(['price_socials_monthly' => [1900, 'month']]);
 
-    $previous = BuildSubscriptionOverview::execute($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC')['previous'];
+    $previous = BuildSubscriptionOverview::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'))['previous'];
 
     expect($previous)->toMatchArray(['new' => 1, 'canceled' => 1, 'churn_rate' => 100.0, 'mrr_cents' => 1900]);
+});
+
+test('the MRR after coupons takes a fixed amount off once per invoice, however many items it has', function () {
+    $now = CarbonImmutable::now('UTC');
+    $subscription = StripeSubscription::constructFrom([
+        'id' => 'sub_1',
+        'object' => 'subscription',
+        'items' => ['object' => 'list', 'data' => [
+            ['id' => 'si_1', 'object' => 'subscription_item', 'quantity' => 1, 'price' => ['id' => 'price_a', 'object' => 'price', 'unit_amount' => 1900, 'recurring' => ['interval' => 'month', 'interval_count' => 1]]],
+            ['id' => 'si_2', 'object' => 'subscription_item', 'quantity' => 2, 'price' => ['id' => 'price_b', 'object' => 'price', 'unit_amount' => 500, 'recurring' => ['interval' => 'month', 'interval_count' => 1]]],
+        ]],
+        'discounts' => [
+            ['id' => 'di_1', 'object' => 'discount', 'end' => null, 'coupon' => ['id' => 'TEN', 'object' => 'coupon', 'amount_off' => 1000]],
+        ],
+    ]);
+
+    $monthly = StripeNetMrr::monthly($subscription, $now);
+
+    expect(round($monthly['list'], 2))->toBe(2900.0)
+        ->and(round($monthly['net'], 2))->toBe(1900.0);
+});
+
+test('the MRR after coupons keeps a failed Stripe read a minute, so the page does not ask again at once', function () {
+    $stripe = fakeStripeReads(down: true);
+
+    expect(StripeNetMrr::read())->toHaveKey('error')
+        ->and(StripeNetMrr::read())->toHaveKey('error')
+        ->and($stripe->requests)->toBe(1);
+
+    $this->travel(StripeNetMrr::ERROR_CACHE_SECONDS + 1)->seconds();
+    StripeNetMrr::read();
+
+    expect($stripe->requests)->toBe(2);
+});
+
+test('the MRR after coupons reads every paying subscription from Stripe', function () {
+    $item = fn (int $amount): array => ['object' => 'list', 'data' => [
+        ['id' => "si_{$amount}", 'object' => 'subscription_item', 'quantity' => 1, 'price' => ['id' => "price_{$amount}", 'object' => 'price', 'unit_amount' => $amount, 'recurring' => ['interval' => 'month', 'interval_count' => 1]]],
+    ]];
+    fakeStripeReads(subscriptions: [
+        ['id' => 'sub_a', 'object' => 'subscription', 'status' => 'active', 'items' => $item(1900), 'discounts' => []],
+        ['id' => 'sub_p', 'object' => 'subscription', 'status' => 'past_due', 'items' => $item(9900), 'discounts' => [
+            ['id' => 'di_1', 'object' => 'discount', 'end' => null, 'coupon' => ['id' => 'HALF', 'object' => 'coupon', 'percent_off' => 50]],
+        ]],
+    ]);
+
+    expect(StripeNetMrr::read())->toMatchArray(['cents' => 6850, 'list_cents' => 11800, 'subscriptions' => 2, 'discounted' => 1]);
+});
+
+test('the overview counts a subscription on the day it started in the viewer\'s zone', function () {
+    $today = $this->now->startOfDay();
+    adminBackdateSubscription(adminSubscriptionFor('Night owl'), $today->addHour());
+
+    $saoPaulo = BuildSubscriptionOverview::execute(DateRange::fromDates($today->subDay()->toDateString(), $today->toDateString(), 'America/Sao_Paulo'));
+    $utc = BuildSubscriptionOverview::execute(DateRange::fromDates($today->subDay()->toDateString(), $today->toDateString(), 'UTC'));
+
+    expect($saoPaulo['new_by_day'])->toBe([1, 0])
+        ->and($utc['new_by_day'])->toBe([0, 1]);
 });

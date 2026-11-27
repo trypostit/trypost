@@ -3,13 +3,13 @@
 declare(strict_types=1);
 
 use App\Actions\Admin\BuildChannelGrowth;
+use App\Dto\Analytics\DateRange;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
-use App\Models\User;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia;
 
-test('counts the channels connected per UTC day and network', function () {
+test('counts the channels connected per day and network', function () {
     $today = CarbonImmutable::now('UTC')->startOfDay();
 
     SocialAccount::factory()->create(['platform' => Platform::LinkedIn, 'created_at' => $today->addHour()]);
@@ -17,7 +17,7 @@ test('counts the channels connected per UTC day and network', function () {
     SocialAccount::factory()->create(['platform' => Platform::X, 'created_at' => $today->subDay()->addHour()]);
     SocialAccount::factory()->create(['platform' => Platform::X, 'created_at' => $today->subDays(10)]);
 
-    $growth = BuildChannelGrowth::execute($today->subDays(6)->toDateString(), $today->toDateString(), 'UTC');
+    $growth = BuildChannelGrowth::execute(DateRange::fromDates($today->subDays(6)->toDateString(), $today->toDateString(), 'UTC'));
 
     expect($growth['days'])->toHaveCount(7)
         ->and($growth['new_in_range'])->toBe(3)
@@ -27,10 +27,19 @@ test('counts the channels connected per UTC day and network', function () {
         ->and($growth['total_by_day'])->toBe([1, 1, 1, 1, 1, 2, 4]);
 });
 
-test('the networks page takes the Insights range, 30 days by default', function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
+test('counts a channel on the day it was connected in the viewer\'s zone', function () {
+    $today = CarbonImmutable::now('UTC')->startOfDay();
+    SocialAccount::factory()->create(['platform' => Platform::X, 'created_at' => $today->addHour()]);
 
-    $this->actingAs(User::factory()->create(['email' => 'admin@trypost.test']))
+    $saoPaulo = BuildChannelGrowth::execute(DateRange::fromDates($today->subDay()->toDateString(), $today->toDateString(), 'America/Sao_Paulo'));
+    $utc = BuildChannelGrowth::execute(DateRange::fromDates($today->subDay()->toDateString(), $today->toDateString(), 'UTC'));
+
+    expect($saoPaulo['by_network']['x'])->toBe([1, 0])
+        ->and($utc['by_network']['x'])->toBe([0, 1]);
+});
+
+test('the networks page takes the Insights range, 30 days by default', function () {
+    $this->actingAs(backofficeAdmin())
         ->get(route('admin.networks.index'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page

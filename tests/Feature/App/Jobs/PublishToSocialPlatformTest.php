@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\RetryFailedPost;
 use App\Enums\GoogleBusiness\LocalPostState;
 use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\Notification\Type;
 use App\Enums\Post\PublishStatus as PlatformStatus;
+use App\Enums\Post\RetryOutcome;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
@@ -2546,9 +2548,7 @@ test('a mastodon thread that fails midway is visible and its retry never posts a
         ->and(collect(data_get($failed->error_context, 'thread_progress'))->pluck('id')->all())->toBe(['1', '2']);
 
     Bus::fake([PublishToSocialPlatform::class]);
-    $this->artisan('posts:retry', ['post' => $this->post->id])
-        ->expectsConfirmation('Queue a publish attempt for this post?', 'yes')
-        ->assertSuccessful();
+    expect(app(RetryFailedPost::class)->execute($this->post->fresh()))->toBe(RetryOutcome::Queued);
     (new PublishToSocialPlatform($target->fresh()))->handle();
 
     $published = $target->fresh();
@@ -2575,9 +2575,7 @@ test('a thread retry still reports live segments when replies are disabled', fun
 
     config(['trypost.platforms.mastodon.permissions.thread_replies.scopes' => ['write:replies']]);
     Bus::fake([PublishToSocialPlatform::class]);
-    $this->artisan('posts:retry', ['post' => $this->post->id])
-        ->expectsConfirmation('Queue a publish attempt for this post?', 'yes')
-        ->assertSuccessful();
+    expect(app(RetryFailedPost::class)->execute($this->post->fresh()))->toBe(RetryOutcome::Queued);
     (new PublishToSocialPlatform($target->fresh()))->handle();
 
     $failed = $target->fresh();

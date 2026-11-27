@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace App\Actions\Admin\Users;
 
 use App\Actions\Account\ResolveLifecycleStage;
+use App\Dto\Analytics\DateRange;
 use App\Enums\Account\LifecycleStage;
 use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Status;
 use App\Models\Account;
 use App\Models\SocialAccount;
 use App\Models\Subscription;
+use App\Support\Admin\PublishingCounts;
 use App\Support\Admin\StripePriceAmounts;
+use App\Support\Admin\SubscriptionPlans;
 use App\Support\Percent;
-use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class BuildChurnRisk
@@ -66,19 +69,19 @@ class BuildChurnRisk
      *
      * @return array<string, mixed>
      */
-    public static function execute(string $start, string $end, string $timezone): array
+    public static function execute(DateRange $range): array
     {
-        $first = CarbonImmutable::parse($start, $timezone)->startOfDay();
-        $last = CarbonImmutable::parse($end, $timezone)->endOfDay();
-        $length = (int) $first->diffInDays($last->startOfDay()) + 1;
+        $first = $range->startsAt();
+        $last = $range->endsAt();
+        $previous = $range->previous();
 
         $subscriptions = self::paidSubscriptions();
         $channels = self::channelHealth();
         $base = $subscriptions->keys();
 
         $sent = BuildUsageInsights::postsPerAccount($first, $last, PublishStatus::wentOutCases());
-        $previousSent = BuildUsageInsights::postsPerAccount($first->subDays($length), $first->subSecond(), PublishStatus::wentOutCases());
-        $failed = BuildUsageInsights::postsPerAccount($first, $last, [PublishStatus::Failed]);
+        $previousSent = BuildUsageInsights::postsPerAccount($previous->startsAt(), $previous->endsAt(), PublishStatus::wentOutCases());
+        $failed = BuildUsageInsights::postsPerAccount($first, $last, PublishingCounts::failedStatuses());
 
         $accounts = Account::query()
             ->whereIn('id', $base)
@@ -146,7 +149,7 @@ class BuildChurnRisk
 
         $settled = ($subscription?->created_at ?? $account->created_at)->lte(now()->subDays(self::SETTLING_DAYS));
 
-        if (in_array($stage, [LifecycleStage::AtRisk, LifecycleStage::Dormant], true)) {
+        if (collect([LifecycleStage::AtRisk, LifecycleStage::Dormant])->contains($stage)) {
             $signals[] = $stage->value;
         }
 
@@ -216,40 +219,41 @@ class BuildChurnRisk
     {
         return Subscription::query()
             ->where('type', Account::SUBSCRIPTION_NAME)
-            ->when(filled($accountId), fn ($query) => $query->where('account_id', $accountId))
-            ->whereIn('stripe_status', ['active', 'past_due'])
-            ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', now()))
+            ->when(filled($accountId), fn (Builder $query): Builder => $query->where('account_id', $accountId))
+            ->whereIn('stripe_status', SubscriptionPlans::PAYING_STATUSES)
+            ->where(fn (Builder $query): Builder => $query->whereNull('ends_at')->orWhere('ends_at', '>', now()))
             ->get(['id', 'account_id', 'stripe_status', 'stripe_price', 'quantity', 'ends_at', 'created_at'])
             ->keyBy('account_id');
     }
 
     /**
      * Each account's channels, and how many of them need reconnecting, or
-     * one account's only.
+     * one account's only, counted in SQL. Every page that counts an
+     * account's channels reads them here.
      *
      * @return Collection<string, array{total: int, broken: int}>
      */
     public static function channelHealth(?string $accountId = null): Collection
     {
         return SocialAccount::query()
-            ->withoutGlobalScopes()
             ->join('workspaces', 'workspaces.id', '=', 'social_accounts.workspace_id')
-            ->when(filled($accountId), fn ($query) => $query->where('workspaces.account_id', $accountId))
+            ->when(filled($accountId), fn (Builder $query): Builder => $query->where('workspaces.account_id', $accountId))
+            ->tallyBy(['workspaces.account_id', 'social_accounts.status'])
             ->toBase()
-            ->get(['workspaces.account_id', 'social_accounts.status'])
+            ->get()
             ->groupBy('account_id')
-            ->map(fn (Collection $rows): array => [
-                'total' => $rows->count(),
-                'broken' => $rows->whereIn('status', [Status::TokenExpired->value, Status::Disconnected->value])->count(),
+            ->map(fn (Collection $groups): array => [
+                'total' => (int) $groups->sum('total'),
+                'broken' => (int) $groups->whereIn('status', [Status::TokenExpired->value, Status::Disconnected->value])->sum('total'),
             ]);
     }
 
     private static function monthlyCents(?Subscription $subscription): int
     {
-        if ($subscription === null || blank($subscription->stripe_price)) {
+        if ($subscription === null) {
             return 0;
         }
 
-        return (int) round((StripePriceAmounts::monthlyCents($subscription->stripe_price) ?? 0.0) * max(1, (int) $subscription->quantity));
+        return (int) round(StripePriceAmounts::forSubscription($subscription) ?? 0.0);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Admin\Subscriptions;
 
+use App\Dto\Analytics\DateRange;
 use App\Models\Account;
 use App\Models\Subscription;
 use App\Support\Admin\StripePriceAmounts;
@@ -19,7 +20,7 @@ class BuildSubscriptionOverview
     public const int ROLLING_DAYS = 30;
 
     /**
-     * How the subscriptions are doing between two days of the viewer's zone: how many are
+     * How the subscriptions are doing over the range's days of the viewer's zone: how many are
      * alive at the end of each day (exact, since an ended subscription keeps
      * its row with `ends_at`), how many started and ended each day, where
      * they stand now, the churn of the period, the plans, the offers and the
@@ -27,33 +28,28 @@ class BuildSubscriptionOverview
      *
      * @return array<string, mixed>
      */
-    public static function execute(string $start, string $end, string $timezone): array
+    public static function execute(DateRange $range): array
     {
         $now = CarbonImmutable::now('UTC');
-        $first = CarbonImmutable::parse($start, $timezone)->startOfDay();
-        $last = CarbonImmutable::parse($end, $timezone)->endOfDay();
-        $days = collect(range(0, (int) $first->diffInDays($last->startOfDay())))
-            ->map(fn (int $offset): CarbonImmutable => $first->addDays($offset));
+        $first = $range->startsAt();
+        $last = $range->endsAt();
+        $previous = $range->previous();
+        $days = collect($range->calendarDays());
 
         $subscriptions = self::billable();
         $alive = $subscriptions->filter(fn (Subscription $subscription): bool => self::aliveAt($subscription, $now));
         $prices = SubscriptionPlans::byPrice();
         $aliveAtStart = $subscriptions->filter(fn (Subscription $subscription): bool => self::aliveAt($subscription, $first))->count();
         $ended = $subscriptions->filter(fn (Subscription $subscription): bool => $subscription->ends_at !== null && $subscription->ends_at->lte($now));
-        $canceled = $subscriptions->filter(fn (Subscription $subscription): bool => $subscription->ends_at !== null
-            && $subscription->ends_at->between($first, $last)
-            && $subscription->ends_at->lte($now));
+        $canceled = $ended->filter(fn (Subscription $subscription): bool => $subscription->ends_at->between($first, $last));
 
-        $length = (int) $first->diffInDays($last->startOfDay()) + 1;
-        $previousFirst = $first->subDays($length);
-        $previousLast = $first->subSecond();
         $previousCanceled = $subscriptions->filter(fn (Subscription $subscription): bool => $subscription->ends_at !== null
-            && $subscription->ends_at->between($previousFirst, $previousLast));
-        $aliveAtPreviousStart = $subscriptions->filter(fn (Subscription $subscription): bool => self::aliveAt($subscription, $previousFirst))->count();
+            && $subscription->ends_at->between($previous->startsAt(), $previous->endsAt()));
+        $aliveAtPreviousStart = $subscriptions->filter(fn (Subscription $subscription): bool => self::aliveAt($subscription, $previous->startsAt()))->count();
 
         return [
             'previous' => [
-                'new' => $subscriptions->filter(fn (Subscription $subscription): bool => $subscription->created_at->between($previousFirst, $previousLast))->count(),
+                'new' => $subscriptions->filter(fn (Subscription $subscription): bool => $subscription->created_at->between($previous->startsAt(), $previous->endsAt()))->count(),
                 'canceled' => $previousCanceled->count(),
                 'churn_rate' => Percent::of($previousCanceled->count(), $aliveAtPreviousStart),
                 'mrr_cents' => self::monthlyCents($subscriptions->filter(fn (Subscription $subscription): bool => self::paidAt($subscription, $first))),
@@ -71,13 +67,13 @@ class BuildSubscriptionOverview
                 'alive_at_start' => $aliveAtStart,
                 'churn_rate' => Percent::of($canceled->count(), $aliveAtStart),
             ],
-            'days' => $days->map(fn (CarbonImmutable $day): string => $day->toDateString())->all(),
-            'alive_by_day' => $days->map(fn (CarbonImmutable $day): int => $subscriptions
-                ->filter(fn (Subscription $subscription): bool => self::aliveAt($subscription, $day->endOfDay()))
+            'days' => $days->all(),
+            'alive_by_day' => $days->map(fn (string $day): int => $subscriptions
+                ->filter(fn (Subscription $subscription): bool => self::aliveAt($subscription, self::endOfDay($range, $day)))
                 ->count())->all(),
-            'new_by_day' => self::perDay($days, $subscriptions->map(fn (Subscription $subscription): string => $subscription->created_at->setTimezone($timezone)->toDateString())),
-            'canceled_by_day' => self::perDay($days, $canceled->map(fn (Subscription $subscription): string => $subscription->ends_at->setTimezone($timezone)->toDateString())),
-            'churn_rate_by_day' => $days->map(fn (CarbonImmutable $day): float => self::rollingChurn($subscriptions, $ended, $day->endOfDay()))->all(),
+            'new_by_day' => self::perDay($days, $subscriptions->map(fn (Subscription $subscription): string => $range->localDate($subscription->created_at))),
+            'canceled_by_day' => self::perDay($days, $canceled->map(fn (Subscription $subscription): string => $range->localDate($subscription->ends_at))),
+            'churn_rate_by_day' => $days->map(fn (string $day): float => self::rollingChurn($subscriptions, $ended, self::endOfDay($range, $day)))->all(),
             'plans' => $alive
                 ->groupBy(fn (Subscription $subscription): string => self::planKey($subscription, $prices))
                 ->map(fn (Collection $group): array => [
@@ -105,7 +101,7 @@ class BuildSubscriptionOverview
     {
         return Subscription::query()
             ->where('type', Account::SUBSCRIPTION_NAME)
-            ->whereNotIn('stripe_status', ['incomplete', 'incomplete_expired'])
+            ->whereNotIn('stripe_status', SubscriptionPlans::NEVER_BILLED_STATUSES)
             ->get(['id', 'account_id', 'stripe_status', 'stripe_price', 'quantity', 'trial_ends_at', 'ends_at', 'created_at']);
     }
 
@@ -150,15 +146,23 @@ class BuildSubscriptionOverview
     }
 
     /**
-     * @param  Collection<int, CarbonImmutable>  $days
+     * How many of the dates fall on each day.
+     *
+     * @param  Collection<int, string>  $days
      * @param  Collection<int, string>  $dates
      * @return list<int>
      */
-    private static function perDay(Collection $days, Collection $dates): array
+    public static function perDay(Collection $days, Collection $dates): array
     {
         $counts = $dates->countBy();
 
-        return $days->map(fn (CarbonImmutable $day): int => (int) $counts->get($day->toDateString(), 0))->values()->all();
+        return $days->map(fn (string $day): int => (int) $counts->get($day, 0))->values()->all();
+    }
+
+    /** The UTC instant a calendar day of the range ends in the viewer's zone. */
+    public static function endOfDay(DateRange $range, string $day): CarbonImmutable
+    {
+        return DateRange::fromDates($day, $day, $range->timezone)->endsAt();
     }
 
     /**
@@ -182,12 +186,11 @@ class BuildSubscriptionOverview
     private static function mrr(Collection $alive): array
     {
         $paying = $alive->whereIn('stripe_status', SubscriptionPlans::PAYING_STATUSES)->whereNotNull('stripe_price');
-        $amounts = $paying->pluck('stripe_price')->unique()
-            ->mapWithKeys(fn (string $price): array => [$price => StripePriceAmounts::monthlyCents($price)]);
-        $priced = $paying->filter(fn (Subscription $subscription): bool => $amounts->get($subscription->stripe_price) !== null);
+        $amounts = $paying->map(fn (Subscription $subscription): ?float => StripePriceAmounts::forSubscription($subscription));
+        $priced = $amounts->reject(fn (?float $amount): bool => $amount === null);
 
         return [
-            'cents' => (int) round($priced->sum(fn (Subscription $subscription): float => $amounts->get($subscription->stripe_price) * max(1, (int) $subscription->quantity))),
+            'cents' => (int) round($priced->sum()),
             'subscriptions' => $priced->count(),
             'unpriced' => $paying->count() - $priced->count(),
         ];
@@ -201,9 +204,7 @@ class BuildSubscriptionOverview
      */
     private static function monthlyCents(Collection $subscriptions): int
     {
-        return (int) round($subscriptions
-            ->filter(fn (Subscription $subscription): bool => filled($subscription->stripe_price))
-            ->sum(fn (Subscription $subscription): float => (StripePriceAmounts::monthlyCents($subscription->stripe_price) ?? 0.0) * max(1, (int) $subscription->quantity)));
+        return (int) round($subscriptions->sum(fn (Subscription $subscription): float => StripePriceAmounts::forSubscription($subscription) ?? 0.0));
     }
 
     /**

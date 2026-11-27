@@ -5,28 +5,16 @@ declare(strict_types=1);
 use App\Enums\Activity\LogName;
 use App\Models\Activity;
 use App\Models\User;
-use App\Models\Workspace;
 use App\Services\PostHogService;
 use App\Support\Admin\Impersonation;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $this->admin = User::factory()->create(['email' => 'admin@trypost.test', 'name' => 'Admin']);
+    $this->admin = backofficeAdmin(['name' => 'Admin']);
 });
 
-function impersonationTarget(array $attributes = []): User
-{
-    $user = User::factory()->create(['name' => 'Grace', ...$attributes]);
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-
-    return $user->fresh();
-}
-
 test('an admin impersonates a user and lands in the app as them', function () {
-    $user = impersonationTarget();
+    $user = workspaceOwner(['name' => 'Grace']);
 
     $this->actingAs($this->admin)
         ->post(route('admin.users.impersonate', $user))
@@ -39,7 +27,7 @@ test('an admin impersonates a user and lands in the app as them', function () {
 });
 
 test('the app shares who is being impersonated', function () {
-    $user = impersonationTarget(['email' => 'grace@example.test']);
+    $user = workspaceOwner(['name' => 'Grace', 'email' => 'grace@example.test']);
     $user->account->forceFill(['trial_ends_at' => now()->addWeek()])->save();
 
     $this->actingAs($user)
@@ -52,7 +40,7 @@ test('the app shares who is being impersonated', function () {
 });
 
 test('stopping signs the admin back in and returns to the user page', function () {
-    $user = impersonationTarget();
+    $user = workspaceOwner(['name' => 'Grace']);
 
     $this->actingAs($user)
         ->withSession([Impersonation::SESSION_KEY => $this->admin->id])
@@ -68,7 +56,7 @@ test('stopping signs the admin back in and returns to the user page', function (
 });
 
 test('stopping works after the admin left ADMIN_EMAILS and gives no admin access', function () {
-    $user = impersonationTarget();
+    $user = workspaceOwner(['name' => 'Grace']);
     config()->set('trypost.admin.emails', []);
 
     $this->actingAs($user)
@@ -81,7 +69,7 @@ test('stopping works after the admin left ADMIN_EMAILS and gives no admin access
 });
 
 test('an admin cannot impersonate another admin, a blocked user or themselves', function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test', 'other@trypost.test']);
+    config()->set('trypost.admin.emails', [$this->admin->email, 'other@trypost.test']);
     $otherAdmin = User::factory()->create(['email' => 'other@trypost.test']);
     $blocked = User::factory()->blocked()->create();
 
@@ -95,7 +83,7 @@ test('an admin cannot impersonate another admin, a blocked user or themselves', 
 });
 
 test('a user who is not impersonating cannot stop', function () {
-    $user = impersonationTarget();
+    $user = workspaceOwner(['name' => 'Grace']);
 
     $this->actingAs($user)
         ->delete(route('app.impersonation.destroy'))

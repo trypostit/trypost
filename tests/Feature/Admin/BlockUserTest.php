@@ -16,20 +16,10 @@ use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $this->admin = User::factory()->create(['email' => 'admin@trypost.test']);
+    $this->admin = backofficeAdmin();
 });
 
-function workspaceOwnedBy(User $user): Workspace
-{
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-
-    return $workspace;
-}
-
-function dueScheduledPost(Workspace $workspace, User $author): Post
+function adminDueScheduledPost(Workspace $workspace, User $author): Post
 {
     $channel = SocialAccount::factory()->create(['workspace_id' => $workspace->id]);
 
@@ -72,16 +62,16 @@ test('blocking needs a reason', function () {
 });
 
 test('an admin cannot block themselves or another admin', function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test', 'other@trypost.test']);
+    config()->set('trypost.admin.emails', [$this->admin->email, 'other@trypost.test']);
     $otherAdmin = User::factory()->create(['email' => 'other@trypost.test']);
 
     $this->actingAs($this->admin)
         ->post(route('admin.users.block.store', $this->admin), ['reason' => 'Test'])
-        ->assertSessionHasErrors('reason');
+        ->assertSessionHasErrors(['user' => 'A backoffice admin cannot be blocked.']);
 
     $this->actingAs($this->admin)
         ->post(route('admin.users.block.store', $otherAdmin), ['reason' => 'Test'])
-        ->assertSessionHasErrors('reason');
+        ->assertSessionHasErrors(['user' => 'A backoffice admin cannot be blocked.']);
 
     expect($this->admin->fresh()->isBlocked())->toBeFalse()
         ->and($otherAdmin->fresh()->isBlocked())->toBeFalse();
@@ -98,6 +88,31 @@ test('unblocking clears the block and records it', function () {
         ->and(Activity::query()->forSubject($user)->sole()->event)->toBe('user.unblocked');
 });
 
+test('blocking a blocked user keeps the first block and records nothing more', function () {
+    $user = User::factory()->blocked('First')->create();
+    $blockedAt = $user->blocked_at;
+
+    $this->actingAs($this->admin)
+        ->post(route('admin.users.block.store', $user), ['reason' => 'Second'])
+        ->assertRedirect();
+
+    $user->refresh();
+
+    expect($user->blocked_reason)->toBe('First')
+        ->and($user->blocked_at->equalTo($blockedAt))->toBeTrue()
+        ->and(Activity::query()->forSubject($user)->exists())->toBeFalse();
+});
+
+test('unblocking a user who is not blocked records nothing', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($this->admin)
+        ->delete(route('admin.users.block.destroy', $user))
+        ->assertRedirect();
+
+    expect(Activity::query()->forSubject($user)->exists())->toBeFalse();
+});
+
 test('a blocked user cannot log in with a password', function () {
     $user = User::factory()->blocked()->create(['password' => 'password']);
 
@@ -108,8 +123,7 @@ test('a blocked user cannot log in with a password', function () {
 });
 
 test('a signed-in user who gets blocked is logged out on the next request', function () {
-    $user = User::factory()->blocked()->create();
-    workspaceOwnedBy($user);
+    $user = workspaceOwner(['blocked_at' => now(), 'blocked_reason' => 'Abuse']);
 
     $this->actingAs($user)
         ->get(route('app.calendar'))
@@ -130,8 +144,8 @@ test('a blocked user cannot use their API key', function () {
 
 test('a blocked owner keeps their scheduled posts from publishing until unblocked', function () {
     Queue::fake();
-    $owner = User::factory()->create();
-    $post = dueScheduledPost(workspaceOwnedBy($owner), $owner);
+    $owner = workspaceOwner();
+    $post = adminDueScheduledPost($owner->currentWorkspace, $owner);
     $owner->forceFill(['blocked_at' => now()])->save();
 
     $this->artisan(ProcessScheduledPosts::class)->assertSuccessful();
@@ -147,11 +161,11 @@ test('a blocked owner keeps their scheduled posts from publishing until unblocke
 
 test('a blocked member does not stop the owner\'s posts', function () {
     Queue::fake();
-    $owner = User::factory()->create();
+    $owner = workspaceOwner();
     $member = User::factory()->blocked()->create();
-    $workspace = workspaceOwnedBy($owner);
+    $workspace = $owner->currentWorkspace;
     $workspace->members()->attach($member->id, membershipPivot('member'));
-    dueScheduledPost($workspace, $member);
+    adminDueScheduledPost($workspace, $member);
 
     $this->artisan(ProcessScheduledPosts::class)->assertSuccessful();
 

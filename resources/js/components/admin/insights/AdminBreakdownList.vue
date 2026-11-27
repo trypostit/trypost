@@ -46,14 +46,31 @@ const shareOf = (count: number): string => {
 const barWidth = (count: number): string => `${(count / most.value) * 100}%`;
 
 const artFor = (value: string): BreakdownArt | null => {
-    if (!filled(props.art)) {
-        return null;
+    if (filled(props.art)) {
+        return welcomeOptionArt(props.art, value);
     }
 
-    return welcomeOptionArt(props.art, value);
+    return null;
 };
 
-const items = computed(() => props.rows.map((row) => ({ ...row, art: artFor(row.value) })));
+/** A network's answer shows the network's logo instead of a tile. */
+const platformOf = (art: BreakdownArt | null): string | null => {
+    const platform = art?.platform;
+
+    if (filled(platform)) {
+        return platform;
+    }
+
+    return null;
+};
+
+const items = computed(() =>
+    props.rows.map((row) => {
+        const art = artFor(row.value);
+
+        return { ...row, art, platform: platformOf(art) };
+    }),
+);
 </script>
 
 <template>
@@ -79,11 +96,7 @@ const items = computed(() => props.rows.map((row) => ({ ...row, art: artFor(row.
                     :key="row.value"
                     class="flex items-center gap-3 px-4 py-1.5 sm:px-5"
                 >
-                    <PlatformLogo
-                        v-if="row.art?.platform"
-                        :platform="row.art.platform"
-                        size="xs"
-                    />
+                    <PlatformLogo v-if="row.platform" :platform="row.platform" size="xs" />
                     <span
                         v-else-if="row.art"
                         class="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-sm"
@@ -115,9 +128,8 @@ const items = computed(() => props.rows.map((row) => ({ ...row, art: artFor(row.
                     <span
                         v-if="showsSubscribed"
                         class="w-16 text-right text-sm text-muted-foreground tabular-nums"
-                        >{{
-                        formatPercent(row.subscribed_rate, 1)
-                    }}</span>
+                        >{{ formatPercent(row.subscribed_rate, 1) }}</span
+                    >
                 </li>
             </ul>
         </template>

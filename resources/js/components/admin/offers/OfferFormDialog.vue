@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { filled } from '@/lib/helpers';
+import { filled, isNumber } from '@/lib/helpers';
 import { store as offersStore, update as offersUpdate } from '@/routes/admin/billing/offers';
 import type { AdminOffer } from '@/types/admin';
 
@@ -85,36 +85,39 @@ const submitLabel = computed((): string => {
 });
 
 const asText = (value: number | null): string => {
-    if (value === null) {
-        return '';
+    if (isNumber(value)) {
+        return String(value);
     }
 
-    return String(value);
+    return '';
 };
 
 /** Fills the form from the offer being edited, or empties it for a new one, each time the dialog opens. */
-const fill = (): void => {
-    form.clearErrors();
+/** The form's values for the offer being edited, its empty fields as empty text. */
+const offerForm = (offer: AdminOffer): ReturnType<typeof blankForm> => ({
+    slug: offer.slug,
+    stripe_coupon_id: offer.stripe_coupon_id ?? '',
+    trial_days: asText(offer.trial_days),
+    starts_at: offer.starts_on ?? '',
+    ends_at: offer.ends_on ?? '',
+    max_redemptions: asText(offer.max_redemptions),
+    requires_card: offer.requires_card,
+    first_subscription_only: offer.first_subscription_only,
+    allow_promotion_codes: offer.allow_promotion_codes,
+    show_banner: offer.show_banner,
+});
 
-    if (!filled(props.offer)) {
-        form.defaults(blankForm());
-        form.reset();
-
-        return;
+const formValues = (): ReturnType<typeof blankForm> => {
+    if (filled(props.offer)) {
+        return offerForm(props.offer);
     }
 
-    form.defaults({
-        slug: props.offer.slug,
-        stripe_coupon_id: props.offer.stripe_coupon_id ?? '',
-        trial_days: asText(props.offer.trial_days),
-        starts_at: props.offer.starts_on ?? '',
-        ends_at: props.offer.ends_on ?? '',
-        max_redemptions: asText(props.offer.max_redemptions),
-        requires_card: props.offer.requires_card,
-        first_subscription_only: props.offer.first_subscription_only,
-        allow_promotion_codes: props.offer.allow_promotion_codes,
-        show_banner: props.offer.show_banner,
-    });
+    return blankForm();
+};
+
+const fill = (): void => {
+    form.clearErrors();
+    form.defaults(formValues());
     form.reset();
 };
 

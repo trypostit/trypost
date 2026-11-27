@@ -23,12 +23,12 @@ test('a user not in ADMIN_EMAILS is forbidden', function () {
         ->assertForbidden();
 });
 
-test('an admin with an unverified email is forbidden', function () {
-    $admin = User::factory()->unverified()->create(['email' => 'admin@trypost.test']);
+test('an admin in ADMIN_EMAILS gets in whether or not the email is verified', function () {
+    $admin = backofficeAdmin(['email_verified_at' => null]);
 
     $this->actingAs($admin)
         ->get(route('admin.dashboard'))
-        ->assertForbidden();
+        ->assertOk();
 });
 
 test('an admin in ADMIN_EMAILS sees the dashboard, whatever the case of the email', function () {
@@ -50,7 +50,7 @@ test('an empty ADMIN_EMAILS closes the admin to everyone', function () {
 });
 
 test('horizon follows ADMIN_EMAILS', function () {
-    $admin = User::factory()->create(['email' => 'admin@trypost.test']);
+    $admin = backofficeAdmin();
     $user = User::factory()->create(['email' => 'someone@trypost.test']);
 
     expect(Gate::forUser($admin)->allows('viewHorizon'))->toBeTrue()

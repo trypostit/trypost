@@ -14,6 +14,7 @@ use App\Http\Resources\Admin\AdminSubscriptionResource;
 use App\Models\Subscription;
 use App\Support\Admin\StripeNetMrr;
 use App\Support\Admin\SubscriptionPlans;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,34 +22,37 @@ class SubscriptionController extends Controller
 {
     public function index(IndexSubscriptionRequest $request): Response
     {
-        $dates = $request->dates();
-        $prices = SubscriptionPlans::byPrice();
-        $subscriptions = ListSubscriptions::execute($request->status(), $request->search())
-            ->paginate((int) config('app.pagination.default'));
+        $range = $request->dateRange();
 
         return Inertia::render('admin/billing/subscriptions/Index', [
-            'overview' => fn () => BuildSubscriptionOverview::execute($dates['start'], $dates['end'], $request->timezone()),
+            'overview' => fn (): array => BuildSubscriptionOverview::execute($range),
             'netMrr' => Inertia::defer(fn (): ?array => StripeNetMrr::read()),
-            'churn' => fn () => BuildSubscriptionChurn::execute($dates['start'], $dates['end'], $request->timezone()),
-            'subscriptions' => Inertia::scroll(fn () => AdminSubscriptionResource::collection(
-                $subscriptions->through(fn (Subscription $subscription) => new AdminSubscriptionResource($subscription, $prices)),
-            )),
-            'statusCounts' => collect(SubscriptionStatusFilter::cases())
-                ->mapWithKeys(fn (SubscriptionStatusFilter $status): array => [$status->value => ListSubscriptions::execute($status, $request->search())->count()])
-                ->all(),
-            'range' => $dates,
+            'churn' => fn (): array => BuildSubscriptionChurn::execute($range),
+            'subscriptions' => Inertia::scroll(fn () => $this->subscriptions($request)),
+            'statusCounts' => fn (): array => SubscriptionStatusFilter::counts(
+                ListSubscriptions::execute(SubscriptionStatusFilter::All, $request->search())
+                    ->withOnly([])
+                    ->get(['stripe_status', 'ends_at']),
+                now('UTC'),
+            ),
             'ranges' => IndexSubscriptionRequest::RANGES,
-            'bounds' => [
-                'min' => IndexSubscriptionRequest::earliest($request->timezone())->toDateString(),
-                'max' => now($request->timezone())->toDateString(),
-            ],
+            ...$request->rangeProps(),
             'filters' => [
-                'range' => $request->range(),
-                'start' => $dates['start'],
-                'end' => $dates['end'],
+                ...$request->rangeFilters(),
                 'status' => $request->status()->value,
                 'search' => $request->search() ?? '',
             ],
         ]);
+    }
+
+    private function subscriptions(IndexSubscriptionRequest $request): AnonymousResourceCollection
+    {
+        $prices = SubscriptionPlans::byPrice();
+
+        return AdminSubscriptionResource::collection(
+            ListSubscriptions::execute($request->status(), $request->search())
+                ->paginate((int) config('app.pagination.default'))
+                ->through(fn (Subscription $subscription) => new AdminSubscriptionResource($subscription, $prices)),
+        );
     }
 }

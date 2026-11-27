@@ -18,6 +18,9 @@ enum RetryOutcome: string
     /** The post is live but its first comment may be too: someone must check Instagram first. */
     case NeedsInstagramConfirmation = 'needs_instagram_confirmation';
 
+    /** The owner of the post's account is blocked: their posts wait until they are unblocked. */
+    case OwnerBlocked = 'owner_blocked';
+
     /** The post changed while the retry was being prepared; nothing was queued. */
     case Changed = 'changed';
 }

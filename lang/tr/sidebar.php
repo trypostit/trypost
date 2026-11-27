@@ -19,7 +19,6 @@ return [
     ],
     'settings' => 'Ayarlar',
     'plans_billing' => 'Planlar ve faturalandırma',
-    'backoffice' => 'Yönetim paneli',
     'log_out' => 'Çıkış yap',
     'help' => 'Yardım',
     'language' => 'Dil: :name',

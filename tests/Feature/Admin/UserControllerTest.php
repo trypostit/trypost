@@ -6,8 +6,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
-    config()->set('trypost.admin.emails', ['admin@trypost.test']);
-    $this->admin = User::factory()->create(['email' => 'admin@trypost.test', 'name' => 'Admin']);
+    $this->admin = backofficeAdmin(['name' => 'Admin']);
 });
 
 test('lists users newest first', function () {

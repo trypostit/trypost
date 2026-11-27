@@ -21,21 +21,21 @@ beforeEach(function () {
     config()->set('trypost.admin.quotas.x', ['enabled' => true, 'bearer_token' => 'x-bearer']);
 });
 
-function xUsageDay(): string
+function adminXUsageDay(): string
 {
     return now('UTC')->subDay()->toDateString();
 }
 
-function xGrantExpiry(): string
+function adminXGrantExpiry(): string
 {
     return now('UTC')->addMonthNoOverflow()->startOfDay()->format('Y-m-d\\TH:i:s\\Z');
 }
 
-function fakeXUsage(): void
+function adminFakeXUsage(): void
 {
-    $usageDay = xUsageDay();
+    $usageDay = adminXUsageDay();
     $day = "{$usageDay}T00:00:00.000Z";
-    $expiry = xGrantExpiry();
+    $expiry = adminXGrantExpiry();
     $api = config('trypost.platforms.x.api');
 
     Http::fake([
@@ -65,7 +65,7 @@ function fakeXUsage(): void
 }
 
 test('writes a youtube snapshot summed per quota metric since midnight Pacific', function () {
-    fakeXUsage();
+    adminFakeXUsage();
     $this->travelTo(CarbonImmutable::now('UTC')->startOfDay()->addHours(15));
     $requests = [];
 
@@ -97,7 +97,7 @@ test('writes a youtube snapshot summed per quota metric since midnight Pacific',
 
 test('writes an x snapshot with every field of the credits and usage endpoints', function () {
     config()->set('trypost.admin.quotas.youtube.enabled', false);
-    fakeXUsage();
+    adminFakeXUsage();
 
     $this->artisan(SyncPlatformQuotas::class)->assertSuccessful();
 
@@ -107,15 +107,15 @@ test('writes an x snapshot with every field of the credits and usage endpoints',
         'total_balance' => 42.5,
         'prepaid_balance' => 40.0,
         'free_balance' => 2.5,
-        'free_grants' => [['amount' => 2.5, 'expires_at' => xGrantExpiry()]],
+        'free_grants' => [['amount' => 2.5, 'expires_at' => adminXGrantExpiry()]],
     ])
         ->and(data_get($snapshot, 'data.usage'))->toBe([
             'project_id' => '1234567890',
             'project_usage' => 1200,
             'project_cap' => 3000000,
             'cap_reset_day' => 12,
-            'daily_project_usage' => [['date' => xUsageDay(), 'usage' => 700]],
-            'daily_client_app_usage' => [['client_app_id' => '30232015', 'usage' => [['date' => xUsageDay(), 'usage' => 700]]]],
+            'daily_project_usage' => [['date' => adminXUsageDay(), 'usage' => 700]],
+            'daily_client_app_usage' => [['client_app_id' => '30232015', 'usage' => [['date' => adminXUsageDay(), 'usage' => 700]]]],
         ]);
 
     Http::assertSent(fn ($request): bool => str_contains($request->url(), 'usage/tweets')
@@ -155,7 +155,7 @@ test('skips a source that is off or has no credentials', function () {
 });
 
 test('keeps going when one source fails and keeps the last good snapshot', function () {
-    fakeXUsage();
+    adminFakeXUsage();
     QuotaSnapshots::put(QuotaSource::YouTube, ['quotas' => [], 'since' => 'before']);
 
     $this->partialMock(YouTubeQuotaReader::class, fn ($mock) => $mock

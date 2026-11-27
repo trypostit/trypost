@@ -30,13 +30,16 @@ final class PublishingCounts
     }
 
     /**
-     * @param  Collection<int, array{failed: bool}>  $posts
+     * The counts of rows tallied by publication status: each row holds a
+     * status and how many posts had it.
+     *
+     * @param  Collection<int, array{publish_status: string, total: int}>  $tallies
      * @return array{published: int, failed: int, failure_rate: float}
      */
-    public static function of(Collection $posts): array
+    public static function of(Collection $tallies): array
     {
-        $failed = $posts->where('failed', true)->count();
-        $total = $posts->count();
+        $failed = (int) $tallies->filter(fn (array $tally): bool => self::isFailed((string) data_get($tally, 'publish_status')))->sum('total');
+        $total = (int) $tallies->sum('total');
 
         return [
             'published' => $total - $failed,
@@ -46,9 +49,12 @@ final class PublishingCounts
     }
 
     /**
+     * What the backoffice calls failed everywhere: the network refused the
+     * post, or rejected it in review.
+     *
      * @return list<PublishStatus>
      */
-    private static function failedStatuses(): array
+    public static function failedStatuses(): array
     {
         return [PublishStatus::Failed, PublishStatus::Rejected];
     }

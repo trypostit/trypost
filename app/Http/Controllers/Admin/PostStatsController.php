@@ -15,20 +15,12 @@ class PostStatsController extends Controller
 {
     public function index(PostStatsRequest $request): Response
     {
-        $dates = $request->dates();
-
         return Inertia::render('admin/posts/Index', [
-            'stats' => BuildPublishingStats::execute($dates['start'], $dates['end'], $request->timezone(), $request->platforms()),
+            'stats' => BuildPublishingStats::execute($request->dateRange(), $request->platforms()),
             'networks' => AdminNetworks::options(),
-            'range' => $dates,
-            'bounds' => [
-                'min' => PostStatsRequest::earliest($request->timezone())->toDateString(),
-                'max' => now($request->timezone())->toDateString(),
-            ],
+            ...$request->rangeProps(),
             'filters' => [
-                'range' => $request->range(),
-                'start' => $dates['start'],
-                'end' => $dates['end'],
+                ...$request->rangeFilters(),
                 'networks' => $request->networks(),
             ],
         ]);

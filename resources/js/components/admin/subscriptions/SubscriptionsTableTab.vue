@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { InfiniteScroll, Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import { Badge } from '@/components/ui/badge';
 import {
     Table,
@@ -12,27 +14,19 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import date from '@/date';
+import { NO_VALUE } from '@/lib/adminFormat';
 import { planLabel, subscriptionState } from '@/lib/adminSubscriptions';
+import { billingUrl, customerName } from '@/lib/adminUsers';
 import { blank, filled } from '@/lib/helpers';
-import { show as userShow } from '@/routes/admin/users';
 import type { AdminSubscription, ScrollPage } from '@/types/admin';
 
 const props = defineProps<{
     subscriptions: ScrollPage<AdminSubscription>;
 }>();
 
-const isEmpty = (): boolean => blank(props.subscriptions.data);
+const hasNoResults = computed(() => blank(props.subscriptions.data));
 
-const userName = (subscription: AdminSubscription): string => {
-    if (filled(subscription.user_name)) {
-        return subscription.user_name;
-    }
-
-    return 'Deleted user';
-};
-
-const billingUrl = (userId: string): string =>
-    userShow.url(userId, { query: { tab: 'billing' } });
+const userName = (subscription: AdminSubscription): string => customerName(subscription.user_name);
 
 const planDetail = (subscription: AdminSubscription): string => {
     if (subscription.quantity > 1) {
@@ -47,7 +41,7 @@ const started = (subscription: AdminSubscription): string => {
         return date.formatDate(subscription.started_at);
     }
 
-    return '—';
+    return NO_VALUE;
 };
 
 /** When it ends, or when its trial does; an open-ended subscription renews. */
@@ -56,7 +50,11 @@ const until = (subscription: AdminSubscription): string => {
         return `Ends ${date.formatDate(subscription.ends_at)}`;
     }
 
-    if (subscription.state === 'trialing' && filled(subscription.trial_ends_at)) {
+    if (subscription.state !== 'trialing') {
+        return 'Renews';
+    }
+
+    if (filled(subscription.trial_ends_at)) {
         return `Trial ends ${date.formatDate(subscription.trial_ends_at)}`;
     }
 
@@ -65,13 +63,9 @@ const until = (subscription: AdminSubscription): string => {
 </script>
 
 <template>
-    <p
-        v-if="isEmpty()"
-        class="rounded-xl border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground"
-        data-testid="admin-subscriptions-empty"
-    >
+    <AdminEmptyState v-if="hasNoResults" variant="page" test-id="admin-subscriptions-empty">
         No subscriptions match.
-    </p>
+    </AdminEmptyState>
 
     <div v-else class="overflow-hidden rounded-xl border border-border bg-card">
         <InfiniteScroll data="subscriptions" items-element="#admin-subscriptions-body" preserve-url>

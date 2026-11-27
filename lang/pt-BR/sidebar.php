@@ -19,7 +19,6 @@ return [
     ],
     'settings' => 'Configurações',
     'plans_billing' => 'Planos e cobrança',
-    'backoffice' => 'Backoffice',
     'log_out' => 'Sair',
     'help' => 'Ajuda',
     'language' => 'Idioma: :name',

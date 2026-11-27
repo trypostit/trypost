@@ -26,7 +26,6 @@ class IndexQuotaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'network' => ['nullable', Rule::in(['x', 'youtube'])],
             'range' => ['nullable', Rule::in(self::RANGES)],
         ];
     }

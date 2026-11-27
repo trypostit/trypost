@@ -27,8 +27,8 @@ class SaveOffer
         $timezone = (string) $admin->timezone;
         $attributes = [
             ...collect($data)->except(['slug', 'starts_at', 'ends_at'])->all(),
-            'starts_at' => CarbonImmutable::parse($data['starts_at'], $timezone)->startOfDay()->utc(),
-            'ends_at' => transform($data['ends_at'], fn (string $day): CarbonImmutable => CarbonImmutable::parse($day, $timezone)->endOfDay()->utc()),
+            'starts_at' => CarbonImmutable::parse(data_get($data, 'starts_at'), $timezone)->startOfDay()->utc(),
+            'ends_at' => transform(data_get($data, 'ends_at'), fn (string $day): CarbonImmutable => CarbonImmutable::parse($day, $timezone)->endOfDay()->utc()),
         ];
 
         if ($offer === null) {

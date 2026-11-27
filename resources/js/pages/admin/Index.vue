@@ -8,9 +8,7 @@ import {
 } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import AdminStatGrid, {
-    type AdminStat,
-} from '@/components/admin/AdminStatGrid.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import PublishingBarChart from '@/components/admin/PublishingBarChart.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
@@ -22,7 +20,10 @@ import { index as networksIndex } from '@/routes/admin/networks';
 import { index as postsIndex } from '@/routes/admin/posts';
 import { index as failedIndex } from '@/routes/admin/posts/failed';
 import { index as quotasIndex } from '@/routes/admin/quotas';
-import type { AdminDashboard } from '@/types/admin';
+import type {
+    AdminDashboard,
+    AdminStat,
+} from '@/types/admin';
 
 type FailingNetwork = AdminDashboard['attention']['networks'][number];
 type QuotaAlert = AdminDashboard['attention']['quotas'][number];
@@ -105,7 +106,6 @@ const queue = computed((): AdminStat[] => [
     },
 ]);
 
-
 const channels = computed((): AdminStat[] => [
     {
         key: 'channels-total',
@@ -131,7 +131,7 @@ const channels = computed((): AdminStat[] => [
 </script>
 
 <template>
-    <Head title="Backoffice" />
+    <Head title="Admin" />
 
     <AdminLayout
         title="Dashboard"
@@ -252,7 +252,6 @@ const channels = computed((): AdminStat[] => [
                 </template>
                 <PublishingBarChart :days="dashboard.publishing.days" />
             </AnalyticsSection>
-
 
             <AnalyticsSection title="Channels" flush>
                 <template #actions>

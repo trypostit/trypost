@@ -20,24 +20,27 @@ import AdminDailyBarChart, {
     type AdminChartSeries,
 } from '@/components/admin/AdminDailyBarChart.vue';
 import AdminFunnelChart from '@/components/admin/AdminFunnelChart.vue';
-import AdminStatGrid, {
-    type AdminChange,
-    type AdminStat,
-} from '@/components/admin/AdminStatGrid.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import AdminBreakdownList, {
     type BreakdownArt,
 } from '@/components/admin/insights/AdminBreakdownList.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
+import { valueAt } from '@/composables/admin/useAdminDayAxis';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { metricChange } from '@/lib/adminChange';
-import { usd } from '@/lib/adminSubscriptions';
+import { formatUsd, NO_VALUE } from '@/lib/adminFormat';
 import { accountColor } from '@/lib/analyticsColors';
+import { isNumber } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
 import { goalArt, personaArt, softwareArt, type WelcomeOptionArt } from '@/lib/welcomeOptions';
 import { index as insightsIndex } from '@/routes/admin/billing/insights';
-import type { AdminSignupInsights } from '@/types/admin';
+import type {
+    AdminChange,
+    AdminSignupInsights,
+    AdminStat,
+} from '@/types/admin';
 import type { AnalyticsFilters, AnalyticsRangePreset, DateRange } from '@/types/analytics';
 
 /** Logos sit on a white tile, like the Welcome software step, so dark marks stay readable in dark mode. */
@@ -86,8 +89,8 @@ const subtitle = computed((): string => date.formatDayMonthYearRange(props.range
 
 /** A median wait, in the unit it reads best in. */
 const duration = (minutes: number | null): string => {
-    if (minutes === null) {
-        return '—';
+    if (!isNumber(minutes)) {
+        return NO_VALUE;
     }
 
     if (minutes < 60) {
@@ -106,7 +109,11 @@ const durationChange = computed((): AdminChange | null => {
     const current = props.insights.totals.minutes_to_subscribe;
     const past = props.insights.previous.minutes_to_subscribe;
 
-    if (current === null || past === null) {
+    if (!isNumber(current)) {
+        return null;
+    }
+
+    if (!isNumber(past)) {
         return null;
     }
 
@@ -131,7 +138,7 @@ const summary = computed((): AdminStat[] => [
     {
         key: 'insights-mrr',
         label: 'New MRR',
-        value: usd(props.insights.totals.new_mrr_cents),
+        value: formatUsd(props.insights.totals.new_mrr_cents),
         hint: 'Their first subscriptions, at list price',
         change: metricChange(props.insights.totals.new_mrr_cents, props.insights.previous.new_mrr_cents),
     },
@@ -143,6 +150,8 @@ const summary = computed((): AdminStat[] => [
         change: durationChange.value,
     },
 ]);
+
+const subscribedOn = (index: number): number => valueAt(props.insights.subscribed_by_day, index);
 
 /** Each day's signups, the ones that subscribed stacked on the ones that did not, so the bar is the day's signups. */
 const signupSeries = computed((): AdminChartSeries[] => [
@@ -156,23 +165,27 @@ const signupSeries = computed((): AdminChartSeries[] => [
         key: 'not-subscribed',
         label: 'Did not subscribe',
         color: 'var(--chart-4)',
-        values: props.insights.signups_by_day.map((count, index) => count - (props.insights.subscribed_by_day[index] ?? 0)),
+        values: props.insights.signups_by_day.map((count, index) => count - subscribedOn(index)),
         details: (index) => [
             {
                 label: 'Conversion',
-                value: formatPercent(
-                    percentOf(props.insights.subscribed_by_day[index] ?? 0, props.insights.signups_by_day[index] ?? 0),
-                    1,
-                ),
+                value: formatPercent(percentOf(subscribedOn(index), valueAt(props.insights.signups_by_day, index)), 1),
             },
         ],
     },
 ]);
 
-
-
 const answeredOf = (answered: number): string =>
     `${formatFullNumber(answered)} of ${formatFullNumber(props.insights.totals.signups)} answered · subscribed is the share of each answer`;
+
+const signupsSubtitle = computed((): string => `${subtitle.value} · against the period before`);
+
+const goalsSubtitle = computed((): string => `${answeredOf(props.insights.answered.goals)}; one can pick several`);
+
+const referralsSubtitle = computed(
+    (): string =>
+        `${formatFullNumber(props.insights.answered.referral_source)} answered; asked inside the app, so everyone who answered has access`,
+);
 </script>
 
 <template>
@@ -190,7 +203,7 @@ const answeredOf = (answered: number): string =>
         </template>
 
         <div class="flex flex-col gap-6" data-testid="admin-insights">
-            <AnalyticsSection title="Signups" :subtitle="`${subtitle} · against the period before`" flush>
+            <AnalyticsSection title="Signups" :subtitle="signupsSubtitle" flush>
                 <AdminStatGrid :stats="summary" />
                 <div class="border-t border-border px-4 py-4 sm:px-5">
                     <AdminDailyBarChart
@@ -204,7 +217,7 @@ const answeredOf = (answered: number): string =>
 
             <AnalyticsSection
                 title="Funnel"
-                :subtitle="`Everyone who signed up in the period, and how far they went · each pill is the share of the step before that did not go on`"
+                subtitle="Everyone who signed up in the period, and how far they went · each pill is the share of the step before that did not go on"
                 flush
             >
                 <div class="border-t border-border px-4 py-5 sm:px-5">
@@ -231,7 +244,7 @@ const answeredOf = (answered: number): string =>
                 />
                 <AdminBreakdownList
                     title="What they want"
-                    :subtitle="`${answeredOf(insights.answered.goals)}; one can pick several`"
+                    :subtitle="goalsSubtitle"
                     :rows="insights.goals"
                     :answered="insights.answered.goals"
                     :art="goalArt"
@@ -247,7 +260,7 @@ const answeredOf = (answered: number): string =>
                 />
                 <AdminBreakdownList
                     title="How they found us"
-                    :subtitle="`${formatFullNumber(insights.answered.referral_source)} answered; asked inside the app, so everyone who answered has access`"
+                    :subtitle="referralsSubtitle"
                     :rows="insights.referral_sources"
                     :answered="insights.answered.referral_source"
                     :art="REFERRAL_ART"

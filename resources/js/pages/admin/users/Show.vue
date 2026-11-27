@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { IconEye, IconLock, IconLockOpen } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import AdminStatGrid, { type AdminStat } from '@/components/admin/AdminStatGrid.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import BlockUserDialog from '@/components/admin/BlockUserDialog.vue';
 import UserActivityTab from '@/components/admin/user/UserActivityTab.vue';
 import UserBillingTab from '@/components/admin/user/UserBillingTab.vue';
@@ -12,13 +12,16 @@ import UserOverviewTab from '@/components/admin/user/UserOverviewTab.vue';
 import UserPostsTab from '@/components/admin/user/UserPostsTab.vue';
 import UserWorkspacesTab from '@/components/admin/user/UserWorkspacesTab.vue';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { filled } from '@/lib/helpers';
 import { impersonate, show as userShow } from '@/routes/admin/users';
 import { destroy as blockDestroy } from '@/routes/admin/users/block';
 import type {
+    AdminStat,
     AdminUser,
     AdminUserActivityData,
     AdminUserBillingData,
@@ -26,6 +29,7 @@ import type {
     AdminUserOverview,
     AdminUserPostsData,
     AdminUserTab,
+    AdminUserTabData,
     AdminUserWorkspacesData,
 } from '@/types/admin';
 
@@ -38,43 +42,74 @@ const ALL_TABS: { value: AdminUserTab; label: string }[] = [
     { value: 'activity', label: 'Activity' },
 ];
 
-const props = defineProps<{
-    user: AdminUser;
-    tab: AdminUserTab;
-    data: unknown;
-}>();
+const props = defineProps<{ user: AdminUser } & AdminUserTabData>();
 
-const page = usePage();
-
-
-
-const userTab = (value: unknown): AdminUserTab =>
-    ALL_TABS.find((tab) => tab.value === value)?.value ?? 'overview';
-
-/** The open tab is read from the URL, like the Billing tabs. */
-const activeTab = ref<AdminUserTab>(
-    userTab(new URL(page.url, window.location.origin).searchParams.get('tab')),
-);
-
-const selectTab = (value: string | number): void => {
-    activeTab.value = userTab(value);
-
+/** Picking a tab asks the server for that tab's data only. */
+const loadTab = (tab: AdminUserTab): void => {
     router.get(
         userShow.url(props.user.id),
-        { tab: activeTab.value },
+        { tab },
         { preserveScroll: true, preserveState: true, replace: true, only: ['tab', 'data'] },
     );
 };
 
-/** The open tab's data, once the server sent it for that tab. */
-const isLoaded = (tab: AdminUserTab): boolean => props.tab === tab && activeTab.value === tab;
+const { tab: activeTab, selectTab } = useUrlTab({
+    tabs: ALL_TABS.map((tab) => tab.value),
+    initial: props.tab,
+    onSelect: loadTab,
+});
 
-const overview = computed(() => props.data as AdminUserOverview);
-const workspaces = computed(() => props.data as AdminUserWorkspacesData);
-const posts = computed(() => props.data as AdminUserPostsData);
-const integrations = computed(() => props.data as AdminUserIntegrationsData);
-const billing = computed(() => props.data as AdminUserBillingData);
-const activity = computed(() => props.data as AdminUserActivityData);
+/** The tab picked while the server has not sent its data yet. */
+const isLoading = computed(() => activeTab.value !== props.tab);
+
+/** Each tab's data, once the server sent it for the open tab. */
+const overview = computed((): AdminUserOverview | null => {
+    if (props.tab === 'overview') {
+        return props.data;
+    }
+
+    return null;
+});
+
+const workspaces = computed((): AdminUserWorkspacesData | null => {
+    if (props.tab === 'workspaces') {
+        return props.data;
+    }
+
+    return null;
+});
+
+const posts = computed((): AdminUserPostsData | null => {
+    if (props.tab === 'posts') {
+        return props.data;
+    }
+
+    return null;
+});
+
+const integrations = computed((): AdminUserIntegrationsData | null => {
+    if (props.tab === 'integrations') {
+        return props.data;
+    }
+
+    return null;
+});
+
+const billing = computed((): AdminUserBillingData | null => {
+    if (props.tab === 'billing') {
+        return props.data;
+    }
+
+    return null;
+});
+
+const activity = computed((): AdminUserActivityData | null => {
+    if (props.tab === 'activity') {
+        return props.data;
+    }
+
+    return null;
+});
 
 const isBlocked = computed(() => filled(props.user.blocked_at));
 const canAct = computed(() => !props.user.is_backoffice_admin);
@@ -96,23 +131,17 @@ const planLabel = computed((): string => {
 });
 
 /** Who the user is at a glance: their plan, their role, when they joined and their email. */
-const facts = computed((): AdminStat[] => {
-    const stats: AdminStat[] = [];
-
-    stats.push(
-        { key: 'user-plan', label: 'Plan', value: planLabel.value, hint: accessLabel.value },
-        { key: 'user-role', label: 'Role', value: roleLabel.value, hint: 'In the account' },
-        {
-            key: 'user-signed-up',
-            label: 'Signed up',
-            value: date.formatDayMonthYear(props.user.created_at),
-            hint: date.diffForHumans(props.user.created_at),
-        },
-        { key: 'user-email', label: 'Email', value: emailLabel.value },
-    );
-
-    return stats;
-});
+const facts = computed((): AdminStat[] => [
+    { key: 'user-plan', label: 'Plan', value: planLabel.value, hint: accessLabel.value },
+    { key: 'user-role', label: 'Role', value: roleLabel.value, hint: 'In the account' },
+    {
+        key: 'user-signed-up',
+        label: 'Signed up',
+        value: date.formatDayMonthYear(props.user.created_at),
+        hint: date.diffForHumans(props.user.created_at),
+    },
+    { key: 'user-email', label: 'Email', value: emailLabel.value },
+]);
 
 const accessLabel = computed((): string => {
     if (props.user.has_app_access) {
@@ -256,12 +285,24 @@ const unblock = (): void => {
                 </TabsList>
             </Tabs>
 
-            <UserOverviewTab v-if="isLoaded('overview')" :data="overview" />
-            <UserWorkspacesTab v-if="isLoaded('workspaces')" :data="workspaces" />
-            <UserPostsTab v-if="isLoaded('posts')" :data="posts" />
-            <UserIntegrationsTab v-if="isLoaded('integrations')" :data="integrations" />
-            <UserBillingTab v-if="isLoaded('billing')" :data="billing" />
-            <UserActivityTab v-if="isLoaded('activity')" :data="activity" :user-name="user.name" />
+            <div
+                v-if="isLoading"
+                class="flex flex-col gap-4"
+                aria-busy="true"
+                data-testid="admin-user-tab-loading"
+            >
+                <Skeleton class="h-28 w-full rounded-xl" />
+                <Skeleton class="h-48 w-full rounded-xl" />
+                <Skeleton class="h-48 w-full rounded-xl" />
+            </div>
+            <template v-else>
+                <UserOverviewTab v-if="overview" :data="overview" />
+                <UserWorkspacesTab v-if="workspaces" :data="workspaces" />
+                <UserPostsTab v-if="posts" :data="posts" />
+                <UserIntegrationsTab v-if="integrations" :data="integrations" />
+                <UserBillingTab v-if="billing" :data="billing" />
+                <UserActivityTab v-if="activity" :data="activity" :user-name="user.name" />
+            </template>
         </div>
     </AdminLayout>
 

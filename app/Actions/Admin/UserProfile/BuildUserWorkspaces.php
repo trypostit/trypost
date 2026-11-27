@@ -9,6 +9,8 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\ChannelPermissions;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class BuildUserWorkspaces
 {
@@ -27,10 +29,10 @@ class BuildUserWorkspaces
             ->orderBy('name')
             ->get();
 
-        $channels = $workspaces->flatMap(fn (Workspace $workspace) => $workspace->socialAccounts);
+        $channels = $workspaces->flatMap(fn (Workspace $workspace): Collection => $workspace->socialAccounts);
 
         $pendingInvites = Invite::query()
-            ->whereHas('account', fn ($account) => $account->where('owner_id', $user->id))
+            ->whereHas('account', fn (Builder $account): Builder => $account->where('owner_id', $user->id))
             ->whereNull('accepted_at')
             ->latest()
             ->get(['id', 'email', 'is_admin', 'created_at']);

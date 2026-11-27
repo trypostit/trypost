@@ -141,15 +141,11 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
-     * May open the backoffice and Horizon: a verified account whose email is
-     * in `ADMIN_EMAILS`. Not the workspace admin (`user_workspace.is_admin`).
+     * May open the backoffice and Horizon: an account whose email is in
+     * `ADMIN_EMAILS`. Not the workspace admin (`user_workspace.is_admin`).
      */
     public function isBackofficeAdmin(): bool
     {
-        if (blank($this->email_verified_at)) {
-            return false;
-        }
-
         return collect(config()->array('trypost.admin.emails'))->contains(Str::lower($this->email));
     }
 

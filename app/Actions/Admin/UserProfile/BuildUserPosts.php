@@ -5,9 +5,15 @@ declare(strict_types=1);
 namespace App\Actions\Admin\UserProfile;
 
 use App\Enums\Post\Status as PostStatus;
+use App\Models\Idea;
 use App\Models\Post;
+use App\Models\PostTemplate;
+use App\Models\Repurpose;
+use App\Models\RssFeed;
 use App\Models\User;
-use App\Models\Workspace;
+use App\Models\WorkspaceLabel;
+use App\Models\WorkspaceSignature;
+use Illuminate\Support\Collection;
 
 class BuildUserPosts
 {
@@ -15,7 +21,7 @@ class BuildUserPosts
 
     /**
      * What the workspaces the user is in publish, whoever wrote it: posts by
-     * network and status (imported posts left out), the latest failures, and
+     * network and status (imported posts left out, counted in SQL), the latest failures, and
      * what those workspaces hold (labels, signatures, templates, ideas,
      * repurposes, feeds).
      *
@@ -25,11 +31,17 @@ class BuildUserPosts
     {
         $workspaceIds = $user->workspaces()->pluck('workspaces.id');
 
-        $posts = Post::query()
+        $groups = Post::query()
             ->createdInTryPost()
             ->whereIn('posts.workspace_id', $workspaceIds)
+            ->tallyBy(['posts.platform', 'posts.status'])
             ->toBase()
-            ->get(['posts.platform', 'posts.status']);
+            ->get()
+            ->map(fn (object $group): array => [
+                'platform' => (string) ($group->platform ?? 'none'),
+                'status' => (string) $group->status,
+                'total' => (int) $group->total,
+            ]);
 
         $recentFailures = Post::query()
             ->createdInTryPost()
@@ -41,11 +53,11 @@ class BuildUserPosts
             ->get();
 
         return [
-            'total' => $posts->count(),
-            'by_status' => self::statusCounts($posts),
-            'by_network' => $posts
-                ->groupBy(fn (object $post): string => (string) ($post->platform ?? 'none'))
-                ->map(fn ($networkPosts, string $platform): array => ['platform' => $platform, 'total' => $networkPosts->count(), ...self::statusCounts($networkPosts)])
+            'total' => (int) $groups->sum('total'),
+            'by_status' => self::statusCounts($groups),
+            'by_network' => $groups
+                ->groupBy('platform')
+                ->map(fn (Collection $networkGroups, string $platform): array => ['platform' => $platform, 'total' => (int) $networkGroups->sum('total'), ...self::statusCounts($networkGroups)])
                 ->sortByDesc('total')
                 ->values()
                 ->all(),
@@ -58,34 +70,26 @@ class BuildUserPosts
                 'failed_at' => $post->updated_at?->toIso8601String(),
             ])->values()->all(),
             'content' => [
-                'labels' => self::countIn('workspace_labels', $workspaceIds),
-                'signatures' => self::countIn('workspace_signatures', $workspaceIds),
-                'templates' => self::countIn('post_templates', $workspaceIds),
-                'ideas' => self::countIn('ideas', $workspaceIds),
-                'repurposes' => self::countIn('repurposes', $workspaceIds),
-                'rss_feeds' => self::countIn('rss_feeds', $workspaceIds),
+                'labels' => WorkspaceLabel::query()->whereIn('workspace_id', $workspaceIds)->count(),
+                'signatures' => WorkspaceSignature::query()->whereIn('workspace_id', $workspaceIds)->count(),
+                'templates' => PostTemplate::query()->whereIn('workspace_id', $workspaceIds)->count(),
+                'ideas' => Idea::query()->whereIn('workspace_id', $workspaceIds)->count(),
+                'repurposes' => Repurpose::query()->whereIn('workspace_id', $workspaceIds)->count(),
+                'rss_feeds' => RssFeed::query()->whereIn('workspace_id', $workspaceIds)->count(),
             ],
         ];
     }
 
     /**
-     * @param  iterable<int, object>  $posts
+     * @param  Collection<int, array{platform: string, status: string, total: int}>  $groups
      * @return array<string, int>
      */
-    private static function statusCounts(iterable $posts): array
+    private static function statusCounts(Collection $groups): array
     {
-        $counts = collect($posts)->countBy(fn (object $post): string => (string) $post->status);
+        $counts = $groups->groupBy('status')->map(fn (Collection $statusGroups): int => (int) $statusGroups->sum('total'));
 
         return collect(PostStatus::cases())
             ->mapWithKeys(fn (PostStatus $status): array => [$status->value => (int) $counts->get($status->value, 0)])
             ->all();
-    }
-
-    /**
-     * @param  iterable<int, string>  $workspaceIds
-     */
-    private static function countIn(string $table, iterable $workspaceIds): int
-    {
-        return Workspace::query()->getConnection()->table($table)->whereIn('workspace_id', collect($workspaceIds)->all())->count();
     }
 }

@@ -7,6 +7,7 @@ namespace App\Actions\Admin\Subscriptions;
 use App\Enums\Admin\SubscriptionStatusFilter;
 use App\Models\Account;
 use App\Models\Subscription;
+use App\Support\Admin\SubscriptionPlans;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListSubscriptions
@@ -21,7 +22,7 @@ class ListSubscriptions
     {
         return Subscription::query()
             ->where('type', Account::SUBSCRIPTION_NAME)
-            ->whereNotIn('stripe_status', ['incomplete', 'incomplete_expired'])
+            ->whereNotIn('stripe_status', SubscriptionPlans::NEVER_BILLED_STATUSES)
             ->with(['owner.owner', 'owner.offers'])
             ->when($search, fn (Builder $query, string $term) => $query->whereHas('owner.owner', fn (Builder $owner) => $owner
                 ->where(fn (Builder $match) => $match->whereLike('name', "%{$term}%")->orWhereLike('email', "%{$term}%"))))

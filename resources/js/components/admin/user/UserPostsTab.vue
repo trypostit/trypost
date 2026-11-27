@@ -2,20 +2,21 @@
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
-import AdminSortableTable, {
-    type AdminTableColumn,
-} from '@/components/admin/AdminSortableTable.vue';
-import AdminStatGrid, {
-    type AdminStat,
-} from '@/components/admin/AdminStatGrid.vue';
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
+import AdminSortableTable from '@/components/admin/AdminSortableTable.vue';
+import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import date from '@/date';
-import { filled } from '@/lib/helpers';
+import { dateTimeOrDash, joinFilled } from '@/lib/adminFormat';
+import { filled, isNumber } from '@/lib/helpers';
 import { formatFullNumber } from '@/lib/utils';
 import { index as failedPostsIndex } from '@/routes/admin/posts/failed';
-import type { AdminUserPostsData } from '@/types/admin';
+import type {
+    AdminStat,
+    AdminTableColumn,
+    AdminUserPostsData,
+} from '@/types/admin';
 
 const props = defineProps<{
     data: AdminUserPostsData;
@@ -39,12 +40,23 @@ const CONTENT_LABELS: Record<string, string> = {
     rss_feeds: 'RSS feeds',
 };
 
+/** A count the server left out reads 0. */
+const countIn = (counts: Record<string, number>, key: string): number => {
+    const count = counts[key];
+
+    if (isNumber(count)) {
+        return count;
+    }
+
+    return 0;
+};
+
 const statusStats = computed((): AdminStat[] => [
     { key: 'posts-total', label: 'Posts', value: formatFullNumber(props.data.total) },
     ...Object.entries(STATUS_LABELS).map(([status, label]) => ({
         key: `posts-${status}`,
         label,
-        value: formatFullNumber(props.data.by_status[status] ?? 0),
+        value: formatFullNumber(countIn(props.data.by_status, status)),
     })),
 ]);
 
@@ -52,7 +64,7 @@ const contentStats = computed((): AdminStat[] =>
     Object.entries(CONTENT_LABELS).map(([key, label]) => ({
         key: `content-${key}`,
         label,
-        value: formatFullNumber(props.data.content[key] ?? 0),
+        value: formatFullNumber(countIn(props.data.content, key)),
     })),
 );
 
@@ -88,13 +100,14 @@ const hasChannel = (platform: string): boolean => platform !== 'none';
 const hasNetworks = computed(() => filled(props.data.by_network));
 const hasFailures = computed(() => filled(props.data.recent_failures));
 
-const failedAt = (value: string | null): string => {
-    if (filled(value)) {
-        return date.formatDateTime(value);
-    }
-
-    return '—';
-};
+/** Each failure with where it happened in one line, the missing parts left out. */
+const failures = computed(() =>
+    props.data.recent_failures.map((failure) => ({
+        ...failure,
+        where: joinFilled([failure.channel_name, failure.workspace_name]),
+        failedAt: dateTimeOrDash(failure.failed_at),
+    })),
+);
 </script>
 
 <template>
@@ -108,12 +121,7 @@ const failedAt = (value: string | null): string => {
         </AnalyticsSection>
 
         <AnalyticsSection title="By network" flush>
-            <p
-                v-if="!hasNetworks"
-                class="mx-4 mb-4 rounded-lg border border-dashed border-border-strong px-5 py-10 text-center text-sm text-muted-foreground sm:mx-5 sm:mb-5"
-            >
-                No posts yet.
-            </p>
+            <AdminEmptyState v-if="!hasNetworks" variant="section">No posts yet.</AdminEmptyState>
             <AdminSortableTable
                 v-else
                 :columns="NETWORK_COLUMNS"
@@ -146,15 +154,10 @@ const failedAt = (value: string | null): string => {
                     All failed posts
                 </Link>
             </template>
-            <p
-                v-if="!hasFailures"
-                class="mx-4 mb-4 rounded-lg border border-dashed border-border-strong px-5 py-10 text-center text-sm text-muted-foreground sm:mx-5 sm:mb-5"
-            >
-                No failed posts.
-            </p>
+            <AdminEmptyState v-if="!hasFailures" variant="section">No failed posts.</AdminEmptyState>
             <ul v-else class="divide-y divide-border border-t border-border">
                 <li
-                    v-for="failure in data.recent_failures"
+                    v-for="failure in failures"
                     :key="failure.id"
                     class="flex items-start gap-3 px-4 py-3 sm:px-5"
                 >
@@ -169,11 +172,11 @@ const failedAt = (value: string | null): string => {
                             {{ failure.error_message }}
                         </p>
                         <p class="mt-0.5 text-xs text-muted-foreground">
-                            {{ failure.channel_name }} · {{ failure.workspace_name }}
+                            {{ failure.where }}
                         </p>
                     </div>
                     <span class="shrink-0 text-xs text-muted-foreground tabular-nums">{{
-                        failedAt(failure.failed_at)
+                        failure.failedAt
                     }}</span>
                 </li>
             </ul>

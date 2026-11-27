@@ -6,7 +6,7 @@ use App\Actions\Admin\BuildNetworkPermissions;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 
-function networkPermissions(Platform $platform): array
+function adminNetworkPermissions(Platform $platform): array
 {
     return collect(BuildNetworkPermissions::execute())->firstWhere('platform', $platform->value);
 }
@@ -21,7 +21,7 @@ test('lists each requested scope with the features that use it', function () {
         ],
     ]);
 
-    $scopes = collect(networkPermissions(Platform::Threads)['scopes'])->keyBy('scope');
+    $scopes = collect(adminNetworkPermissions(Platform::Threads)['scopes'])->keyBy('scope');
 
     expect($scopes->get('threads_basic'))->toMatchArray(['required' => true, 'features' => []])
         ->and($scopes->get('threads_content_publish')['features'])->toBe(['publish'])
@@ -35,7 +35,7 @@ test('a feature whose scope the connect does not ask for is off and names the sc
         'trypost.platforms.threads.scopes' => ['threads_basic', 'threads_content_publish'],
     ]);
 
-    $replies = collect(networkPermissions(Platform::Threads)['features'])->firstWhere('feature', GatedFeature::ThreadReplies->value);
+    $replies = collect(adminNetworkPermissions(Platform::Threads)['features'])->firstWhere('feature', GatedFeature::ThreadReplies->value);
 
     expect($replies['enabled'])->toBeFalse()
         ->and($replies['missing'])->toBe(['threads_manage_replies']);

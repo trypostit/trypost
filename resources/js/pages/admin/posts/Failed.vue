@@ -4,6 +4,7 @@ import { IconEye, IconRefresh } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import FailedPostDialog from '@/components/admin/posts/FailedPostDialog.vue';
 import NetworkFilter from '@/components/NetworkFilter.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
@@ -31,7 +32,8 @@ import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { errorCategoryLabel } from '@/lib/adminErrorCategories';
-import { filled } from '@/lib/helpers';
+import { firstError } from '@/lib/adminFormat';
+import { blank, filled, isNumber } from '@/lib/helpers';
 import { formatFullNumber } from '@/lib/utils';
 import { index as failedIndex } from '@/routes/admin/posts/failed';
 import { store as retryStore } from '@/routes/admin/posts/retry';
@@ -48,10 +50,19 @@ const props = defineProps<{
 const selectedNetworks = ref<string[]>([...props.filters.networks]);
 const selectedCategory = ref<string | null>(props.filters.category);
 
+/** The filters as the URL carries them; All leaves the category out. */
+const filterQuery = (): { networks: string[]; category?: string } => {
+    if (filled(selectedCategory.value)) {
+        return { networks: selectedNetworks.value, category: selectedCategory.value };
+    }
+
+    return { networks: selectedNetworks.value };
+};
+
 const reload = (): void => {
     router.get(
         failedIndex.url(),
-        { networks: selectedNetworks.value, category: selectedCategory.value ?? undefined },
+        filterQuery(),
         {
             preserveScroll: true,
             preserveState: true,
@@ -73,8 +84,33 @@ const totalFailed = computed(() =>
     Object.values(props.categories).reduce((sum, count) => sum + count, 0),
 );
 
+/**
+ * The categories with failures under the networks picked; the one picked
+ * stays with 0 when a network filter leaves it without any, so a chip is
+ * always lit for what the list shows.
+ */
+const categoryCount = (category: string): number => {
+    const count = props.categories[category];
+
+    if (isNumber(count)) {
+        return count;
+    }
+
+    return 0;
+};
+
+const categoryCounts = computed((): Record<string, number> => {
+    const category = selectedCategory.value;
+
+    if (filled(category)) {
+        return { ...props.categories, [category]: categoryCount(category) };
+    }
+
+    return props.categories;
+});
+
 const categoryChips = computed(() =>
-    Object.entries(props.categories).map(([category, count]) => ({
+    Object.entries(categoryCounts.value).map(([category, count]) => ({
         category,
         label: errorCategoryLabel(category),
         count: formatFullNumber(count),
@@ -100,10 +136,15 @@ const chipCountClass = (category: string | null): string => {
 /** Posts whose channel must be reconnected before a retry can work. */
 const RECONNECT_STATUSES = ['token_expired', 'disconnected'];
 
-const needsReconnect = (post: AdminFailedPost): boolean =>
-    RECONNECT_STATUSES.includes(post.channel_status ?? '');
+const needsReconnect = (post: AdminFailedPost): boolean => {
+    if (filled(post.channel_status)) {
+        return RECONNECT_STATUSES.includes(post.channel_status);
+    }
 
-const channelMissing = (post: AdminFailedPost): boolean => !filled(post.channel_status);
+    return false;
+};
+
+const channelMissing = (post: AdminFailedPost): boolean => blank(post.channel_status);
 
 const postMeta = (post: AdminFailedPost): string => {
     const parts: string[] = [];
@@ -176,17 +217,11 @@ const sendRetry = (post: AdminFailedPost, instagramCommentChecked: boolean): voi
                 retryingId.value = null;
                 confirmingPost.value = null;
             },
-            onSuccess: (page) => {
-                const errors = page.props.errors as Record<string, string>;
-
-                if (filled(errors)) {
-                    return;
-                }
-
+            onSuccess: () => {
                 toast.success('Retry queued');
             },
             onError: (errors) => {
-                toast.error(Object.values(errors)[0] ?? 'Could not retry this post.');
+                toast.error(firstError(errors, 'Could not retry this post.'));
             },
         },
     );
@@ -267,13 +302,9 @@ const channelLabel = (post: AdminFailedPost): string => {
             </button>
         </div>
 
-        <p
-            v-if="!hasPosts"
-            class="rounded-xl border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground"
-            data-testid="admin-failed-empty"
-        >
+        <AdminEmptyState v-if="!hasPosts" variant="page" test-id="admin-failed-empty">
             No failed posts.
-        </p>
+        </AdminEmptyState>
 
         <div
             v-else

@@ -24,11 +24,8 @@ final class StripeNetMrr
 
     public const int CACHE_SECONDS = 3600;
 
-    /** Stripe statuses of a subscription that is paid for. */
-    private const array STATUSES = ['active', 'past_due'];
-
-    /** How many months one of each Stripe billing interval lasts. */
-    private const array MONTHS_PER_INTERVAL = ['day' => 12 / 365, 'week' => 12 / 52, 'month' => 1, 'year' => 12];
+    /** How long a failed read is kept before Stripe is asked again, in seconds. */
+    public const int ERROR_CACHE_SECONDS = 60;
 
     /**
      * @return array{cents: int, list_cents: int, subscriptions: int, discounted: int, taken_at: string}|array{error: string}|null
@@ -46,7 +43,10 @@ final class StripeNetMrr
         } catch (Throwable $exception) {
             report($exception);
 
-            return ['error' => $exception->getMessage()];
+            $error = ['error' => $exception->getMessage()];
+            Cache::put(self::CACHE_KEY, $error, self::ERROR_CACHE_SECONDS);
+
+            return $error;
         }
 
         Cache::put(self::CACHE_KEY, $result, self::CACHE_SECONDS);
@@ -56,32 +56,61 @@ final class StripeNetMrr
 
     /**
      * What one subscription charges per month, in cents, before and after
-     * the discounts that still apply.
+     * the discounts that still apply. A discount applies to the invoice as a
+     * whole: a percentage takes its share of every item, a fixed amount is
+     * taken once, however many items the invoice has.
      *
      * @return array{list: float, net: float, discounted: bool}
      */
     public static function monthly(StripeSubscription $subscription, CarbonInterface $now): array
     {
-        $list = 0.0;
-        $net = 0.0;
         $discounts = collect($subscription->discounts ?? [])
             ->filter(fn (mixed $discount): bool => is_object($discount))
             ->filter(fn (object $discount): bool => blank(data_get($discount, 'end')) || (int) data_get($discount, 'end') > $now->getTimestamp());
 
-        foreach ($subscription->items->data ?? [] as $item) {
-            $months = data_get(self::MONTHS_PER_INTERVAL, (string) data_get($item, 'price.recurring.interval'));
+        $items = collect($subscription->items->data ?? [])
+            ->map(fn (object $item): ?array => self::itemCharge($item))
+            ->filter()
+            ->values();
 
-            if ($months === null) {
-                continue;
-            }
+        $perInvoice = (float) $items->sum('per_invoice');
+        $list = (float) $items->sum(fn (array $item): float => data_get($item, 'per_invoice') / data_get($item, 'months'));
 
-            $perInvoice = (float) data_get($item, 'price.unit_amount', 0) * max(1, (int) data_get($item, 'quantity', 1));
-            $months *= (int) data_get($item, 'price.recurring.interval_count', 1);
-            $list += $perInvoice / $months;
-            $net += self::afterDiscounts($perInvoice, $discounts) / $months;
+        return [
+            'list' => $list,
+            'net' => self::netShare($list, $perInvoice, self::afterDiscounts($perInvoice, $discounts)),
+            'discounted' => $discounts->isNotEmpty(),
+        ];
+    }
+
+    /**
+     * What one item charges per invoice, and how many months an invoice
+     * covers; null for a price that does not recur.
+     *
+     * @return array{per_invoice: float, months: float}|null
+     */
+    private static function itemCharge(object $item): ?array
+    {
+        $months = data_get(SubscriptionPlans::MONTHS_PER_INTERVAL, (string) data_get($item, 'price.recurring.interval'));
+
+        if ($months === null) {
+            return null;
         }
 
-        return ['list' => $list, 'net' => $net, 'discounted' => $discounts->isNotEmpty()];
+        return [
+            'per_invoice' => (float) data_get($item, 'price.unit_amount', 0) * max(1, (int) data_get($item, 'quantity', 1)),
+            'months' => $months * (int) data_get($item, 'price.recurring.interval_count', 1),
+        ];
+    }
+
+    /** The monthly amount left once the invoice's discounts are taken off, in proportion. */
+    private static function netShare(float $monthly, float $perInvoice, float $netPerInvoice): float
+    {
+        if ($perInvoice <= 0.0) {
+            return 0.0;
+        }
+
+        return $monthly * $netPerInvoice / $perInvoice;
     }
 
     /**
@@ -94,7 +123,7 @@ final class StripeNetMrr
         $count = 0;
         $discounted = 0;
 
-        foreach (self::STATUSES as $status) {
+        foreach (SubscriptionPlans::PAYING_STATUSES as $status) {
             $page = Cashier::stripe()->subscriptions->all([
                 'status' => $status,
                 'limit' => 100,

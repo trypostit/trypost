@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 import SubscriptionsChurnTab from '@/components/admin/subscriptions/SubscriptionsChurnTab.vue';
@@ -8,10 +8,11 @@ import SubscriptionsTableTab from '@/components/admin/subscriptions/Subscription
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import SettingsSearch from '@/components/settings/SettingsSearch.vue';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import debounce from '@/debounce';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { filled } from '@/lib/helpers';
+import { filled, isNumber } from '@/lib/helpers';
 import { formatFullNumber } from '@/lib/utils';
 import { index as subscriptionsIndex } from '@/routes/admin/billing/subscriptions';
 import type {
@@ -31,7 +32,9 @@ const TABS: { value: SubscriptionsTab; label: string }[] = [
     { value: 'churn', label: 'Churn' },
 ];
 
-const STATUS_FILTERS: { value: string; label: string }[] = [
+type StatusFilter = 'all' | 'active' | 'cancelling' | 'past_due' | 'trialing' | 'canceled';
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
     { value: 'all', label: 'All' },
     { value: 'active', label: 'Active' },
     { value: 'cancelling', label: 'Cancelling' },
@@ -48,37 +51,15 @@ const props = defineProps<{
     range: DateRange;
     ranges: Exclude<AnalyticsRangePreset, 'custom'>[];
     bounds: { min: string | null; max: string | null };
-    filters: AnalyticsFilters & { status: string; search: string };
+    filters: AnalyticsFilters & { status: StatusFilter; search: string };
     statusCounts: Record<string, number>;
 }>();
 
-const page = usePage();
-
 /** Overview opens by default. */
-const subscriptionsTab = (value: unknown): SubscriptionsTab => {
-    const known = TABS.find((tab) => tab.value === value);
-
-    if (filled(known)) {
-        return known.value;
-    }
-
-    return 'overview';
-};
-
-/** The open tab is read from the URL, like the Billing tabs. */
-const tab = ref<SubscriptionsTab>(
-    subscriptionsTab(new URL(page.url, window.location.origin).searchParams.get('tab')),
-);
-
-const selectTab = (value: string | number): void => {
-    tab.value = subscriptionsTab(value);
-
-    router.replace({
-        url: subscriptionsIndex.url({ mergeQuery: { tab: tab.value } }),
-        preserveScroll: true,
-        preserveState: true,
-    });
-};
+const { tab, selectTab } = useUrlTab({
+    tabs: TABS.map((option) => option.value),
+    url: (mergeQuery) => subscriptionsIndex.url({ mergeQuery }),
+});
 
 const showsRange = computed(() => tab.value !== 'subscriptions');
 
@@ -88,17 +69,24 @@ const rangeSubtitle = computed(
     (): string => date.formatDayMonthYearRange(props.range),
 );
 
-const status = ref(props.filters.status);
 const searchQuery = ref(props.filters.search);
 
+/** The search as the URL carries it; an empty one leaves the URL. */
+const searchParam = (): string | null => {
+    if (filled(searchQuery.value)) {
+        return searchQuery.value;
+    }
+
+    return null;
+};
+
+/** Reloads the list on the current range, so the range picker keeps it. */
 const reloadTable = (): void => {
     router.get(
-        subscriptionsIndex.url(),
-        {
-            tab: 'subscriptions',
-            status: status.value,
-            search: searchQuery.value || undefined,
-        },
+        subscriptionsIndex.url({
+            mergeQuery: { tab: 'subscriptions', status: status.value, search: searchParam() },
+        }),
+        {},
         {
             preserveState: true,
             preserveScroll: true,
@@ -109,14 +97,24 @@ const reloadTable = (): void => {
     );
 };
 
-const selectStatus = (value: string | number): void => {
-    status.value = String(value);
-    reloadTable();
-};
+const { tab: status, selectTab: selectStatus } = useUrlTab({
+    tabs: STATUS_FILTERS.map((filter) => filter.value),
+    initial: props.filters.status,
+    param: 'status',
+    onSelect: reloadTable,
+});
 
 const search = debounce(reloadTable, 300);
 
-const statusCount = (value: string): string => formatFullNumber(props.statusCounts[value] ?? 0);
+const statusCount = (value: string): string => {
+    const count = props.statusCounts[value];
+
+    if (isNumber(count)) {
+        return formatFullNumber(count);
+    }
+
+    return formatFullNumber(0);
+};
 
 watch(searchQuery, () => search());
 </script>
@@ -128,7 +126,6 @@ watch(searchQuery, () => search());
         title="Subscriptions"
         description="Who pays, what they pay for, and who leaves."
     >
-
         <Tabs
             :model-value="tab"
             class="flex flex-col gap-6"

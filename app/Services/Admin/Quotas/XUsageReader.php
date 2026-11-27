@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Admin\Quotas;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
@@ -117,7 +118,7 @@ class XUsageReader
     {
         return collect($entries)
             ->map(fn (array $day): array => [
-                'date' => substr((string) data_get($day, 'date'), 0, 10),
+                'date' => CarbonImmutable::parse((string) data_get($day, 'date'), 'UTC')->utc()->toDateString(),
                 'usage' => (int) data_get($day, 'usage', 0),
             ])
             ->sortBy('date')
