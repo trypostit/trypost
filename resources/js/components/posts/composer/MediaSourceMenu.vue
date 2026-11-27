@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import { IconPhotoPlus, IconUpload } from '@tabler/icons-vue';
+import { IconCloud, IconPhotoPlus, IconUpload } from '@tabler/icons-vue';
 import Canva from '@thesvg/vue/canva';
 import Giphy from '@thesvg/vue/giphy';
 import GoogleDrive from '@thesvg/vue/google-drive-2026';
@@ -10,6 +10,7 @@ import { getActiveLanguage, trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, type Component } from 'vue';
 import { toast } from 'vue-sonner';
 
+import WebdavBrowserDialog from '@/components/media/WebdavBrowserDialog.vue';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -67,6 +68,7 @@ const ICONS: Record<SourceKey, Component> = {
     google_drive: GoogleDrive,
     google_photos: GooglePhotos,
     unsplash: Unsplash,
+    webdav: IconCloud,
 };
 
 /** Unsplash's one-color mark is drawn in the text color, so it follows the theme. */
@@ -174,6 +176,23 @@ const handlers: Partial<
     },
     giphy: () => emit('open-giphy'),
     unsplash: () => emit('open-unsplash'),
+    webdav: (option) => {
+        webdavOption.value = option;
+        webdavOpen.value = true;
+    },
+};
+
+const webdavOption = ref<MediaSourceOption | null>(null);
+const webdavOpen = ref(false);
+
+/** One import per file; the request takes a single pick. */
+const importFromWebdav = async (paths: string[]): Promise<void> => {
+    const option = webdavOption.value;
+    if (!option) return;
+
+    for (const path of paths) {
+        await startImport(option, { source: option.source, file: { path } });
+    }
 };
 
 const sources = computed<MediaSourceOption[]>(() =>
@@ -329,4 +348,10 @@ const pickCanvaPreset = (
             </TooltipContent>
         </Tooltip>
     </TooltipProvider>
+    <WebdavBrowserDialog
+        v-if="webdavOption"
+        v-model:open="webdavOpen"
+        :label="webdavOption.label"
+        @picked="importFromWebdav"
+    />
 </template>

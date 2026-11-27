@@ -57,6 +57,7 @@ use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SessionController;
 use App\Http\Controllers\App\TourController;
 use App\Http\Controllers\App\UnsplashController;
+use App\Http\Controllers\App\WebdavMediaController;
 use App\Http\Controllers\App\WebhookController;
 use App\Http\Controllers\App\WelcomeController;
 use App\Http\Controllers\App\WorkspaceController;
@@ -307,6 +308,9 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::get('media/giphy/trending', [GiphyController::class, 'trending'])
         ->middleware('throttle:giphy')
         ->name('app.media.giphy.trending');
+    Route::get('media/webdav/browse', [WebdavMediaController::class, 'browse'])
+        ->middleware('throttle:webdav')
+        ->name('app.media.webdav.browse');
     Route::get('media/unsplash/search', [UnsplashController::class, 'search'])
         ->middleware('throttle:unsplash')
         ->name('app.media.unsplash.search');

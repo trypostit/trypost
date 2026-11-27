@@ -78,6 +78,14 @@ return [
             'more' => 'Sumber media lainnya',
             'select_from' => 'Pilih dari :source',
             'importing' => 'Mengimpor…',
+            'webdav' => [
+                'root' => 'Semua file',
+                'up' => 'Kembali',
+                'loading' => 'Memuat…',
+                'empty' => 'Tidak ada gambar atau video di folder ini.',
+                'load_failed' => 'Folder ini tidak bisa dibuka.',
+                'add' => 'Tambahkan (:count)',
+            ],
             'canva_presets' => [
                 'square' => 'Persegi 1:1',
                 'portrait_4_5' => 'Potret 4:5',
