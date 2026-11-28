@@ -126,6 +126,7 @@ test('a post that is no longer failed is not retried twice', function () {
         ->assertSessionHasErrors(['post' => 'Only a failed post with a channel can be retried.']);
 
     Queue::assertPushed(PublishToSocialPlatform::class, 1);
+    expect(Activity::query()->inLog(LogName::Admin)->forSubject($post)->count())->toBe(1);
 });
 
 test('an instagram post whose first comment may be live needs the admin to confirm', function () {

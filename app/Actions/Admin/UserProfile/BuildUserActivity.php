@@ -40,8 +40,7 @@ class BuildUserActivity
             ->where('user_id', $user->id)
             ->with('entry')
             ->latest()
-            ->get()
-            ->filter(fn (ChangelogEntryView $view): bool => filled($view->entry));
+            ->get();
 
         return [
             'history' => AdminActivityResource::collection($history)->resolve(),

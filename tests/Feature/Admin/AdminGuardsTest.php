@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\Admin\EnsureCanAccessAdmin;
 use App\Http\Middleware\Admin\EnsureAdminEnabled;
+use App\Http\Middleware\Admin\EnsureCanAccessAdmin;
 use App\Models\Activity;
 use App\Models\User;
 use App\Support\Admin\Impersonation;

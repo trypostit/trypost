@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Actions\Admin\RecordAdminAction;
+use App\Actions\Admin\UserProfile\BuildUserActivity;
+use App\Actions\Admin\UserProfile\BuildUserPosts;
 use App\Enums\Admin\AdminActionType;
 use App\Enums\Changelog\Reaction;
 use App\Enums\SocialAccount\GatedFeature;
@@ -268,5 +270,49 @@ test('the billing tab of an account without a current subscription reads the sav
             ->where('data.stripe.cards.0.is_default', false)
             ->where('data.stripe.discount.name', 'Loyalty')
             ->where('data.stripe.discount.percent_off', 20),
+        );
+});
+
+test('a user without an account has no billing and no health', function () {
+    $this->user->forceFill(['account_id' => null])->saveQuietly();
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.users.show', ['user' => $this->user, 'tab' => 'billing']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('data.account', null));
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.users.show', $this->user))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('data.health', null));
+});
+
+test('the posts tab counts a draft without a channel apart from the networks', function () {
+    Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'social_account_id' => null, 'platform' => null, 'content_type' => null]);
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.users.show', ['user' => $this->user, 'tab' => 'posts']))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('data.total', 1)
+            ->where('data.by_status.draft', 1)
+            ->where('data.by_network.0.platform', BuildUserPosts::NO_PLATFORM),
+        );
+});
+
+test('the activity tab keeps only the latest admin actions', function () {
+    $record = app(RecordAdminAction::class);
+
+    $actions = BuildUserActivity::HISTORY_LIMIT + 1;
+
+    foreach (range(1, $actions) as $action) {
+        $this->travelTo(now()->addMinute());
+        $record->execute($this->admin, AdminActionType::BlockUser, $this->user, ['reason' => "Reason {$action}"]);
+    }
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.users.show', ['user' => $this->user, 'tab' => 'activity']))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('data.history', BuildUserActivity::HISTORY_LIMIT)
+            ->where('data.history.0.properties.reason', "Reason {$actions}"),
         );
 });

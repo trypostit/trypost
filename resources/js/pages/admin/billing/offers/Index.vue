@@ -450,13 +450,23 @@ const confirm = (): void => {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem @select="openEdit(offer)">Edit</DropdownMenuItem>
-                                            <DropdownMenuItem v-if="canEnd(offer)" @select="askEnd(offer)">
+                                            <DropdownMenuItem
+                                                :data-testid="`admin-offer-edit-${offer.slug}`"
+                                                @select="openEdit(offer)"
+                                            >
+                                                Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                v-if="canEnd(offer)"
+                                                :data-testid="`admin-offer-end-${offer.slug}`"
+                                                @select="askEnd(offer)"
+                                            >
                                                 End now
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 v-if="canDelete(offer)"
                                                 variant="destructive"
+                                                :data-testid="`admin-offer-delete-${offer.slug}`"
                                                 @select="askDelete(offer)"
                                             >
                                                 Delete

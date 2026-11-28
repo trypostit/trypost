@@ -115,3 +115,18 @@ test('counts the queue, draws each day\'s publishing and leaves a failure older 
         ->and($dashboard['publishing_days'][BuildDashboard::CHART_DAYS - 2])->toBe(['date' => $now->subDay()->toDateString(), 'published' => 0, 'failed' => 1])
         ->and(collect($dashboard['publishing_days'])->first()['date'])->toBe($now->subDays(BuildDashboard::CHART_DAYS - 1)->toDateString());
 });
+
+test('a network failing exactly at the alarming share with enough failures needs attention', function () {
+    $now = CarbonImmutable::now('UTC');
+    $channel = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $published = (int) (BuildDashboard::ALARMING_FAILURES * (100 / BuildDashboard::ALARMING_FAILURE_RATE - 1));
+
+    foreach ([...array_fill(0, BuildDashboard::ALARMING_FAILURES, 'failed'), ...array_fill(0, $published, 'published')] as $state) {
+        channelPostAt($channel, $now->subHour(), $state);
+    }
+
+    $dashboard = BuildDashboard::execute('UTC');
+
+    expect($dashboard['last_24h']['failure_rate'])->toBe(BuildDashboard::ALARMING_FAILURE_RATE)
+        ->and(collect($dashboard['attention']['networks'])->pluck('platform')->all())->toBe(['x']);
+});

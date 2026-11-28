@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use App\Enums\Activity\LogName;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Activity;
 use App\Models\User;
 use App\Services\PostHogService;
 use App\Support\Admin\Impersonation;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
@@ -102,4 +104,23 @@ test('nothing is sent to PostHog while impersonating', function () {
 
     expect(PostHogService::isEnabled())->toBeFalse()
         ->and(PostHogService::shouldTrack())->toBeFalse();
+});
+
+test('what a user does while an admin views the app as them sends nothing to PostHog', function () {
+    enablePostHog();
+    Queue::fake();
+    $user = workspaceOwner(['name' => 'Grace']);
+    $user->account->forceFill(['trial_ends_at' => now()->addWeek()])->save();
+    $tour = ['tour' => 'publish.views', 'outcome' => 'completed', 'step' => 1, 'steps' => 1];
+
+    $this->actingAs($user)->post(route('app.tours.store'), $tour)->assertNoContent();
+
+    Queue::assertPushed(CaptureAccountEvent::class, 1);
+
+    $this->actingAs($user)
+        ->withSession([Impersonation::SESSION_KEY => $this->admin->id])
+        ->post(route('app.tours.store'), $tour)
+        ->assertNoContent();
+
+    Queue::assertPushed(CaptureAccountEvent::class, 1);
 });
