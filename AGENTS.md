@@ -948,6 +948,7 @@ view turns a forgotten variable into a runtime-only failure.
 - After creating or modifying PHP routes/controllers, run `php artisan wayfinder:generate` to regenerate the TypeScript route helpers.
 - Import routes from `@/routes/...` (e.g. `import { store } from '@/routes/login'`).
 - On the backend, every URL of the app comes from Laravel's helpers (owner decision October 2026): `route()` / `redirect()->route()` for pages, `Illuminate\Support\Uri` to read or change a query. Never `url('/...')`, `redirect('/...')`, a path or query string built by hand, or `parse_url()` on our own URLs. A page rebuilt from the Referer goes through the route it matches (`RendersPublishPage::previousUrl()`), so it can never point at another host.
+- **A route file's area prefix is set once, never on each route** (owner decision November 2026): `/api` through `apiPrefix` in `bootstrap/app.php`, `/admin` through `Route::prefix('admin')` on the group in `routes/admin.php`. Each route writes only its own path (`'/users/{user}/block'`, `'/posts'`) and keeps its full name (`admin.users.block.store`, `api.posts.index`). Never repeat the prefix in a path (`'admin/users'`).
 
 ## Pagination
 
