@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Actions\Admin\BuildDashboard;
+use App\Actions\Admin\BuildNetworkHealth;
 use App\Actions\Admin\BuildPublishingStats;
+use App\Actions\Admin\Users\CountAccountActivity;
 use App\Dto\Analytics\DateRange;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
@@ -146,4 +149,25 @@ test('counts each post on the day it went out in the viewer\'s zone', function (
 
     expect(collect($saoPaulo['days'])->pluck('published')->all())->toBe([1, 0])
         ->and(collect($utc['days'])->pluck('published')->all())->toBe([0, 1]);
+});
+
+test('a post counts as sent when it was published, never when a later write moved its publication; a failure by when it failed', function () {
+    $owner = workspaceOwner();
+    $x = SocialAccount::factory()->create(['workspace_id' => $owner->current_workspace_id, 'platform' => Platform::X]);
+    $now = CarbonImmutable::now('UTC');
+    $old = adminPostSentAt($x, $now->subDays(60), 'deletedOnNetwork');
+    Post::query()->whereKey($old->id)->toBase()->update(['publication_updated_at' => $now->subHour()]);
+    $failure = Post::factory()->forAccount($x)->failed()->create();
+    Post::query()->whereKey($failure->id)->toBase()->update(['publication_updated_at' => $now->subHour(), 'published_at' => null]);
+    $week = DateRange::fromDates($now->subDays(6)->toDateString(), $now->toDateString(), 'UTC');
+
+    $stats = BuildPublishingStats::execute($week);
+    $activity = CountAccountActivity::execute($week);
+
+    expect($stats['totals'])->toMatchArray(['published' => 0, 'failed' => 1])
+        ->and(collect($stats['days'])->firstWhere('date', $now->toDateString()))->toBe(['date' => $now->toDateString(), 'published' => 0, 'failed' => 1])
+        ->and(collect(BuildNetworkHealth::execute())->firstWhere('platform', 'x')['last_24h'])->toMatchArray(['published' => 0, 'failed' => 1])
+        ->and(BuildDashboard::execute('UTC')['last_24h'])->toMatchArray(['published' => 0, 'failed' => 1])
+        ->and($activity->sentBy($owner->account_id))->toBe(0)
+        ->and($activity->failedFor($owner->account_id))->toBe(1);
 });

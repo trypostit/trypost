@@ -29,7 +29,7 @@ function adminSignup(array $answers = []): User
 }
 
 test('follows the owners who signed up through Welcome, a subscription, a channel and a post', function () {
-    $paid = adminSignup(['persona' => 'agency', 'goals' => ['save_time'], 'previous_software' => 'buffer', 'google_id' => 'g-1']);
+    $paid = adminSignup(['persona' => 'agency', 'goals' => ['save_time'], 'previous_software' => 'buffer', 'google_id' => 'g-1', 'password' => null]);
     adminBackdateSubscription(subscribeAccount($paid->account), $paid->created_at->addMinutes(4));
     fakeStripeReads(['price_123' => [1900, 'month']]);
     $workspace = Workspace::factory()->create(['user_id' => $paid->id, 'account_id' => $paid->account_id]);
@@ -52,7 +52,7 @@ test('follows the owners who signed up through Welcome, a subscription, a channe
         ->and($personas['agency'])->toMatchArray(['count' => 2, 'subscribed' => 1, 'subscribed_rate' => 50.0])
         ->and(collect($insights['goals'])->pluck('count', 'value')->all())->toMatchArray(['save_time' => 2, 'use_mcp' => 1])
         ->and(collect($insights['software'])->firstWhere('value', 'none')['label'])->toBe('None yet')
-        ->and(collect($insights['signup_methods'])->pluck('count', 'value')->all())->toMatchArray(['google' => 1, 'email' => 2]);
+        ->and(collect($insights['signup_methods'])->pluck('count', 'value')->all())->toEqual(['google' => 1, 'email' => 2]);
 });
 
 test('counts a signup on the day it happened in the viewer\'s zone', function () {

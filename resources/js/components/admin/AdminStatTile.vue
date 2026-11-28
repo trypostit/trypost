@@ -4,6 +4,7 @@
  * and a hint. `AdminStatGrid` and `AdminMetricTabs` lay the tiles out.
  */
 import MetricChange from '@/components/analytics/MetricChange.vue';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { AdminChange } from '@/types/admin';
 
 defineProps<{
@@ -11,6 +12,8 @@ defineProps<{
     value: string;
     hint?: string;
     change?: AdminChange | null;
+    /** The figure is still on its way: a pulsing block holds its place. */
+    loading?: boolean;
     /** The figure's color, which a metric tab dims while it is not open. */
     valueClass: string;
     valueTestId?: string;
@@ -23,7 +26,9 @@ defineProps<{
             label
         }}</span>
         <span class="flex flex-wrap items-baseline gap-x-2">
+            <Skeleton v-if="loading" class="h-8 w-24" :data-testid="valueTestId" aria-busy="true" />
             <span
+                v-else
                 class="font-heading text-2xl leading-8 font-medium tabular-nums transition-colors"
                 :class="valueClass"
                 :data-testid="valueTestId"

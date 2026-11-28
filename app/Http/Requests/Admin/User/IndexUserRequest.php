@@ -33,6 +33,6 @@ class IndexUserRequest extends FormRequest
 
     public function status(): UserStatusFilter
     {
-        return UserStatusFilter::tryFrom((string) $this->validated('status')) ?? UserStatusFilter::All;
+        return $this->enum('status', UserStatusFilter::class) ?? UserStatusFilter::All;
     }
 }

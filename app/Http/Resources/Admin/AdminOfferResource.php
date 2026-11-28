@@ -38,7 +38,7 @@ class AdminOfferResource extends JsonResource
             'state' => $this->state()->value,
             'claimed' => (int) $this->accounts_count,
             'redeemed' => (int) $this->redemptions_count,
-            'missing_copy' => OfferCopy::missingLocales($this->slug, $this->show_banner),
+            'missing_copy' => OfferCopy::missingLocales($this->resource),
         ];
     }
 }

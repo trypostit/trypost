@@ -8,6 +8,8 @@ use App\Enums\Changelog\Reaction;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
+use App\Enums\User\Locale;
+use App\Enums\User\PreviousSoftware;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
 use App\Models\Invite;
@@ -42,7 +44,22 @@ test('the overview shows how the user signs in, came in and was last seen', func
             ->where('data.sign_in.google', true)
             ->where('data.sign_in.github', false)
             ->where('data.attribution.utm_source', 'google')
-            ->where('data.last_seen.ip', '203.0.113.7'),
+            ->where('data.last_seen.ip', '203.0.113.7')
+            ->where('data.last_seen.at', now()->startOfSecond()->toIso8601String()),
+        );
+});
+
+test('the overview names the tool the user used before and keeps their language and zone with their preferences', function () {
+    $this->user->update(['previous_software' => PreviousSoftware::SproutSocial, 'locale' => Locale::PortugueseBrazil, 'timezone' => 'America/Sao_Paulo']);
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.users.show', $this->user))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('data.welcome.previous_software', PreviousSoftware::SproutSocial->label())
+            ->where('data.preferences.locale', Locale::PortugueseBrazil->value)
+            ->where('data.preferences.timezone', 'America/Sao_Paulo')
+            ->missing('data.signup.locale')
+            ->missing('data.signup.timezone'),
         );
 });
 
@@ -99,13 +116,7 @@ test('the integrations tab lists api keys and webhooks', function () {
 });
 
 test('the billing tab shows the stored subscription and reads cards and discount from Stripe', function () {
-    $this->user->account->subscriptions()->create([
-        'type' => 'legacy',
-        'stripe_id' => 'sub_old',
-        'stripe_status' => 'canceled',
-        'stripe_price' => 'price_old',
-        'ends_at' => now()->subMonth(),
-    ]);
+    subscribeAccount($this->user->account, ['type' => 'legacy', 'stripe_id' => 'sub_old', 'stripe_status' => 'canceled', 'stripe_price' => 'price_old', 'ends_at' => now()->subMonth()]);
     fakeStripeBilling($this->user->account, coupon: ['name' => 'Black Friday', 'percent_off' => 50, 'duration' => 'once'], cardBrand: 'visa', paidInvoices: 2);
     $this->user->account->subscription()->update(['ends_at' => now()->addWeek()]);
 
@@ -114,7 +125,6 @@ test('the billing tab shows the stored subscription and reads cards and discount
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('data.subscription.status', 'active')
             ->whereNot('data.subscription.cancels_at', null)
-            ->where('data.subscription.on_grace_period', true)
             ->where('data.stripe.error', null)
             ->where('data.stripe.discount.name', 'Black Friday')
             ->where('data.stripe.discount.percent_off', 50)

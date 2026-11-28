@@ -9,10 +9,11 @@ import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
-import { channelStatus } from '@/lib/adminChannels';
+import { channelDisplayName, channelStatus } from '@/lib/adminChannels';
 import { countLabel } from '@/lib/adminFormat';
 import { featureLabel } from '@/lib/adminPermissions';
 import { filled } from '@/lib/helpers';
+import { formatFullNumber } from '@/lib/utils';
 import type {
     AdminUserChannel,
     AdminUserWorkspaceDetail,
@@ -59,13 +60,7 @@ const role = (workspace: AdminUserWorkspaceDetail): string => {
     return 'Member';
 };
 
-const channelName = (channel: AdminUserChannel): string => {
-    if (filled(channel.name)) {
-        return channel.name;
-    }
-
-    return getPlatformLabel(channel.platform);
-};
+const channelName = (channel: AdminUserChannel): string => channelDisplayName(channel.name, channel.platform);
 
 const lastChecked = (channel: AdminUserChannel): string => {
     if (filled(channel.last_verified_at)) {
@@ -122,7 +117,7 @@ const workspaceRows = computed(() =>
                 >
                     <PlatformLogo :platform="chip.network" size="xs" />
                     <span class="text-sm font-emphasis text-foreground tabular-nums">{{
-                        chip.count
+                        formatFullNumber(chip.count)
                     }}</span>
                     <span class="text-sm text-muted-foreground">{{ chip.label }}</span>
                 </li>
@@ -146,12 +141,9 @@ const workspaceRows = computed(() =>
                 >
                     Channels
                 </p>
-                <p
-                    v-if="!workspace.hasChannels"
-                    class="px-5 py-4 text-sm text-muted-foreground sm:px-6"
-                >
+                <AdminEmptyState v-if="!workspace.hasChannels" variant="inset">
                     No channels connected.
-                </p>
+                </AdminEmptyState>
                 <ul class="divide-y divide-border">
                     <li
                         v-for="channel in workspace.channels"

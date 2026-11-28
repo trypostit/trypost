@@ -6,6 +6,7 @@ namespace App\Actions\Admin;
 
 use App\Dto\Analytics\DateRange;
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
@@ -24,9 +25,10 @@ class BuildPublishingStats
      * What TryPost published across every workspace on the range's calendar
      * days of the viewer's zone, on the given platforms or all of them: per
      * day, per network (every way of connecting it together, like the network
-     * filter), and the errors that failed most. A post counts on the day its
-     * publication last moved (`publication_updated_at`); imported posts and
-     * posts still on their way are left out. Everything but the days
+     * filter), and the errors that failed most. A post that went out counts
+     * on the day it was published, a refused one on the day it failed
+     * ({@see PublishingCounts::countedBetween()}); imported posts and posts
+     * still on their way are left out. Everything but the days
      * ({@see self::days()}) is counted in SQL.
      *
      * @param  list<Platform>  $platforms  empty means every platform
@@ -64,7 +66,7 @@ class BuildPublishingStats
                 ->values()
                 ->all(),
             'top_errors' => $failures
-                ->groupBy(fn (array $failure): string => "{$failure['platform']}|{$failure['message']}")
+                ->groupBy(fn (array $failure): string => collect([data_get($failure, 'platform'), data_get($failure, 'message')])->implode('|'))
                 ->map(fn (Collection $group): array => [
                     'platform' => data_get($group->first(), 'platform'),
                     'network' => Platform::from(data_get($group->first(), 'platform'))->network(),
@@ -89,7 +91,7 @@ class BuildPublishingStats
                 ->all(),
             'content_types' => self::countedBy(
                 $groups->filter(fn (array $group): bool => filled(data_get($group, 'content_type'))),
-                fn (array $group): string => "{$group['platform']}|{$group['content_type']}",
+                fn (array $group): string => collect([data_get($group, 'platform'), data_get($group, 'content_type')])->implode('|'),
             )
                 ->map(fn (Collection $typeGroups): array => [
                     'platform' => data_get($typeGroups->first(), 'platform'),
@@ -107,44 +109,42 @@ class BuildPublishingStats
     /**
      * What went out and what failed on each of the range's days, bucketed
      * here from the few columns they need, so PostgreSQL and MySQL agree.
+     * The rows are streamed and only their counts per day kept.
      *
      * @param  list<Platform>  $platforms  empty means every platform
      * @return list<array{date: string, published: int, failed: int}>
      */
     public static function days(DateRange $range, array $platforms = []): array
     {
-        $byDate = self::counted($range, $platforms)
+        $counts = self::counted($range, $platforms)
             ->toBase()
-            ->get(['posts.publish_status', 'posts.publication_updated_at'])
-            ->map(fn (object $post): array => [
-                'date' => $range->localDate($post->publication_updated_at),
-                'publish_status' => (string) $post->publish_status,
-                'total' => 1,
-            ])
-            ->groupBy('date');
+            ->select(['posts.publish_status', 'posts.published_at', 'posts.publication_updated_at'])
+            ->cursor()
+            ->countBy(fn (object $post): string => "{$range->localDate(PublishingCounts::countedAt($post))}|{$post->publish_status}")
+            ->collect();
 
         return collect($range->calendarDays())
-            ->map(function (string $date) use ($byDate): array {
-                $counts = PublishingCounts::of($byDate->get($date, collect()));
+            ->map(function (string $date) use ($counts): array {
+                $dayCounts = PublishingCounts::of(collect(PublishingCounts::countedStatuses())->map(fn (PublishStatus $status): array => [
+                    'publish_status' => $status->value,
+                    'total' => (int) $counts->get("{$date}|{$status->value}", 0),
+                ]));
 
-                return ['date' => $date, 'published' => $counts['published'], 'failed' => $counts['failed']];
+                return ['date' => $date, 'published' => data_get($dayCounts, 'published'), 'failed' => data_get($dayCounts, 'failed')];
             })
             ->all();
     }
 
     /**
-     * The posts the page counts: sent from TryPost, out on the network or
-     * refused by it, their publication last moved within the range.
+     * The posts the page counts: sent from TryPost, published within the
+     * range or refused by the network within it.
      *
      * @param  list<Platform>  $platforms
      * @return Builder<Post>
      */
     private static function counted(DateRange $range, array $platforms): Builder
     {
-        return Post::query()
-            ->createdInTryPost()
-            ->whereIn('posts.publish_status', PublishingCounts::countedStatuses())
-            ->whereBetween('posts.publication_updated_at', [$range->startsAt(), $range->endsAt()])
+        return PublishingCounts::countedBetween(Post::query()->createdInTryPost(), $range->startsAt(), $range->endsAt(), PublishingCounts::countedStatuses())
             ->when(filled($platforms), fn (Builder $query): Builder => $query->whereIn('posts.platform', $platforms));
     }
 

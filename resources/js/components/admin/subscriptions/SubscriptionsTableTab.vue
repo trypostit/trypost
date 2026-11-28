@@ -19,7 +19,7 @@ import { subscriptionPlanLabel, subscriptionState } from '@/lib/adminSubscriptio
 import { billingUrl } from '@/lib/adminUsers';
 import { blank, filled, transform } from '@/lib/helpers';
 import { MISSING_VALUE } from '@/lib/utils';
-import type { AdminSubscription, ScrollPage, SubscriptionStatusFilter } from '@/types/admin';
+import type { AdminSubscription, BadgeVariant, ScrollPage, SubscriptionStatusFilter } from '@/types/admin';
 
 const props = defineProps<{
     subscriptions: ScrollPage<AdminSubscription>;
@@ -66,10 +66,28 @@ const planDetail = (subscription: AdminSubscription): string => {
     return subscriptionPlanLabel(subscription.plan);
 };
 
-/** When it ends, or when its trial does; an open-ended subscription renews. */
+/** A canceled subscription has ended; any other with an end is cancelling and still runs until then. */
+/** The filter state the subscription falls in, else Stripe's own status. */
+const stateBadge = (subscription: AdminSubscription): { label: string; variant: BadgeVariant } => {
+    if (filled(subscription.state)) {
+        return subscriptionState(subscription.state);
+    }
+
+    return subscriptionState(subscription.stripe_status);
+};
+
+const endLabel = (subscription: AdminSubscription, endsAt: string): string => {
+    if (subscription.state === 'canceled') {
+        return `Ended ${date.formatDate(endsAt)}`;
+    }
+
+    return `Ends ${date.formatDate(endsAt)}`;
+};
+
+/** When it ends or ended, or when its trial does; an open-ended subscription renews. */
 const until = (subscription: AdminSubscription): string => {
     if (filled(subscription.ends_at)) {
-        return `Ends ${date.formatDate(subscription.ends_at)}`;
+        return endLabel(subscription, subscription.ends_at);
     }
 
     if (subscription.state !== 'trialing') {
@@ -122,8 +140,8 @@ const until = (subscription: AdminSubscription): string => {
                                     {{ planDetail(subscription) }}
                                 </TableCell>
                                 <TableCell class="border-r-0 px-4 py-3">
-                                    <Badge :variant="subscriptionState(subscription.state).variant">{{
-                                        subscriptionState(subscription.state).label
+                                    <Badge :variant="stateBadge(subscription).variant">{{
+                                        stateBadge(subscription).label
                                     }}</Badge>
                                 </TableCell>
                                 <TableCell class="border-r-0 px-4 py-3 text-sm whitespace-nowrap text-muted-foreground">

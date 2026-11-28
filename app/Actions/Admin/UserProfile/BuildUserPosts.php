@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Admin\UserProfile;
 
+use App\Actions\Admin\ListFailedPosts;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Idea;
 use App\Models\Post;
@@ -24,7 +25,9 @@ class BuildUserPosts
 
     /**
      * What the workspaces the user is in publish, whoever wrote it: posts by
-     * network and status (imported posts left out, counted in SQL), the latest failures, and
+     * network and status (imported posts left out, counted in SQL), the
+     * latest failures (by when they failed, as the failed posts page orders
+     * them), and
      * what those workspaces hold (labels, signatures, templates, ideas,
      * repurposes, feeds).
      *
@@ -46,12 +49,11 @@ class BuildUserPosts
                 'total' => (int) $group->total,
             ]);
 
-        $recentFailures = Post::query()
+        $recentFailures = ListFailedPosts::latestFailureFirst(Post::query()
             ->createdInTryPost()
             ->whereIn('posts.workspace_id', $workspaceIds)
             ->failed()
-            ->with(['workspace', 'socialAccount'])
-            ->orderByDesc('posts.updated_at')
+            ->with(['workspace', 'socialAccount']))
             ->limit(self::RECENT_FAILURES)
             ->get();
 
@@ -70,7 +72,7 @@ class BuildUserPosts
                 'channel_name' => $post->display_name,
                 'workspace_name' => $post->workspace?->name,
                 'error_message' => $post->error_message,
-                'failed_at' => $post->updated_at?->toIso8601String(),
+                'failed_at' => $post->publication_updated_at?->toIso8601String(),
             ])->values()->all(),
             'content' => [
                 'labels' => WorkspaceLabel::query()->whereIn('workspace_id', $workspaceIds)->count(),

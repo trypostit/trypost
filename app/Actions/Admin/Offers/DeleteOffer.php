@@ -19,12 +19,16 @@ class DeleteOffer
 
     /**
      * Deletes an offer nobody redeemed, with its claims. The request checks it
-     * first; the locked read here catches a redemption that landed since.
+     * first; here the offer's claims (`account_offer`, the rows a redemption
+     * writes) are locked before the redemptions are counted again, so a
+     * redemption of a claim either landed before and stops the delete, or
+     * waits for it and finds its claim gone.
      */
     public function execute(User $admin, Offer $offer): void
     {
         DB::transaction(function () use ($admin, $offer): void {
             $locked = Offer::query()->lockForUpdate()->findOrFail($offer->id);
+            $locked->accounts()->newPivotStatement()->where('offer_id', $locked->id)->lockForUpdate()->get(['account_id']);
 
             if ($locked->redemptions()->exists()) {
                 throw ValidationException::withMessages(['offer' => self::REDEEMED_MESSAGE]);

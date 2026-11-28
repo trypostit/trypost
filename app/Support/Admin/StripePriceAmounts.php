@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Admin;
 
 use App\Models\Subscription;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Cashier\Cashier;
 use Throwable;
@@ -41,6 +42,17 @@ final class StripePriceAmounts
         }
 
         return $monthly * max(1, (int) $subscription->quantity);
+    }
+
+    /**
+     * What the subscriptions charge per month at list price, in whole cents;
+     * one whose price Stripe could not tell counts nothing.
+     *
+     * @param  Collection<array-key, Subscription>  $subscriptions
+     */
+    public static function monthlyCentsOf(Collection $subscriptions): int
+    {
+        return (int) round($subscriptions->sum(fn (Subscription $subscription): float => self::forSubscription($subscription) ?? 0.0));
     }
 
     public static function monthlyCents(string $priceId): ?float
@@ -82,13 +94,13 @@ final class StripePriceAmounts
             return null;
         }
 
-        $months = data_get(SubscriptionPlans::MONTHS_PER_INTERVAL, (string) data_get($price, 'recurring.interval'));
+        $months = SubscriptionPlans::monthsPerInvoice($price);
         $amount = data_get($price, 'unit_amount');
 
         if ($months === null || ! is_numeric($amount)) {
             return null;
         }
 
-        return (float) $amount / ($months * (int) data_get($price, 'recurring.interval_count', 1));
+        return (float) $amount / $months;
     }
 }

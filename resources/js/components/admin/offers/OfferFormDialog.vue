@@ -92,13 +92,22 @@ const asText = (value: number | null): string => {
     return '';
 };
 
+/** A text field's value; none is an empty field. */
+const orEmpty = (value: string | null): string => {
+    if (filled(value)) {
+        return value;
+    }
+
+    return '';
+};
+
 /** The form's values for the offer being edited, its empty fields as empty text. */
 const offerForm = (offer: AdminOffer): ReturnType<typeof blankForm> => ({
     slug: offer.slug,
-    stripe_coupon_id: offer.stripe_coupon_id ?? '',
+    stripe_coupon_id: orEmpty(offer.stripe_coupon_id),
     trial_days: asText(offer.trial_days),
-    starts_at: offer.starts_on ?? '',
-    ends_at: offer.ends_on ?? '',
+    starts_at: orEmpty(offer.starts_on),
+    ends_at: orEmpty(offer.ends_on),
     max_redemptions: asText(offer.max_redemptions),
     requires_card: offer.requires_card,
     first_subscription_only: offer.first_subscription_only,
@@ -135,11 +144,11 @@ watch(
 const hasEnd = computed(() => filled(form.ends_at));
 
 const setStartsAt = (day: string | null): void => {
-    form.starts_at = day ?? '';
+    form.starts_at = orEmpty(day);
 };
 
 const setEndsAt = (day: string | null): void => {
-    form.ends_at = day ?? '';
+    form.ends_at = orEmpty(day);
 };
 
 const clearEndsAt = (): void => {
@@ -194,8 +203,9 @@ const submit = (): void => {
                             <InputError :message="form.errors.trial_days" />
                         </div>
                         <div class="flex flex-col gap-2" data-testid="admin-offer-starts">
-                            <Label>Starts on</Label>
+                            <Label for="offer-starts-at">Starts on</Label>
                             <DatePicker
+                                name="offer-starts-at"
                                 :model-value="form.starts_at"
                                 :show-time="false"
                                 align="start"
@@ -206,7 +216,7 @@ const submit = (): void => {
                         </div>
                         <div class="flex flex-col gap-2" data-testid="admin-offer-ends">
                             <div class="flex items-center justify-between">
-                                <Label>Ends on</Label>
+                                <Label for="offer-ends-at">Ends on</Label>
                                 <button
                                     v-if="hasEnd"
                                     type="button"
@@ -218,6 +228,7 @@ const submit = (): void => {
                                 </button>
                             </div>
                             <DatePicker
+                                name="offer-ends-at"
                                 :model-value="form.ends_at"
                                 :show-time="false"
                                 align="start"

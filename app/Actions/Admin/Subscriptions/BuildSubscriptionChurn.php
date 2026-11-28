@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
 
 class BuildSubscriptionChurn
 {
-    public const int RECENT = 50;
+    private const int RECENT = 50;
 
     /** How long a canceled subscription lasted, in days: label => [from, below]. */
     private const array LIFETIMES = [
@@ -34,19 +34,17 @@ class BuildSubscriptionChurn
      *
      * @return array<string, mixed>
      */
-    public static function execute(DateRange $range): array
+    public static function execute(DateRange $range, SubscriptionHistory $history): array
     {
-        $history = SubscriptionHistory::read();
         $subscriptions = $history->subscriptions;
         $now = $history->now;
         $canceled = $history->canceledIn($range);
 
-        $recent = Subscription::query()
-            ->whereIn('id', $canceled->pluck('id'))
-            ->with(['owner.owner', 'owner.redeemedOffers'])
-            ->orderByDesc('ends_at')
-            ->limit(self::RECENT)
-            ->get();
+        $recent = $canceled
+            ->sortByDesc('ends_at')
+            ->take(self::RECENT)
+            ->values()
+            ->load(['owner.owner', 'owner.redeemedOffers']);
 
         return [
             'summary' => [
@@ -101,7 +99,7 @@ class BuildSubscriptionChurn
     {
         $days = self::lifetimeDays($subscription);
 
-        return $days >= $bounds[0] && $days < $bounds[1];
+        return $days >= data_get($bounds, 0) && $days < data_get($bounds, 1);
     }
 
     /** How many whole days an ended subscription lasted. */

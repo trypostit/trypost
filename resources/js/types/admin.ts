@@ -19,6 +19,9 @@ export type QuotaSource = 'youtube' | 'x';
 /** Where a post was made (`App\Enums\Post\CreatedVia`). */
 export type PostCreatedVia = 'web' | 'api' | 'mcp' | 'repurpose';
 
+/** Where a webhook stands (`App\Enums\Webhook\Status`). */
+export type WebhookStatus = 'enabled' | 'disabled' | 'paused';
+
 /** Where an offer stands (`App\Enums\Offer\OfferState`). */
 export type OfferState = 'scheduled' | 'live' | 'full' | 'ended';
 
@@ -52,6 +55,8 @@ export interface AdminStat {
     value: string;
     hint?: string;
     change?: AdminChange | null;
+    /** The figure is still on its way (a deferred prop): the tile pulses in its place. */
+    loading?: boolean;
 }
 
 /** One figure of an `AdminMetricTabs` row, picking the chart under it. */
@@ -144,7 +149,6 @@ export interface AdminFailedPost {
     id: string;
     platform: string;
     channel_name: string | null;
-    channel_username: string | null;
     workspace_name: string | null;
     owner_id: string | null;
     owner_name: string | null;
@@ -250,7 +254,7 @@ export interface AdminDashboard {
             failure_rate: number;
         }[];
         stuck_publishing: number;
-        quotas: { source: string; label: string; detail: string }[];
+        quotas: { source: QuotaSource; label: string; detail: string }[];
     };
     last_24h: AdminPublishingCounts;
     queue: { scheduled: number; publishing: number; retrying: number; pending_review: number };
@@ -286,7 +290,7 @@ export interface AdminUserHealth {
     posts: { sent: number; previous: number; automated: number; failed: number; failure_rate: number };
     channels: { total: number; broken: number };
     /** Null on a self-hosted install or for an account that pays nothing now. */
-    risk: { signals: ChurnSignal[]; score: number; level: RiskLevel | null; mrr_cents: number } | null;
+    risk: { signals: ChurnSignal[]; level: RiskLevel | null; mrr_cents: number } | null;
 }
 
 export interface AdminUserOverview {
@@ -296,7 +300,7 @@ export interface AdminUserOverview {
         github: boolean;
         email_verified_at: string | null;
     };
-    signup: { at: string; ip: string | null; locale: string | null; timezone: string | null };
+    signup: { at: string; ip: string | null };
     last_seen: { at: string | null; ip: string | null; user_agent: string | null };
     welcome: {
         persona: string | null;
@@ -306,6 +310,8 @@ export interface AdminUserOverview {
     };
     attribution: Record<string, string>;
     preferences: {
+        locale: string | null;
+        timezone: string | null;
         theme: string | null;
         time_format: string | null;
         week_starts_on: string | null;
@@ -386,7 +392,7 @@ export interface AdminUserIntegrationsData {
         id: string;
         endpoint: string;
         events: string[];
-        status: string | null;
+        status: WebhookStatus | null;
         workspace_name: string | null;
         consecutive_failures: number;
         last_sent_at: string | null;
@@ -412,8 +418,6 @@ export interface AdminAccountBilling {
         started_at: string | null;
         trial_ends_at: string | null;
         cancels_at: string | null;
-        on_grace_period: boolean;
-        past_due: boolean;
     } | null;
     offers: { slug: string; claimed_at: string | null; redeemed_at: string | null }[];
     /** Null for an account Stripe has no customer for. */
@@ -494,7 +498,7 @@ export interface AdminSubscriptionOverview {
     canceled_by_day: number[];
     churn_rate_by_day: number[];
     plans: (AdminSubscriptionPlan & { count: number })[];
-    mrr: { cents: number; subscriptions: number; unpriced: number };
+    mrr: { cents: number; unpriced: number };
     at_risk: { past_due_cents: number; cancelling_cents: number };
     offers: { slug: string; redeemed: number; still_subscribed: number }[];
 }
@@ -514,25 +518,18 @@ export interface AdminSubscription {
     user_id: string | null;
     user_name: string | null;
     user_email: string | null;
-    account_name: string | null;
     plan: AdminSubscriptionPlan;
     quantity: number;
-    state: string;
+    /** The status filter it falls in; null for a Stripe status no filter covers (incomplete, unpaid…). */
+    state: Exclude<SubscriptionStatusFilter, 'all'> | null;
+    stripe_status: string;
     started_at: string | null;
     trial_ends_at: string | null;
     ends_at: string | null;
     offers: string[];
 }
 
-export type AdminNetMrr =
-    | {
-          cents: number;
-          list_cents: number;
-          subscriptions: number;
-          discounted: number;
-          taken_at: string;
-      }
-    | { error: string };
+export type AdminNetMrr = { cents: number } | { error: string };
 
 export interface AdminOffer {
     id: string;
@@ -651,7 +648,6 @@ export interface AdminChurnRisk {
         stage: string;
         last_posted_at: string | null;
         signals: ChurnSignal[];
-        score: number;
         level: RiskLevel;
     })[];
 }

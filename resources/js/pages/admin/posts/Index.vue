@@ -216,13 +216,9 @@ const hasErrors = computed(() => filled(props.stats.top_errors));
 
             <AnalyticsSection title="Posts per day" :subtitle="rangeSubtitle">
                 <PublishingBarChart v-if="hasNetworks" :days="stats.days" />
-                <p
-                    v-else
-                    class="py-16 text-center text-sm text-muted-foreground"
-                    data-testid="admin-publishing-empty"
-                >
+                <AdminEmptyState v-else variant="chart" test-id="admin-publishing-empty">
                     Nothing was published in this period.
-                </p>
+                </AdminEmptyState>
             </AnalyticsSection>
 
             <AnalyticsSection

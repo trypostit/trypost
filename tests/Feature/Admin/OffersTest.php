@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Admin\Offers\DeleteOffer;
+use App\Actions\Admin\Offers\ListOffers;
 use App\Enums\Activity\LogName;
 use App\Enums\Offer\OfferState;
 use App\Enums\User\Locale;
@@ -12,7 +13,10 @@ use App\Models\User;
 use App\Rules\StripeCouponExists;
 use App\Support\Admin\OfferCopy;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia;
@@ -106,6 +110,7 @@ test('lists every offer with its redemptions and the locales its copy is missing
 
 test('an admin creates an offer whose coupon exists in Stripe, and it is recorded', function () {
     $this->actingAs($this->admin)
+        ->from(route('admin.billing.offers.index'))
         ->post(route('admin.billing.offers.store'), adminOfferForm())
         ->assertRedirect(route('admin.billing.offers.index'));
 
@@ -116,6 +121,21 @@ test('an admin creates an offer whose coupon exists in Stripe, and it is recorde
         ->and($offer->starts_at->toDateString())->toBe(CarbonImmutable::now('UTC')->toDateString())
         ->and(Activity::query()->inLog(LogName::Admin)->where('event', 'offer.created')->exists())->toBeTrue();
 });
+
+test('every offer action goes back to the tab it was sent from', function (string $action) {
+    $tab = route('admin.billing.offers.index', ['tab' => 'scheduled']);
+    $offer = Offer::factory()->create(['slug' => 'tabbed', 'stripe_coupon_id' => 'REAL', 'starts_at' => now()->addDays(3)]);
+    $admin = $this->actingAs($this->admin)->from($tab);
+
+    $response = match ($action) {
+        'create' => $admin->post(route('admin.billing.offers.store'), adminOfferForm()),
+        'edit' => $admin->put(route('admin.billing.offers.update', $offer), adminOfferForm(['starts_at' => $offer->starts_at->toDateString()])),
+        'end' => $admin->post(route('admin.billing.offers.end.store', $offer)),
+        'delete' => $admin->delete(route('admin.billing.offers.destroy', $offer)),
+    };
+
+    $response->assertSessionHasNoErrors()->assertRedirect($tab);
+})->with(['create', 'edit', 'end', 'delete']);
 
 test('an offer is refused when its coupon is not in Stripe, or when its parts do not go together', function (array $overrides, string $field) {
     $this->actingAs($this->admin)
@@ -137,6 +157,7 @@ test('saving an offer without touching its dates keeps their exact moment', func
     $offer = Offer::factory()->create(['slug' => 'kept', 'stripe_coupon_id' => 'REAL', 'starts_at' => $startsAt]);
 
     $this->actingAs($this->admin)
+        ->from(route('admin.billing.offers.index'))
         ->put(route('admin.billing.offers.update', $offer), adminOfferForm(['starts_at' => $startsAt->toDateString(), 'max_redemptions' => 10]))
         ->assertRedirect(route('admin.billing.offers.index'));
 
@@ -384,7 +405,7 @@ test('editing keeps the end\'s exact moment on the same day and moves it to the 
     expect($offer->refresh()->ends_at->equalTo($otherDay->endOfDay()->startOfSecond()))->toBeTrue();
 });
 
-test('deleting re-checks the redemptions under a lock, so an offer redeemed meanwhile stays', function () {
+test('deleting re-checks the redemptions itself, so an offer redeemed since the request stays', function () {
     $offer = Offer::factory()->create(['slug' => 'raced']);
     adminOfferRedeemedBy($offer, 1);
 
@@ -393,6 +414,18 @@ test('deleting re-checks the redemptions under a lock, so an offer redeemed mean
 
     expect(Offer::query()->whereKey($offer->id)->exists())->toBeTrue()
         ->and(Activity::query()->forSubject($offer)->exists())->toBeFalse();
+});
+
+test('deleting locks the offer\'s claims, the rows a redemption writes, before re-checking them', function () {
+    $offer = Offer::factory()->create(['slug' => 'locked']);
+    User::factory()->create()->account->offers()->attach($offer->id, ['claimed_at' => now()]);
+    $statements = collect();
+    DB::listen(fn (QueryExecuted $query) => $statements->push(Str::lower($query->sql)));
+
+    app(DeleteOffer::class)->execute($this->admin, $offer);
+
+    expect($statements->contains(fn (string $sql): bool => Str::contains($sql, 'account_offer') && Str::endsWith($sql, 'for update')))->toBeTrue()
+        ->and(Offer::query()->whereKey($offer->id)->exists())->toBeFalse();
 });
 
 test('a coupon passes only when Stripe has it', function (string $coupon, ?string $message) {
@@ -421,7 +454,27 @@ test('a coupon fails while Stripe is unreachable', function () {
 test('an offer showing its banner also needs its name and headline in every locale', function () {
     $everyLocale = collect(Locale::cases())->map(fn (Locale $locale): string => $locale->value)->all();
 
-    expect(OfferCopy::missingLocales('ft7d', false))->toBe([])
-        ->and(OfferCopy::missingLocales('ft7d', true))->toBe($everyLocale)
-        ->and(OfferCopy::missingLocales('fm1', true))->toBe([]);
+    expect(OfferCopy::missingLocales(Offer::factory()->make(['slug' => 'ft7d', 'show_banner' => false])))->toBe([])
+        ->and(OfferCopy::missingLocales(Offer::factory()->make(['slug' => 'ft7d', 'show_banner' => true])))->toBe($everyLocale)
+        ->and(OfferCopy::missingLocales(Offer::factory()->make(['slug' => 'fm1', 'show_banner' => true])))->toBe([]);
+});
+
+test('the offers are listed the latest start first, each with its claims and redemptions counted', function () {
+    $earlier = Offer::factory()->create(['slug' => 'earlier', 'starts_at' => now()->subDays(10)]);
+    $later = adminOfferRedeemedBy(Offer::factory()->create(['slug' => 'later', 'starts_at' => now()->subDay()]), 2);
+    User::factory()->create()->account->offers()->attach($later->id, ['claimed_at' => now()]);
+    Offer::factory()->create(['slug' => 'b-same-day', 'starts_at' => $earlier->starts_at]);
+    Offer::factory()->create(['slug' => 'a-same-day', 'starts_at' => $earlier->starts_at]);
+
+    expect(ListOffers::execute()->pluck('slug')->all())->toBe(['later', 'a-same-day', 'b-same-day', 'earlier']);
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.billing.offers.index'))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('offers.0.slug', 'later')
+            ->where('offers.0.claimed', 3)
+            ->where('offers.0.redeemed', 2)
+            ->where('offers.3.claimed', 0)
+            ->where('offers.3.redeemed', 0),
+        );
 });

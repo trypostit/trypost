@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Support\Admin;
 
 use App\Enums\User\Locale;
+use App\Models\Offer;
 use Illuminate\Support\Facades\Lang;
-use Illuminate\Support\Str;
 
 /**
  * Whether an offer's copy is in `lang/<locale>/offers.php`, where it lives
@@ -26,12 +26,12 @@ final class OfferCopy
      *
      * @return list<string>
      */
-    public static function missingLocales(string $slug, bool $showsBanner): array
+    public static function missingLocales(Offer $offer): array
     {
-        $key = Str::replace('-', '_', $slug);
+        $key = $offer->langKey();
         $needed = self::REQUIRED;
 
-        if ($showsBanner) {
+        if ($offer->show_banner) {
             $needed = [...$needed, ...self::BANNER];
         }
 

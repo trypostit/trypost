@@ -10,7 +10,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { blank, filled } from '@/lib/helpers';
+import { blank, filled, isNumber } from '@/lib/helpers';
+import { formatFullNumber } from '@/lib/utils';
 import type { AdminTableColumn } from '@/types/admin';
 
 /**
@@ -149,6 +150,17 @@ const headClass = (index: number): string => {
     return base;
 };
 
+/** A cell as the default slot shows it: a numeric column's count formatted, any other as it came. */
+const cellText = (column: AdminTableColumn, row: Row): string => {
+    const value = row[column.key];
+
+    if (column.numeric && isNumber(value)) {
+        return formatFullNumber(value);
+    }
+
+    return textOf(value);
+};
+
 const cellClass = (column: AdminTableColumn, index: number): string => {
     if (index === 0) {
         return 'border-r-0 px-4 py-3 sm:ps-5';
@@ -203,7 +215,7 @@ const cellClass = (column: AdminTableColumn, index: number): string => {
                         >
                             <slot :name="`cell-${column.key}`" :row="row">
                                 <span class="text-sm font-medium text-foreground">{{
-                                    row[column.key]
+                                    cellText(column, row)
                                 }}</span>
                             </slot>
                         </TableCell>

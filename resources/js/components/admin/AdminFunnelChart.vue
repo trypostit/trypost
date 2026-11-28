@@ -6,12 +6,9 @@ import { computed, ref, useId, useTemplateRef } from 'vue';
 import { buildFunnelColumnPaths, funnelShade } from '@/lib/funnelRibbon';
 import { blank, clamp, filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
+import type { AdminSignupInsights } from '@/types/admin';
 
-export interface AdminFunnelStep {
-    key: string;
-    label: string;
-    count: number;
-}
+type AdminFunnelStep = AdminSignupInsights['funnel'][number];
 
 /**
  * A funnel drawn as a ribbon: one column per step, narrowing from each

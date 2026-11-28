@@ -6,20 +6,19 @@ use App\Console\Commands\ProcessScheduledPosts;
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
+use App\Events\PostStatusUpdated;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
 use App\Models\SocialAccount;
-use App\Models\User;
-use App\Models\Workspace;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     Http::preventStrayRequests();
 
-    $this->owner = User::factory()->create();
-    $this->workspace = Workspace::factory()->create(['user_id' => $this->owner->id, 'account_id' => $this->owner->account_id]);
-    $this->workspace->members()->attach($this->owner->id, membershipPivot('admin'));
+    $this->owner = workspaceOwner();
+    $this->workspace = $this->owner->currentWorkspace;
     $this->owner->account->update(['trial_ends_at' => now()->addWeek()]);
     $this->member = workspaceMember($this->workspace);
     $this->channel = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
@@ -101,4 +100,14 @@ test('a publish attempt of a limit retry that is due waits again while the accou
         ->and($post->status)->toBe(PostStatus::Publishing)
         ->and($post->retry_at->equalTo(now()))->toBeTrue();
     Http::assertNothingSent();
+});
+
+test('a publish attempt that waits for a blocked owner broadcasts the post\'s status to the open pages', function () {
+    Event::fake([PostStatusUpdated::class]);
+    $this->draft->forceFill(['status' => PostStatus::Publishing, 'scheduled_at' => now()])->save();
+
+    (new PublishToSocialPlatform($this->draft->fresh()))->handle();
+
+    Event::assertDispatched(PostStatusUpdated::class, fn (PostStatusUpdated $event): bool => $event->post->is($this->draft)
+        && $event->post->status === PostStatus::Scheduled);
 });

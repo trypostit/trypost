@@ -6,13 +6,13 @@ namespace App\Actions\Admin\Subscriptions;
 
 use App\Dto\Analytics\DateRange;
 use App\Enums\Admin\SubscriptionStatusFilter;
-use App\Models\Account;
 use App\Models\Offer;
 use App\Models\Subscription;
 use App\Support\Admin\StripePriceAmounts;
 use App\Support\Admin\SubscriptionHistory;
 use App\Support\Admin\SubscriptionPlans;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Stripe\Subscription as StripeSubscription;
 
@@ -27,9 +27,8 @@ class BuildSubscriptionOverview
      *
      * @return array<string, mixed>
      */
-    public static function execute(DateRange $range): array
+    public static function execute(DateRange $range, SubscriptionHistory $history): array
     {
-        $history = SubscriptionHistory::read();
         $subscriptions = $history->subscriptions;
         $first = $range->startsAt();
         $previous = $range->previous();
@@ -42,14 +41,14 @@ class BuildSubscriptionOverview
                 'new' => self::startedIn($subscriptions, $previous)->count(),
                 'canceled' => $history->canceledIn($previous)->count(),
                 'churn_rate' => $history->churnRate($previous),
-                'mrr_cents' => self::monthlyCents($subscriptions->filter(fn (Subscription $subscription): bool => self::paidAt($subscription, $first))),
+                'mrr_cents' => StripePriceAmounts::monthlyCentsOf($subscriptions->filter(fn (Subscription $subscription): bool => self::paidAt($subscription, $first))),
             ],
             'now' => [
-                'alive' => $standing[SubscriptionStatusFilter::All->value],
-                'active' => $standing[SubscriptionStatusFilter::Active->value],
-                'past_due' => $standing[SubscriptionStatusFilter::PastDue->value],
-                'trialing' => $standing[SubscriptionStatusFilter::Trialing->value],
-                'cancelling' => $standing[SubscriptionStatusFilter::Cancelling->value],
+                'alive' => data_get($standing, SubscriptionStatusFilter::All->value),
+                'active' => data_get($standing, SubscriptionStatusFilter::Active->value),
+                'past_due' => data_get($standing, SubscriptionStatusFilter::PastDue->value),
+                'trialing' => data_get($standing, SubscriptionStatusFilter::Trialing->value),
+                'cancelling' => data_get($standing, SubscriptionStatusFilter::Cancelling->value),
             ],
             'period' => [
                 'new' => self::startedIn($subscriptions, $range)->count(),
@@ -59,7 +58,7 @@ class BuildSubscriptionOverview
             ],
             'days' => $range->calendarDays(),
             'alive_by_day' => $history->aliveByDay($range),
-            'new_by_day' => collect($range->calendarDays())->map(fn (string $day): int => (int) $newPerDay->get($day, 0))->all(),
+            'new_by_day' => $range->perDay($newPerDay),
             'canceled_by_day' => $history->canceledByDay($range),
             'churn_rate_by_day' => $history->churnRateByDay($range),
             'plans' => $alive
@@ -73,8 +72,8 @@ class BuildSubscriptionOverview
                 ->all(),
             'mrr' => self::mrr($alive),
             'at_risk' => [
-                'past_due_cents' => self::monthlyCents($alive->where('stripe_status', StripeSubscription::STATUS_PAST_DUE)->whereNull('ends_at')),
-                'cancelling_cents' => self::monthlyCents($alive->whereNotNull('ends_at')->whereIn('stripe_status', Subscription::PAYING_STATUSES)),
+                'past_due_cents' => StripePriceAmounts::monthlyCentsOf($alive->where('stripe_status', StripeSubscription::STATUS_PAST_DUE)->whereNull('ends_at')),
+                'cancelling_cents' => StripePriceAmounts::monthlyCentsOf($alive->whereNotNull('ends_at')->whereIn('stripe_status', Subscription::PAYING_STATUSES)),
             ],
             'offers' => self::offers($alive),
         ];
@@ -107,7 +106,7 @@ class BuildSubscriptionOverview
     {
         $plan = SubscriptionPlans::describe($subscription->stripe_price);
 
-        return "{$plan['plan']}|{$plan['interval']}";
+        return collect([data_get($plan, 'plan'), data_get($plan, 'interval')])->implode('|');
     }
 
     /**
@@ -116,7 +115,7 @@ class BuildSubscriptionOverview
      * is left out and counted.
      *
      * @param  Collection<int, Subscription>  $alive
-     * @return array{cents: int, subscriptions: int, unpriced: int}
+     * @return array{cents: int, unpriced: int}
      */
     private static function mrr(Collection $alive): array
     {
@@ -126,20 +125,8 @@ class BuildSubscriptionOverview
 
         return [
             'cents' => (int) round($priced->sum()),
-            'subscriptions' => $priced->count(),
             'unpriced' => $paying->count() - $priced->count(),
         ];
-    }
-
-    /**
-     * What the subscriptions charge per month at list price; one whose price
-     * Stripe could not tell counts nothing.
-     *
-     * @param  Collection<int, Subscription>  $subscriptions
-     */
-    private static function monthlyCents(Collection $subscriptions): int
-    {
-        return (int) round($subscriptions->sum(fn (Subscription $subscription): float => StripePriceAmounts::forSubscription($subscription) ?? 0.0));
     }
 
     /**
@@ -150,16 +137,19 @@ class BuildSubscriptionOverview
      */
     private static function offers(Collection $alive): array
     {
-        $aliveAccounts = $alive->pluck('account_id')->flip();
+        $aliveAccounts = $alive->pluck('account_id')->unique()->values();
 
         return Offer::query()
             ->whereHas('redemptions')
-            ->with('redemptions')
+            ->withCount([
+                'redemptions',
+                'redemptions as still_subscribed_count' => fn (Builder $redemptions): Builder => $redemptions->whereIn('accounts.id', $aliveAccounts),
+            ])
             ->get()
             ->map(fn (Offer $offer): array => [
                 'slug' => $offer->slug,
-                'redeemed' => $offer->redemptions->count(),
-                'still_subscribed' => $offer->redemptions->filter(fn (Account $account): bool => $aliveAccounts->has($account->id))->count(),
+                'redeemed' => (int) $offer->redemptions_count,
+                'still_subscribed' => (int) $offer->still_subscribed_count,
             ])
             ->sortByDesc('redeemed')
             ->values()

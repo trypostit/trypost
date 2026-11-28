@@ -18,9 +18,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { planName } from '@/lib/adminUsers';
+import { planName, profileUrl } from '@/lib/adminUsers';
 import { filled } from '@/lib/helpers';
-import { show as userShow } from '@/routes/admin/users';
 import { destroy as blockDestroy } from '@/routes/admin/users/block';
 import { store as startImpersonation } from '@/routes/admin/users/impersonation';
 import type {
@@ -47,12 +46,31 @@ const ALL_TABS: { value: AdminUserTab; label: string }[] = [
 
 const props = defineProps<{ user: AdminUser } & AdminUserTabData>();
 
+/**
+ * A tab whose request failed or was cancelled goes back to the tab on screen,
+ * unless another tab was picked meanwhile.
+ */
+const restoreTab = (tab: AdminUserTab): void => {
+    if (activeTab.value === tab) {
+        activeTab.value = props.tab;
+    }
+};
+
 /** Picking a tab asks the server for that tab's data only. */
 const loadTab = (tab: AdminUserTab): void => {
     router.get(
-        userShow.url(props.user.id),
+        profileUrl(props.user.id),
         { tab },
-        { preserveScroll: true, preserveState: true, replace: true, only: ['tab', 'data'] },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+            only: ['tab', 'data'],
+            onError: () => restoreTab(tab),
+            onHttpException: () => restoreTab(tab),
+            onNetworkError: () => restoreTab(tab),
+            onCancel: () => restoreTab(tab),
+        },
     );
 };
 
@@ -145,7 +163,7 @@ const facts = computed((): AdminStat[] => [
     {
         key: 'user-signed-up',
         label: 'Signed up',
-        value: date.formatDayMonthYear(props.user.created_at),
+        value: date.formatDate(props.user.created_at),
         hint: date.diffForHumans(props.user.created_at),
     },
     { key: 'user-email', label: 'Email', value: emailLabel.value },

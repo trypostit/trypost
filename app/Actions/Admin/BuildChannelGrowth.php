@@ -48,11 +48,7 @@ class BuildChannelGrowth
                 ->all(),
             'by_network' => $connections
                 ->groupBy('network')
-                ->map(function (Collection $networkConnections) use ($days): array {
-                    $perDay = $networkConnections->countBy('date');
-
-                    return collect($days)->map(fn (string $day): int => (int) $perDay->get($day, 0))->all();
-                })
+                ->map(fn (Collection $networkConnections): array => $range->perDay($networkConnections->countBy('date')))
                 ->sortByDesc(fn (array $perDay): int => (int) collect($perDay)->sum())
                 ->all(),
             'new_in_range' => $connections->count(),

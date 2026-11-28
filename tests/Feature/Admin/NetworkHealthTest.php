@@ -7,8 +7,6 @@ use App\Actions\Admin\BuildNetworkHealth;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\SocialAccount;
-use App\Models\User;
-use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia;
 
@@ -54,9 +52,9 @@ test('the admin networks page renders the health of every network', function () 
 });
 
 test('reads the networks by channels, by accounts and by the first network each account connected', function () {
-    [$big, $small] = [User::factory()->create(), User::factory()->create()];
-    $bigWorkspace = Workspace::factory()->create(['user_id' => $big->id, 'account_id' => $big->account_id]);
-    $smallWorkspace = Workspace::factory()->create(['user_id' => $small->id, 'account_id' => $small->account_id]);
+    [$big, $small] = [workspaceOwner(), workspaceOwner()];
+    $bigWorkspace = $big->currentWorkspace;
+    $smallWorkspace = $small->currentWorkspace;
 
     SocialAccount::factory()->create(['workspace_id' => $bigWorkspace->id, 'platform' => Platform::X, 'created_at' => now()->subDays(9)]);
     SocialAccount::factory()->count(2)->create(['workspace_id' => $bigWorkspace->id, 'platform' => Platform::Instagram]);

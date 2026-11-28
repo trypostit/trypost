@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import AdminDailyBarChart, {
     type AdminChartSeries,
 } from '@/components/admin/AdminDailyBarChart.vue';
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import QuotaBar from '@/components/admin/QuotaBar.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
@@ -19,10 +20,10 @@ import {
 import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { countIn, formatUsd, humanize, joinFilled } from '@/lib/adminFormat';
+import { countIn, humanize, joinFilled } from '@/lib/adminFormat';
 import { accountColor } from '@/lib/analyticsColors';
 import { blank, filled, isNumber } from '@/lib/helpers';
-import { formatFullNumber } from '@/lib/utils';
+import { formatFullNumber, formatMoney } from '@/lib/utils';
 import { index as quotasIndex } from '@/routes/admin/quotas';
 import type {
     AdminQuotaCards,
@@ -81,10 +82,11 @@ const { tab: network, selectTab: selectNetwork } = useUrlTab({
 const toCents = (dollars: number): number => dollars * 100;
 
 /** Spend and credits to the cent: a day of X often costs less than a dollar. */
-const money = (dollars: number): string => formatUsd(toCents(dollars), 2);
+const money = (dollars: number): string => formatMoney(toCents(dollars));
 
 /** A unit price, to the tenth of a cent: X bills reads at $0.005. */
-const unitPrice = (dollars: number): string => formatUsd(toCents(dollars), 3);
+const unitPrice = (dollars: number): string =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 3 }).format(dollars);
 
 const updatedLabel = (takenAt: string | null): string => {
     if (filled(takenAt)) {
@@ -300,10 +302,10 @@ const costLine = (pickCount: (day: AdminXCostDay) => number) => (index: number, 
     const day = estimate.value[index];
 
     if (filled(day)) {
-        return `${formatFullNumber(pickCount(day))} posts · ${formatUsd(cents, 2)}`;
+        return `${formatFullNumber(pickCount(day))} posts · ${formatMoney(cents)}`;
     }
 
-    return formatUsd(cents, 2);
+    return formatMoney(cents);
 };
 
 const costSeries = computed((): AdminChartSeries[] => [
@@ -438,12 +440,9 @@ const projectCap = computed((): number | null => {
                             class="flex flex-col gap-5 border-t border-border px-4 py-5 sm:px-5"
                             data-testid="admin-quota-youtube"
                         >
-                            <p
-                                v-if="!hasYouTubeQuotas"
-                                class="text-sm text-muted-foreground"
-                            >
+                            <AdminEmptyState v-if="!hasYouTubeQuotas" variant="inset">
                                 No usage reported by Google yet.
-                            </p>
+                            </AdminEmptyState>
                             <QuotaBar
                                 v-for="quota in cards.youtube.quotas"
                                 :key="quota.metric"

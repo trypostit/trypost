@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Admin\ListFailedPosts;
+use App\Actions\Admin\UserProfile\BuildUserPosts;
 use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
@@ -27,4 +28,18 @@ test('a post the network rejected in review is listed and counted with the faile
             ->has('posts.data', 2)
             ->where('posts.data', fn (Collection $rows): bool => $rows->firstWhere('id', $rejected->id)['retryable'] === false),
         );
+});
+
+test('failures are listed by when they failed, so editing an older one does not move it to the top', function () {
+    $owner = workspaceOwner();
+    $channel = SocialAccount::factory()->create(['workspace_id' => $owner->current_workspace_id, 'platform' => Platform::X]);
+    $older = adminPostSentAt($channel, now()->subHours(2), 'failed', ['user_id' => $owner->id]);
+    $newer = adminPostSentAt($channel, now()->subHour(), 'failed', ['user_id' => $owner->id]);
+    Post::query()->whereKey($older->id)->toBase()->update(['updated_at' => now()->addMinute()]);
+
+    $recent = BuildUserPosts::execute($owner)['recent_failures'];
+
+    expect(ListFailedPosts::execute()->pluck('id')->all())->toBe([$newer->id, $older->id])
+        ->and(collect($recent)->pluck('id')->all())->toBe([$newer->id, $older->id])
+        ->and($recent[1]['failed_at'])->toBe($older->publication_updated_at->toIso8601String());
 });

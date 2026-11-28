@@ -39,8 +39,8 @@ class BuildNetworkHealth
             ->get()
             ->mapWithKeys(fn (object $group): array => ["{$group->platform}|{$group->status}" => (int) $group->total]);
 
-        $lastDay = self::sentSince($now->subDay());
-        $lastWeek = self::sentSince($now->subDays(7));
+        $lastDay = self::sentSince($now->subDay(), $now);
+        $lastWeek = self::sentSince($now->subDays(7), $now);
 
         $lastFailures = Post::query()
             ->createdInTryPost()
@@ -64,22 +64,21 @@ class BuildNetworkHealth
                 'last_7d' => PublishingCounts::of($lastWeek->get($platform->value, collect())),
                 'last_failure_at' => self::instant($lastFailures->get($platform->value)),
             ])
-            ->sortByDesc(fn (array $network): array => [$network['last_24h']['failure_rate'], $network['last_24h']['failed']])
+            ->sortByDesc(fn (array $network): array => [data_get($network, 'last_24h.failure_rate'), data_get($network, 'last_24h.failed')])
             ->values()
             ->all();
     }
 
     /**
-     * The posts TryPost sent since then, tallied by publication status, per platform.
+     * The posts TryPost sent since then, tallied by publication status, per
+     * platform: those that went out by when they were published, the refused
+     * ones by when they failed ({@see PublishingCounts::countedBetween()}).
      *
      * @return Collection<string, Collection<int, array{publish_status: string, total: int}>>
      */
-    private static function sentSince(CarbonImmutable $since): Collection
+    private static function sentSince(CarbonImmutable $since, CarbonImmutable $now): Collection
     {
-        return Post::query()
-            ->createdInTryPost()
-            ->whereIn('posts.publish_status', PublishingCounts::countedStatuses())
-            ->where('posts.publication_updated_at', '>=', $since)
+        return PublishingCounts::countedBetween(Post::query()->createdInTryPost(), $since, $now, PublishingCounts::countedStatuses())
             ->tallyBy(['posts.platform', 'posts.publish_status'])
             ->toBase()
             ->get()

@@ -85,11 +85,7 @@ final readonly class SubscriptionHistory
      */
     public function canceledByDay(DateRange $range): array
     {
-        $counts = $this->canceledIn($range)->countBy(fn (Subscription $subscription): string => $range->localDate($subscription->ends_at));
-
-        return collect($range->calendarDays())
-            ->map(fn (string $day): int => (int) $counts->get($day, 0))
-            ->all();
+        return $range->perDay($this->canceledIn($range)->countBy(fn (Subscription $subscription): string => $range->localDate($subscription->ends_at)));
     }
 
     /**

@@ -6,6 +6,7 @@ namespace App\Dto\Analytics;
 
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
+use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
 final readonly class DateRange
@@ -69,6 +70,20 @@ final readonly class DateRange
     {
         return collect(range(0, $this->days() - 1))
             ->map(fn (int $offset): string => $this->start->addDays($offset)->toDateString())
+            ->all();
+    }
+
+    /**
+     * Each of the range's days' count, first to last, from counts keyed by
+     * calendar day (`Y-m-d`); a day without one counts zero.
+     *
+     * @param  Collection<string, int>  $countsByDate
+     * @return list<int>
+     */
+    public function perDay(Collection $countsByDate): array
+    {
+        return collect($this->calendarDays())
+            ->map(fn (string $day): int => (int) $countsByDate->get($day, 0))
             ->all();
     }
 

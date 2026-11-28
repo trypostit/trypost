@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\Admin\UserProfile;
 
 use App\Actions\Billing\ListAccountCards;
-use App\Enums\Billing\Interval;
 use App\Http\Resources\App\InvoiceResource;
 use App\Models\Account;
 use App\Models\Offer;
-use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Support\Admin\StripeDashboard;
+use App\Support\Admin\SubscriptionPlans;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Discount;
 use Laravel\Cashier\Invoice;
@@ -21,7 +20,7 @@ use Throwable;
 
 class BuildUserBilling
 {
-    public const int INVOICES = 12;
+    private const int INVOICES = 12;
 
     /**
      * The billing of the account the user belongs to. What TryPost stores
@@ -53,7 +52,7 @@ class BuildUserBilling
                 'generic_trial_ends_at' => $account->trial_ends_at?->toIso8601String(),
             ],
             'plan' => $account->plan?->name,
-            'subscription' => self::subscription($account, $subscription),
+            'subscription' => self::subscription($subscription),
             'offers' => $account->offers->map(fn (Offer $offer): array => [
                 'slug' => $offer->slug,
                 'claimed_at' => data_get($offer, 'pivot.claimed_at'),
@@ -66,7 +65,7 @@ class BuildUserBilling
     /**
      * @return array<string, mixed>|null
      */
-    private static function subscription(Account $account, ?Subscription $subscription): ?array
+    private static function subscription(?Subscription $subscription): ?array
     {
         if ($subscription === null) {
             return null;
@@ -74,25 +73,11 @@ class BuildUserBilling
 
         return [
             'status' => $subscription->stripe_status,
-            'interval' => self::interval($account->plan, $subscription->stripe_price),
+            'interval' => SubscriptionPlans::intervalOf($subscription->stripe_price),
             'started_at' => $subscription->created_at?->toIso8601String(),
             'trial_ends_at' => $subscription->trial_ends_at?->toIso8601String(),
             'cancels_at' => $subscription->ends_at?->toIso8601String(),
-            'on_grace_period' => $subscription->onGracePeriod(),
-            'past_due' => $subscription->pastDue(),
         ];
-    }
-
-    /** The interval of the plan's price the subscription is on; null for a price the plan does not list. */
-    private static function interval(?Plan $plan, ?string $price): ?string
-    {
-        if ($plan === null || $price === null) {
-            return null;
-        }
-
-        return collect(Interval::cases())
-            ->first(fn (Interval $interval): bool => $interval->priceIdFor($plan) === $price)
-            ?->value;
     }
 
     /**

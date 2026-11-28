@@ -85,7 +85,7 @@ test('it resumes a TikTok publish_id instead of starting from scratch', function
 
     Storage::assertExists($derivativePath);
     expect($failedTikTok->fresh()->publish_status)->toBe(PlatformStatus::Pending)
-        ->and($failedTikTok->fresh()->error_context)->toBe([
+        ->and($failedTikTok->fresh()->error_context)->toEqual([
             'tiktok_publish_id' => 'stale-publish-id',
             'tiktok_derivative_paths' => [$derivativePath],
         ]);
@@ -110,7 +110,7 @@ test('it resumes a TikTok publish_id after an account or job interruption', func
     expect(app(RetryFailedPost::class)->execute($failedTikTok->fresh()))->toBe(RetryOutcome::Queued);
 
     expect($failedTikTok->fresh()->publish_status)->toBe(PlatformStatus::Pending)
-        ->and($failedTikTok->fresh()->error_context)->toBe([
+        ->and($failedTikTok->fresh()->error_context)->toEqual([
             'tiktok_publish_id' => 'pub_in_flight',
         ]);
 })->with([
@@ -141,7 +141,7 @@ test('it keeps an Instagram workflow checkpoint on retry', function () {
     expect(app(RetryFailedPost::class)->execute($failedInstagram->fresh()))->toBe(RetryOutcome::Queued);
 
     expect($failedInstagram->fresh()->publish_status)->toBe(PlatformStatus::Pending)
-        ->and($failedInstagram->fresh()->error_context)->toBe([
+        ->and($failedInstagram->fresh()->error_context)->toEqual([
             'instagram_workflow' => $workflow,
         ]);
 });
@@ -198,7 +198,7 @@ test('it queues nothing when the post changed after it was read', function () {
 
     expect(app(RetryFailedPost::class)->execute($stale))->toBe(RetryOutcome::Changed)
         ->and($post->fresh()->status)->toBe(PostStatus::Failed)
-        ->and($post->fresh()->error_context)->toBe(['category' => 'server_error']);
+        ->and($post->fresh()->error_context)->toEqual(['category' => 'server_error']);
     Bus::assertNotDispatched(PublishToSocialPlatform::class);
 });
 

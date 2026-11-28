@@ -39,6 +39,7 @@ const gridClass = computed((): string => {
                 :value="stat.value"
                 :hint="stat.hint"
                 :change="stat.change"
+                :loading="stat.loading"
                 value-class="text-foreground"
                 :value-test-id="`admin-stat-${stat.key}-value`"
             />

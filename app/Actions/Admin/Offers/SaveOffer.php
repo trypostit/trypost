@@ -40,8 +40,8 @@ class SaveOffer
 
         $offer->update([
             ...$attributes,
-            'starts_at' => self::keepIfSameDay($offer->starts_at, $attributes['starts_at'], $timezone),
-            'ends_at' => self::keepIfSameDay($offer->ends_at, $attributes['ends_at'], $timezone),
+            'starts_at' => self::keepIfSameDay($offer->starts_at, data_get($attributes, 'starts_at'), $timezone),
+            'ends_at' => self::keepIfSameDay($offer->ends_at, data_get($attributes, 'ends_at'), $timezone),
         ]);
         $this->recordAdminAction->execute($admin, AdminActionType::UpdateOffer, $offer, ['slug' => $offer->slug, 'changes' => $offer->getChanges()]);
 

@@ -27,14 +27,13 @@ export const subscriptionState = (state: string): { label: string; variant: Badg
     return { label: humanize(state), variant: 'secondary' };
 };
 
-const INTERVALS: Record<string, string> = { monthly: 'monthly', yearly: 'yearly' };
+/** The billing intervals a plan's label names. */
+const KNOWN_INTERVALS = ['monthly', 'yearly'];
 
 /** "Socials · monthly", or the plan's name alone when the interval is unknown (legacy prices). */
 export const subscriptionPlanLabel = (plan: AdminSubscriptionPlan): string => {
-    const interval = INTERVALS[plan.interval];
-
-    if (filled(interval)) {
-        return `${plan.name} · ${interval}`;
+    if (KNOWN_INTERVALS.includes(plan.interval)) {
+        return `${plan.name} · ${plan.interval}`;
     }
 
     return plan.name;

@@ -12,6 +12,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Support\Admin\AdminNetworks;
 use App\Support\Admin\QuotaSnapshots;
 use App\Support\Percent;
 use Carbon\CarbonImmutable;
@@ -63,14 +64,13 @@ class BuildDashboard
         return [
             'attention' => [
                 'networks' => $networks
-                    ->filter(fn (array $network): bool => $network['last_24h']['failure_rate'] >= self::ALARMING_FAILURE_RATE
-                        && $network['last_24h']['failed'] >= self::ALARMING_FAILURES)
+                    ->filter(fn (array $network): bool => self::isAlarming($network))
                     ->map(fn (array $network): array => [
-                        'platform' => $network['platform'],
-                        'label' => $network['label'],
-                        'network' => Platform::from($network['platform'])->network(),
-                        'failed' => $network['last_24h']['failed'],
-                        'failure_rate' => $network['last_24h']['failure_rate'],
+                        'platform' => data_get($network, 'platform'),
+                        'label' => data_get($network, 'label'),
+                        'network' => Platform::from(data_get($network, 'platform'))->network(),
+                        'failed' => data_get($network, 'last_24h.failed'),
+                        'failure_rate' => data_get($network, 'last_24h.failure_rate'),
                     ])
                     ->values()
                     ->all(),
@@ -97,9 +97,24 @@ class BuildDashboard
                 'total' => SocialAccount::query()->count(),
                 'last_7_days' => SocialAccount::query()->where('created_at', '>=', $now->subDays(self::NEW_CHANNEL_DAYS))->count(),
                 'connected' => SocialAccount::query()->where('status', Status::Connected)->count(),
-                'to_reconnect' => SocialAccount::query()->whereIn('status', [Status::TokenExpired, Status::Disconnected])->count(),
+                'to_reconnect' => SocialAccount::query()->whereIn('status', AdminNetworks::RECONNECT_STATUSES)->count(),
             ],
         ];
+    }
+
+    /**
+     * A network failing past the alarming share of its posts in the last 24
+     * hours, with enough failures for the share to mean something.
+     *
+     * @param  array<string, mixed>  $network
+     */
+    private static function isAlarming(array $network): bool
+    {
+        if (data_get($network, 'last_24h.failure_rate') < self::ALARMING_FAILURE_RATE) {
+            return false;
+        }
+
+        return data_get($network, 'last_24h.failed') >= self::ALARMING_FAILURES;
     }
 
     /**

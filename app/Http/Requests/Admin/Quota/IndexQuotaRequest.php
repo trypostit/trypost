@@ -13,7 +13,10 @@ class IndexQuotaRequest extends FormRequest
 {
     use PicksDateRange;
 
-    /** X keeps 90 days of usage, so the X tab offers no custom range. */
+    /**
+     * How far back the period's bounds reach, in days: X keeps 90 days of
+     * usage. The page offers the fixed periods only, never a custom range.
+     */
     public const int MAX_DAYS_BACK = 90;
 
     public function authorize(): bool

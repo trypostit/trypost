@@ -16,19 +16,34 @@ class ListFailedPosts
     /**
      * Posts the networks refused or rejected in review (what the backoffice
      * calls failed everywhere), across every workspace, the most recently
-     * failed first (`updated_at`, set on every post, sorts the same on
-     * PostgreSQL and MySQL; `publication_updated_at` may be null),
-     * optionally only those of one error category.
+     * failed first: by when the publication last moved
+     * (`publication_updated_at`, the failure time the list shows), which an
+     * edit of the post (a label, a note) never moves. A failure without that
+     * time comes last on PostgreSQL and MySQL alike. Optionally only those
+     * of one error category.
      *
      * @param  list<Platform>  $platforms  empty means every platform
      * @return Builder<Post>
      */
     public static function execute(array $platforms = [], ?ErrorCategory $category = null): Builder
     {
-        return self::failed($platforms)
+        return self::latestFailureFirst(self::failed($platforms)
             ->with(['socialAccount', 'workspace.account.owner'])
-            ->when($category, fn (Builder $query, ErrorCategory $category) => self::inCategory($query, $category))
-            ->orderByDesc('posts.updated_at')
+            ->when($category, fn (Builder $query, ErrorCategory $category) => self::inCategory($query, $category)));
+    }
+
+    /**
+     * Orders failed posts the most recently failed first, by
+     * `publication_updated_at` (nulls last on both engines), then by id.
+     *
+     * @param  Builder<Post>  $query
+     * @return Builder<Post>
+     */
+    public static function latestFailureFirst(Builder $query): Builder
+    {
+        return $query
+            ->orderByRaw('posts.publication_updated_at is null')
+            ->orderByDesc('posts.publication_updated_at')
             ->orderByDesc('posts.id');
     }
 

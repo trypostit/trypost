@@ -29,7 +29,6 @@ class AdminFailedPostResource extends JsonResource
             'id' => $this->id,
             'platform' => $this->platform?->value,
             'channel_name' => $this->display_name,
-            'channel_username' => $this->display_username,
             'workspace_name' => $this->workspace?->name,
             'owner_id' => $owner?->id,
             'owner_name' => $owner?->name,

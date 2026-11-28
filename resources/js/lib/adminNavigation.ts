@@ -23,7 +23,7 @@ import { index as quotasIndex } from '@/routes/admin/quotas';
 import { index as usersIndex } from '@/routes/admin/users';
 import { index as userInsightsIndex } from '@/routes/admin/users/insights';
 
-export interface AdminNavItem {
+interface AdminNavItem {
     name: string;
     title: string;
     href: string;
@@ -33,7 +33,7 @@ export interface AdminNavItem {
     exclude?: string[];
 }
 
-export interface AdminNavGroup {
+interface AdminNavGroup {
     key: string;
     label: string;
     items: AdminNavItem[];

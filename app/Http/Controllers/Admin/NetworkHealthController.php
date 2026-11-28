@@ -8,6 +8,7 @@ use App\Actions\Admin\BuildChannelDistribution;
 use App\Actions\Admin\BuildChannelGrowth;
 use App\Actions\Admin\BuildNetworkHealth;
 use App\Actions\Admin\BuildNetworkPermissions;
+use App\Enums\Analytics\DateRangePreset;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Network\IndexNetworkHealthRequest;
 use Inertia\Inertia;
@@ -22,6 +23,7 @@ class NetworkHealthController extends Controller
             'distribution' => BuildChannelDistribution::execute(),
             'permissions' => BuildNetworkPermissions::execute(),
             'growth' => BuildChannelGrowth::execute($request->dateRange()),
+            'ranges' => DateRangePreset::backoffice(),
             ...$request->rangeProps(),
             'filters' => $request->rangeFilters(),
         ]);

@@ -45,15 +45,12 @@ export const countIn = <Key extends PropertyKey>(counts: Partial<Record<Key, num
     return 0;
 };
 
-/**
- * An amount in US dollars, from cents: whole dollars by default ("$1,235"),
- * or with up to `decimals` digits for an amount under a dollar ("$0.42").
- */
-export const formatUsd = (cents: number, decimals: number = 0): string =>
+/** An amount in US dollars, from cents, in whole dollars: "$1,235". Cents go through `formatMoney`. */
+export const formatUsd = (cents: number): string =>
     new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
-        maximumFractionDigits: decimals,
+        maximumFractionDigits: 0,
     }).format(cents / 100);
 
 /** The first message of a failed request's errors, or the fallback when it sent none. */

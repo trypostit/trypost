@@ -1,9 +1,11 @@
+import { clamp } from '@/lib/helpers';
+
 /**
  * The paths of one column of a funnel ribbon: an S-curve that narrows from
  * the step's half-height to the next step's across nearly the whole column,
  * around a vertical center. Each step's band is its own column.
  */
-export interface FunnelColumnPaths {
+interface FunnelColumnPaths {
     /** The closed fill of the step's band. */
     path: string;
     /** The open top and bottom edges, drawn under the fill as a soft halo. */
@@ -82,5 +84,5 @@ export const funnelShade = (index: number, count: number): string => {
 
     const slot = Math.round((index / (count - 1)) * (SHADES.length - 1));
 
-    return SHADES[slot] ?? SHADES[0];
+    return SHADES[clamp(slot, 0, SHADES.length - 1)];
 };

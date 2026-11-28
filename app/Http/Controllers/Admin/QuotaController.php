@@ -15,12 +15,10 @@ class QuotaController extends Controller
 {
     public function index(IndexQuotaRequest $request): Response
     {
-        $dates = $request->dates();
-
         return Inertia::render('admin/quotas/Index', [
             'cards' => BuildQuotaCards::execute($request->dateRange()),
-            'range' => $dates,
             'ranges' => DateRangePreset::backoffice(),
+            ...$request->rangeProps(),
             'filters' => $request->rangeFilters(),
         ]);
     }

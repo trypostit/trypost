@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin\Network;
 
-use App\Actions\Analytics\ResolveAnalyticsRangePreset;
+use App\Enums\Analytics\DateRangePreset;
 use App\Http\Requests\Admin\Concerns\PicksDateRange;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,7 +27,7 @@ class IndexNetworkHealthRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'range' => ['nullable', Rule::in(ResolveAnalyticsRangePreset::PRESETS)],
+            'range' => ['nullable', Rule::enum(DateRangePreset::class)->only([...DateRangePreset::backoffice(), DateRangePreset::Custom])],
             'start' => [Rule::requiredIf($this->picksCustomRange()), 'nullable', 'date_format:Y-m-d', "after_or_equal:{$this->earliestDay()}"],
             'end' => [Rule::requiredIf($this->picksCustomRange()), 'nullable', 'date_format:Y-m-d', 'after_or_equal:start', "before_or_equal:{$this->today()}"],
         ];

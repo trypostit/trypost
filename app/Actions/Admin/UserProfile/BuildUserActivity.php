@@ -45,15 +45,7 @@ class BuildUserActivity
 
         return [
             'history' => AdminActivityResource::collection($history)->resolve(),
-            'sessions' => DatabaseSessions::of($user)
-                ->map(fn (object $session): array => [
-                    'id' => hash('sha256', $session->id),
-                    'user_agent' => $session->user_agent,
-                    'ip' => $session->ip_address,
-                    'last_activity' => CarbonImmutable::createFromTimestampUTC($session->last_activity)->toIso8601String(),
-                ])
-                ->values()
-                ->all(),
+            'sessions' => self::sessions($user),
             'changelog' => [
                 'opened' => $views->count(),
                 'liked' => $views->where('reaction', Reaction::Like)->count(),
@@ -64,5 +56,25 @@ class BuildUserActivity
                 ])->values()->all(),
             ],
         ];
+    }
+
+    /**
+     * The sessions the user is signed in with, the most recently active
+     * first, as the backoffice shows them: the id hashed, never sent, and the
+     * last activity an ISO instant. The overview's "last seen" is the first.
+     *
+     * @return list<array{id: string, user_agent: ?string, ip: ?string, last_activity: string}>
+     */
+    public static function sessions(User $user): array
+    {
+        return DatabaseSessions::of($user)
+            ->map(fn (object $session): array => [
+                'id' => hash('sha256', $session->id),
+                'user_agent' => $session->user_agent,
+                'ip' => $session->ip_address,
+                'last_activity' => CarbonImmutable::createFromTimestampUTC($session->last_activity)->toIso8601String(),
+            ])
+            ->values()
+            ->all();
     }
 }

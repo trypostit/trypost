@@ -20,9 +20,10 @@ import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import debounce from '@/debounce';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { planName } from '@/lib/adminUsers';
+import { planName, profileUrl } from '@/lib/adminUsers';
 import { blank, filled } from '@/lib/helpers';
-import { index as usersIndex, show as userShow } from '@/routes/admin/users';
+import { formatFullNumber } from '@/lib/utils';
+import { index as usersIndex } from '@/routes/admin/users';
 import type { AdminUser, ScrollPage, UserStatusFilter } from '@/types/admin';
 
 const STATUS_FILTERS: { value: UserStatusFilter; label: string }[] = [
@@ -155,7 +156,7 @@ const emptyMessage = computed((): string => {
                                 >
                                     <TableCell class="border-r-0 px-4 py-3 sm:px-5">
                                         <Link
-                                            :href="userShow.url(user.id)"
+                                            :href="profileUrl(user.id)"
                                             class="flex min-w-0 items-center gap-3 rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                             :data-testid="`admin-user-link-${user.id}`"
                                         >
@@ -198,7 +199,7 @@ const emptyMessage = computed((): string => {
                                     <TableCell
                                         class="border-r-0 px-4 py-3 tabular-nums"
                                     >
-                                        {{ user.workspaces_count }}
+                                        {{ formatFullNumber(user.workspaces_count) }}
                                     </TableCell>
                                     <TableCell
                                         class="border-r-0 px-4 py-3 text-muted-foreground tabular-nums"

@@ -8,7 +8,7 @@ use App\Dto\Analytics\DateRange;
 use App\Enums\Post\PublishStatus;
 use App\Enums\User\Goal;
 use App\Enums\User\PreviousSoftware;
-use App\Enums\User\SignupMethod;
+use App\Enums\User\SignInMethod;
 use App\Models\Account;
 use App\Models\Subscription;
 use App\Models\User;
@@ -27,13 +27,15 @@ class BuildSignupInsights
      * pays), followed as one cohort through the Welcome answers, a
      * subscription, a connected channel and a post sent. Each answer is split
      * out with how many of its owners went on to subscribe, and the period is
-     * set against the one before it.
+     * set against the one before it. `signup_methods` holds the ways each
+     * owner can sign in now (Google, GitHub, a password), not how they
+     * signed up: linking Google later adds it, so an owner may count under
+     * several.
      *
      * @return array<string, mixed>
      */
     public static function execute(DateRange $range): array
     {
-        $days = collect($range->calendarDays());
         $previous = $range->previous();
 
         $owners = self::owners($range->startsAt(), $range->endsAt());
@@ -49,15 +51,15 @@ class BuildSignupInsights
         return [
             'totals' => self::totals($owners, $subscribed),
             'previous' => self::totals($previousOwners, $previousSubscribed),
-            'days' => $days->all(),
-            'signups_by_day' => $days->map(fn (string $day): int => (int) $signupsPerDay->get($day, 0))->all(),
-            'subscribed_by_day' => $days->map(fn (string $day): int => (int) $subscribedPerDay->get($day, 0))->all(),
+            'days' => $range->calendarDays(),
+            'signups_by_day' => $range->perDay($signupsPerDay),
+            'subscribed_by_day' => $range->perDay($subscribedPerDay),
             'funnel' => self::funnel($owners, $subscribed, $answered),
             'personas' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->persona?->value], fn (string $value): string => (string) __("welcome.personas.{$value}", [], 'en')),
             'software' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->previous_software?->value], fn (string $value): string => PreviousSoftware::from($value)->label()),
             'goals' => self::breakdown($owners, $subscribed, fn (User $user): array => collect($user->goals ?? [])->filter(fn (mixed $goal): bool => is_string($goal) && Goal::tryFrom($goal) !== null)->values()->all(), fn (string $value): string => (string) __("welcome.goals.{$value}", [], 'en')),
             'referral_sources' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->referral_source?->value], fn (string $value): string => (string) __("referral_source.options.{$value}", [], 'en')),
-            'signup_methods' => self::breakdown($owners, $subscribed, fn (User $user): array => [SignupMethod::of($user)->value], fn (string $value): string => SignupMethod::from($value)->label()),
+            'signup_methods' => self::breakdown($owners, $subscribed, fn (User $user): array => collect(SignInMethod::of($user))->map->value->all(), fn (string $value): string => SignInMethod::from($value)->label()),
             'answered' => $answered,
         ];
     }
@@ -75,7 +77,7 @@ class BuildSignupInsights
         return [
             'signups' => $owners->count(),
             'subscribed' => $subscribed->count(),
-            'new_mrr_cents' => self::newMrrCents($subscribed),
+            'new_mrr_cents' => StripePriceAmounts::monthlyCentsOf($subscribed),
             'minutes_to_subscribe' => self::medianMinutesToSubscribe($owners, $subscribed),
             'subscribed_rate' => Percent::of($subscribed->count(), $owners->count()),
         ];
@@ -107,7 +109,7 @@ class BuildSignupInsights
         return User::query()
             ->whereBetween('users.created_at', [$from, $until])
             ->whereIn('users.id', Account::query()->select('owner_id'))
-            ->get(['users.id', 'users.account_id', 'users.created_at', 'users.persona', 'users.goals', 'users.previous_software', 'users.referral_source', 'users.google_id', 'users.github_id']);
+            ->get(['users.id', 'users.account_id', 'users.created_at', 'users.persona', 'users.goals', 'users.previous_software', 'users.referral_source', 'users.google_id', 'users.github_id', 'users.password']);
     }
 
     /**
@@ -127,16 +129,6 @@ class BuildSignupInsights
             ->get(['id', 'account_id', 'stripe_price', 'quantity', 'created_at'])
             ->unique('account_id')
             ->keyBy('account_id');
-    }
-
-    /**
-     * What the first subscriptions bring each month at list price.
-     *
-     * @param  Collection<string, Subscription>  $subscriptions
-     */
-    private static function newMrrCents(Collection $subscriptions): int
-    {
-        return (int) round($subscriptions->sum(fn (Subscription $subscription): float => StripePriceAmounts::forSubscription($subscription) ?? 0.0));
     }
 
     /**
@@ -172,9 +164,9 @@ class BuildSignupInsights
 
         return [
             ['key' => 'signed_up', 'label' => 'Signed up', 'count' => $owners->count()],
-            ['key' => 'persona', 'label' => 'Said who they are', 'count' => $answered['persona']],
-            ['key' => 'goals', 'label' => 'Picked their goals', 'count' => $answered['goals']],
-            ['key' => 'software', 'label' => 'Named their tool', 'count' => $answered['software']],
+            ['key' => 'persona', 'label' => 'Said who they are', 'count' => data_get($answered, 'persona')],
+            ['key' => 'goals', 'label' => 'Picked their goals', 'count' => data_get($answered, 'goals')],
+            ['key' => 'software', 'label' => 'Named their tool', 'count' => data_get($answered, 'software')],
             ['key' => 'subscribed', 'label' => 'Subscribed', 'count' => $subscribed->count()],
             ['key' => 'connected', 'label' => 'Connected a channel', 'count' => (clone $workspaces)
                 ->whereHas('socialAccounts')

@@ -18,9 +18,8 @@ class ListSubscriptions
      */
     public static function execute(SubscriptionStatusFilter $status, ?string $search = null): Builder
     {
-        return self::matching($search)
+        return $status->apply(self::matching($search), now('UTC'))
             ->with(['owner.owner', 'owner.redeemedOffers'])
-            ->tap(fn (Builder $query) => $status->apply($query, now('UTC')))
             ->orderByDesc('created_at')
             ->orderByDesc('id');
     }

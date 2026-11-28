@@ -39,7 +39,7 @@ class IndexFailedPostRequest extends FormRequest
 
     public function category(): ?ErrorCategory
     {
-        return ErrorCategory::tryFrom((string) $this->validated('category'));
+        return $this->enum('category', ErrorCategory::class);
     }
 
     /**

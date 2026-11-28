@@ -28,12 +28,15 @@ enum SubscriptionStatusFilter: string
     case Canceled = 'canceled';
 
     /**
+     * The subscriptions this filter keeps.
+     *
      * @param  Builder<Subscription>  $query
+     * @return Builder<Subscription>
      */
-    public function apply(Builder $query, CarbonInterface $now): void
+    public function apply(Builder $query, CarbonInterface $now): Builder
     {
-        match ($this) {
-            self::All => null,
+        return match ($this) {
+            self::All => $query,
             self::Active => $query->where('stripe_status', StripeSubscription::STATUS_ACTIVE)->whereNull('ends_at'),
             self::Cancelling => $query->where('ends_at', '>', $now),
             self::PastDue => $query->where('stripe_status', StripeSubscription::STATUS_PAST_DUE)->whereNull('ends_at'),

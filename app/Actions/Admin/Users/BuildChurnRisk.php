@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace App\Actions\Admin\Users;
 
 use App\Actions\Account\ResolveLifecycleStage;
+use App\Dto\Admin\AccountActivity;
 use App\Enums\Account\LifecycleStage;
 use App\Enums\Admin\ChurnSignal;
 use App\Enums\Admin\RiskLevel;
 use App\Models\Account;
 use App\Models\Subscription;
-use App\Support\Admin\AccountActivity;
 use App\Support\Admin\AccountSummary;
 use App\Support\Admin\StripePriceAmounts;
 use App\Support\Percent;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Stripe\Subscription as StripeSubscription;
 
 class BuildChurnRisk
@@ -45,7 +47,8 @@ class BuildChurnRisk
      * subscribing, posts half as much as in the period before, fails often,
      * most of its channels need reconnecting, it is cancelling or its
      * payment is past due. Each signal weighs in a risk level; the heaviest
-     * first, then what the account pays.
+     * first, then what the account pays. The score only orders the rows and
+     * sets the level; it is not sent.
      *
      * @return array<string, mixed>
      */
@@ -73,8 +76,9 @@ class BuildChurnRisk
                     ...self::assess($account, $stage, $activity->channelsOf($account->id), $sent, $previousSent, $activity->failedFor($account->id)),
                 ];
             })
-            ->filter(fn (array $row): bool => filled($row['signals']))
-            ->sortByDesc(fn (array $row): array => [$row['score'], $row['mrr_cents']])
+            ->filter(fn (array $row): bool => filled(data_get($row, 'signals')))
+            ->sortByDesc(fn (array $row): array => [data_get($row, 'score'), data_get($row, 'mrr_cents')])
+            ->map(fn (array $row): array => Arr::except($row, 'score'))
             ->values();
 
         return [
@@ -84,7 +88,7 @@ class BuildChurnRisk
             'at_risk_share' => Percent::of($atRisk->count(), $accounts->count()),
             'mrr_at_risk_cents' => $atRisk->sum('mrr_cents'),
             'levels' => $atRisk->countBy('level')->all(),
-            'signals' => $atRisk->flatMap(fn (array $row): array => $row['signals'])->countBy()->sortDesc()->all(),
+            'signals' => $atRisk->flatMap(fn (array $row): array => data_get($row, 'signals'))->countBy()->sortDesc()->all(),
             'accounts' => $atRisk->take(self::LIST_SIZE)->all(),
         ];
     }
@@ -107,7 +111,7 @@ class BuildChurnRisk
             'signals' => $signals->map(fn (ChurnSignal $signal): string => $signal->value)->all(),
             'score' => $score,
             'level' => RiskLevel::fromScore($score)?->value,
-            'mrr_cents' => self::monthlyCents($subscription),
+            'mrr_cents' => StripePriceAmounts::monthlyCentsOf(Collection::wrap($subscription)),
         ];
     }
 
@@ -145,7 +149,7 @@ class BuildChurnRisk
             $signals[] = ChurnSignal::NoChannels;
         }
 
-        if ($channels !== null && Percent::of($channels['broken'], $channels['total']) >= self::BROKEN_CHANNELS_SHARE) {
+        if ($channels !== null && Percent::of(data_get($channels, 'broken'), data_get($channels, 'total')) >= self::BROKEN_CHANNELS_SHARE) {
             $signals[] = ChurnSignal::ChannelsBroken;
         }
 
@@ -158,14 +162,5 @@ class BuildChurnRisk
         }
 
         return $signals;
-    }
-
-    private static function monthlyCents(?Subscription $subscription): int
-    {
-        if ($subscription === null) {
-            return 0;
-        }
-
-        return (int) round(StripePriceAmounts::forSubscription($subscription) ?? 0.0);
     }
 }

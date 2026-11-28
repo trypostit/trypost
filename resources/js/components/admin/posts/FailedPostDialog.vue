@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
-import { channelStatus } from '@/lib/adminChannels';
+import { channelDisplayName, channelStatusLabel } from '@/lib/adminChannels';
 import { errorCategoryLabel } from '@/lib/adminErrorCategories';
 import { joinFilled, orDash } from '@/lib/adminFormat';
 import { originLabel } from '@/lib/adminPublishing';
@@ -38,13 +38,11 @@ const platformLabel = computed((): string => {
 });
 
 const channelLabel = computed((): string => {
-    const name = props.post?.channel_name;
-
-    if (filled(name)) {
-        return name;
+    if (filled(props.post)) {
+        return channelDisplayName(props.post.channel_name, props.post.platform);
     }
 
-    return platformLabel.value;
+    return '';
 });
 
 const subtitle = computed((): string => joinFilled([platformLabel.value, props.post?.workspace_name]));
@@ -75,21 +73,12 @@ const viaLabel = (post: AdminFailedPost): string => {
     return MISSING_VALUE;
 };
 
-/** A post whose channel was deleted has no channel status. */
-const channelStatusLabel = (post: AdminFailedPost): string => {
-    if (filled(post.channel_status)) {
-        return channelStatus(post.channel_status).label;
-    }
-
-    return 'Channel gone';
-};
-
 const postDetails = (post: AdminFailedPost): AdminDetailRow[] => [
     { key: 'type', label: 'Post type', value: orDash(post.content_type_label) },
     { key: 'via', label: 'Created via', value: viaLabel(post) },
     { key: 'scheduled', label: 'Scheduled for', value: date.formatDateTime(post.scheduled_at) },
     { key: 'failed', label: 'Failed', value: date.formatDateTime(post.failed_at) },
-    { key: 'channel', label: 'Channel status', value: channelStatusLabel(post) },
+    { key: 'channel', label: 'Channel status', value: channelStatusLabel(post.channel_status) },
 ];
 
 const detailRows = computed((): AdminDetailRow[] => {

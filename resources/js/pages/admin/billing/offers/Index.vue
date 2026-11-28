@@ -92,21 +92,16 @@ const tabCount = (value: OffersTab): string => formatFullNumber(offersIn(value).
 const hasOffers = computed(() => filled(props.offers));
 const hasShownOffers = computed(() => filled(shownOffers.value));
 
-/** What each state's tab says when it holds no offer. */
-const EMPTY_MESSAGES: Record<OfferState, string> = {
+/** What each tab says when it holds no offer; All holds every offer, so the page's own empty state speaks for it. */
+const EMPTY_MESSAGES: Record<OffersTab, string> = {
+    all: 'No offers yet.',
     live: 'No offer is live.',
     scheduled: 'No offer is scheduled.',
     full: 'No offer is full.',
     ended: 'No offer has ended.',
 };
 
-const emptyMessage = computed((): string => {
-    if (tab.value === 'all') {
-        return 'No offers yet.';
-    }
-
-    return EMPTY_MESSAGES[tab.value];
-});
+const emptyMessage = computed((): string => EMPTY_MESSAGES[tab.value]);
 
 const sum = (pick: (offer: AdminOffer) => number): number =>
     props.offers.reduce((total, offer) => total + pick(offer), 0);
@@ -401,11 +396,13 @@ const confirm = (): void => {
                                         </span>
                                         <Tooltip v-if="hasMissingCopy(offer)">
                                             <TooltipTrigger as-child>
-                                                <span
-                                                    class="w-fit cursor-default text-xs text-warning"
+                                                <button
+                                                    type="button"
+                                                    class="w-fit cursor-default rounded-sm text-start text-xs text-warning focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                                     :data-testid="`admin-offer-missing-copy-${offer.slug}`"
-                                                    >{{ missingCopyLabel(offer) }}</span
                                                 >
+                                                    {{ missingCopyLabel(offer) }}
+                                                </button>
                                             </TooltipTrigger>
                                             <TooltipContent class="max-w-sm">
                                                 {{ missingCopyList(offer) }}

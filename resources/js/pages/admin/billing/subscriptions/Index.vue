@@ -45,7 +45,7 @@ const STATUS_FILTERS: { value: SubscriptionStatusFilter; label: string }[] = [
 
 const props = defineProps<{
     overview: AdminSubscriptionOverview;
-    netMrr?: AdminNetMrr | null;
+    netMrr?: AdminNetMrr;
     churn: AdminSubscriptionChurn;
     subscriptions: ScrollPage<AdminSubscription>;
     range: DateRange;

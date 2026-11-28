@@ -7,28 +7,28 @@ namespace App\Actions\Admin\UserProfile;
 use App\Actions\Account\ResolveLifecycleStage;
 use App\Actions\Admin\Users\BuildChurnRisk;
 use App\Actions\Admin\Users\CountAccountActivity;
+use App\Dto\Analytics\DateRange;
 use App\Enums\Account\LifecycleStage;
-use App\Enums\Post\CreatedVia;
-use App\Enums\Post\PublishStatus;
 use App\Models\Account;
 use App\Models\User;
-use App\Support\Admin\PublishingCounts;
 use App\Support\Percent;
+use Illuminate\Support\Arr;
 
 class BuildUserHealth
 {
-    /** The days the posting figures cover, set against as many days before. */
+    /** The calendar days the posting figures cover, set against as many days before. */
     public const int WINDOW_DAYS = 30;
 
     /**
      * How the user's account is doing now, read the way People → Insights
      * reads every account: its lifecycle stage worked out now, its last
-     * post, how much it posted lately against the period before, its
-     * channels and, for a paying account, its churn risk and what it pays.
+     * post, how much it posted over the last 30 calendar days of the
+     * viewing admin's zone against the 30 before, its channels and, for a
+     * paying account, its churn risk and what it pays.
      *
      * @return array<string, mixed>|null
      */
-    public static function execute(User $user): ?array
+    public static function execute(User $user, string $timezone): ?array
     {
         $account = Account::query()
             ->whereKey($user->account_id)
@@ -40,14 +40,15 @@ class BuildUserHealth
             return null;
         }
 
-        $last = now();
-        $first = $last->subDays(self::WINDOW_DAYS);
-
-        $sent = CountAccountActivity::postsOf($account->id, $first, $last, PublishStatus::wentOutCases());
-        $previousSent = CountAccountActivity::postsOf($account->id, $first->subDays(self::WINDOW_DAYS), $first->subSecond(), PublishStatus::wentOutCases());
-        $failed = CountAccountActivity::postsOf($account->id, $first, $last, PublishingCounts::failedStatuses());
-        $automated = CountAccountActivity::postsOf($account->id, $first, $last, PublishStatus::wentOutCases(), [CreatedVia::Api, CreatedVia::Mcp]);
-        $channels = CountAccountActivity::channelsOf($account->id);
+        $today = now($timezone);
+        $activity = CountAccountActivity::execute(
+            DateRange::fromDates($today->subDays(self::WINDOW_DAYS - 1)->toDateString(), $today->toDateString(), $timezone),
+            $account->id,
+        );
+        $sent = $activity->sentBy($account->id);
+        $previousSent = $activity->previousSentBy($account->id);
+        $failed = $activity->failedFor($account->id);
+        $channels = $activity->channelsOf($account->id);
         $stage = ResolveLifecycleStage::execute($account, $account->last_published_at, (bool) $account->has_social_account);
 
         return [
@@ -56,7 +57,7 @@ class BuildUserHealth
             'posts' => [
                 'sent' => $sent,
                 'previous' => $previousSent,
-                'automated' => $automated,
+                'automated' => $activity->automatedBy($account->id),
                 'failed' => $failed,
                 'failure_rate' => Percent::of($failed, $failed + $sent),
             ],
@@ -73,7 +74,7 @@ class BuildUserHealth
      * null for an account that pays nothing now.
      *
      * @param  array{total: int, broken: int}|null  $channels
-     * @return array{signals: list<string>, score: int, level: ?string, mrr_cents: int}|null
+     * @return array{signals: list<string>, level: ?string, mrr_cents: int}|null
      */
     private static function risk(Account $account, LifecycleStage $stage, ?array $channels, int $sent, int $previousSent, int $failed): ?array
     {
@@ -81,6 +82,6 @@ class BuildUserHealth
             return null;
         }
 
-        return BuildChurnRisk::assess($account, $stage, $channels, $sent, $previousSent, $failed);
+        return Arr::except(BuildChurnRisk::assess($account, $stage, $channels, $sent, $previousSent, $failed), 'score');
     }
 }

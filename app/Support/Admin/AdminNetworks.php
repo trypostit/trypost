@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Admin;
 
 use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status;
 
 /**
  * The backoffice filters by network (LinkedIn, Instagram…), like the app's
@@ -13,6 +14,9 @@ use App\Enums\SocialAccount\Platform;
  */
 final class AdminNetworks
 {
+    /** The channel statuses that need reconnecting. */
+    public const array RECONNECT_STATUSES = [Status::TokenExpired, Status::Disconnected];
+
     /**
      * The networks of the enabled platforms, each once.
      *

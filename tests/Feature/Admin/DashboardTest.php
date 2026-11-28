@@ -20,8 +20,7 @@ test('sums up the last 24 hours of publishing and the channels to reconnect', fu
     SocialAccount::factory()->create(['status' => Status::TokenExpired]);
 
     foreach (['published', 'published', 'failed'] as $state) {
-        $post = Post::factory()->forAccount($channel)->{$state}()->create();
-        Post::query()->whereKey($post->id)->toBase()->update(['publication_updated_at' => $now->subHour()]);
+        adminPostSentAt($channel, $now->subHour(), $state);
     }
 
     $dashboard = BuildDashboard::execute('UTC');
@@ -38,13 +37,11 @@ test('flags a network failing often, posts stuck publishing and quotas running o
     $noisy = SocialAccount::factory()->create(['platform' => Platform::GoogleBusiness]);
 
     foreach (['failed', 'failed', 'failed', 'published'] as $state) {
-        $post = Post::factory()->forAccount($failing)->{$state}()->create();
-        Post::query()->whereKey($post->id)->toBase()->update(['publication_updated_at' => $now->subHour()]);
+        adminPostSentAt($failing, $now->subHour(), $state);
     }
 
     foreach (['failed', 'published'] as $state) {
-        $post = Post::factory()->forAccount($noisy)->{$state}()->create();
-        Post::query()->whereKey($post->id)->toBase()->update(['publication_updated_at' => $now->subHour()]);
+        adminPostSentAt($noisy, $now->subHour(), $state);
     }
 
     $stuck = Post::factory()->forAccount($failing)->create();
@@ -88,8 +85,7 @@ test('a network with a few failures among many posts does not need attention', f
     $busy = SocialAccount::factory()->create(['platform' => Platform::X]);
 
     foreach ([...array_fill(0, BuildDashboard::ALARMING_FAILURES, 'failed'), ...array_fill(0, 30, 'published')] as $state) {
-        $post = Post::factory()->forAccount($busy)->{$state}()->create();
-        Post::query()->whereKey($post->id)->toBase()->update(['publication_updated_at' => $now->subHour()]);
+        adminPostSentAt($busy, $now->subHour(), $state);
     }
 
     $dashboard = BuildDashboard::execute('UTC');
@@ -97,4 +93,25 @@ test('a network with a few failures among many posts does not need attention', f
     expect($dashboard['last_24h']['failure_rate'])->toBeLessThan(BuildDashboard::ALARMING_FAILURE_RATE)
         ->and($dashboard['last_24h']['failed'])->toBe(BuildDashboard::ALARMING_FAILURES)
         ->and($dashboard['attention']['networks'])->toBe([]);
+});
+
+test('counts the queue, draws each day\'s publishing and leaves a failure older than 24 hours out', function () {
+    $now = CarbonImmutable::now('UTC')->startOfDay()->addHours(12);
+    $this->travelTo($now);
+    $channel = SocialAccount::factory()->create(['platform' => Platform::X]);
+    adminPostSentAt($channel, $now->subHour());
+    adminPostSentAt($channel, $now->subHours(25), 'failed');
+    Post::factory()->forAccount($channel)->scheduled()->count(2)->create();
+    Post::factory()->forAccount($channel)->publishing()->create();
+    Post::factory()->forAccount($channel)->pendingReview()->create();
+    $retrying = Post::factory()->forAccount($channel)->publishing()->create();
+    Post::query()->whereKey($retrying->id)->toBase()->update(['publish_status' => PublishStatus::Retrying->value]);
+
+    $dashboard = BuildDashboard::execute('UTC');
+
+    expect($dashboard['queue'])->toBe(['scheduled' => 2, 'publishing' => 1, 'retrying' => 1, 'pending_review' => 1])
+        ->and($dashboard['last_24h'])->toBe(['published' => 1, 'failed' => 0, 'failure_rate' => 0.0])
+        ->and(collect($dashboard['publishing_days'])->last())->toBe(['date' => $now->toDateString(), 'published' => 1, 'failed' => 0])
+        ->and($dashboard['publishing_days'][BuildDashboard::CHART_DAYS - 2])->toBe(['date' => $now->subDay()->toDateString(), 'published' => 0, 'failed' => 1])
+        ->and(collect($dashboard['publishing_days'])->first()['date'])->toBe($now->subDays(BuildDashboard::CHART_DAYS - 1)->toDateString());
 });

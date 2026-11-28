@@ -14,7 +14,7 @@ import type { Component } from 'vue';
 import type { ChurnSignal, RiskLevel } from '@/types/admin';
 
 /** How a churn signal shows: its words and its icon. */
-export interface ChurnSignalDisplay {
+interface ChurnSignalDisplay {
     label: string;
     icon: Component;
 }

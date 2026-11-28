@@ -16,6 +16,6 @@ class OfferEndController extends Controller
     {
         $endOffer->execute($request->user(), $offer);
 
-        return redirect()->route('admin.billing.offers.index');
+        return back();
     }
 }

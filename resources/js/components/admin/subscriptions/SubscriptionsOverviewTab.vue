@@ -14,7 +14,7 @@ import { metricChange } from '@/lib/adminChange';
 import { countIn, countLabel, formatUsd } from '@/lib/adminFormat';
 import { subscriptionPlanLabel } from '@/lib/adminSubscriptions';
 import { accountColor } from '@/lib/analyticsColors';
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, formatSignedNumber, MISSING_VALUE, percentOf } from '@/lib/utils';
 import type {
     AdminBarRow,
@@ -26,8 +26,8 @@ import type {
 
 const props = defineProps<{
     overview: AdminSubscriptionOverview;
-    /** Read from Stripe after the page loads; undefined while it loads, null on a self-hosted install. */
-    netMrr?: AdminNetMrr | null;
+    /** Read from Stripe after the page loads; undefined while it loads. */
+    netMrr?: AdminNetMrr;
     subtitle: string;
 }>();
 
@@ -48,6 +48,7 @@ const now = computed((): AdminStat[] => [
         label: 'MRR (after coupons)',
         value: netMrrValue.value,
         hint: netMrrHint.value,
+        loading: isReadingNetMrr.value,
     },
     {
         key: 'subs-past-due',
@@ -79,13 +80,15 @@ const readNetMrrHint = (netMrr: AdminNetMrr): string => {
     return 'Coupons taken off';
 };
 
-/** Stripe is read after the page loads, so the figure waits for it. */
+/** Stripe is read after the page loads, so the figure pulses until it arrives. */
+const isReadingNetMrr = computed(() => blank(props.netMrr));
+
 const netMrrValue = computed((): string => {
     if (filled(props.netMrr)) {
         return readNetMrr(props.netMrr);
     }
 
-    return '…';
+    return '';
 });
 
 const netMrrHint = computed((): string => {

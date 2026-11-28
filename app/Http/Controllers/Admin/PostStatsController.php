@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Admin\BuildPublishingStats;
+use App\Enums\Analytics\DateRangePreset;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Post\IndexPostStatsRequest;
 use App\Support\Admin\AdminNetworks;
@@ -18,6 +19,7 @@ class PostStatsController extends Controller
         return Inertia::render('admin/posts/Index', [
             'stats' => BuildPublishingStats::execute($request->dateRange(), $request->platforms()),
             'networks' => AdminNetworks::options(),
+            'ranges' => DateRangePreset::backoffice(),
             ...$request->rangeProps(),
             'filters' => [
                 ...$request->rangeFilters(),

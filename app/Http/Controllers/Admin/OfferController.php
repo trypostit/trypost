@@ -32,20 +32,20 @@ class OfferController extends Controller
     {
         $saveOffer->execute($request->user(), $request->offer());
 
-        return redirect()->route('admin.billing.offers.index');
+        return back();
     }
 
     public function update(UpdateOfferRequest $request, Offer $offer, SaveOffer $saveOffer): RedirectResponse
     {
         $saveOffer->execute($request->user(), $request->offer(), $offer);
 
-        return redirect()->route('admin.billing.offers.index');
+        return back();
     }
 
     public function destroy(DestroyOfferRequest $request, Offer $offer, DeleteOffer $deleteOffer): RedirectResponse
     {
         $deleteOffer->execute($request->user(), $offer);
 
-        return redirect()->route('admin.billing.offers.index');
+        return back();
     }
 }

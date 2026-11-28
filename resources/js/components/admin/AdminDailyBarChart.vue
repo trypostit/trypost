@@ -19,9 +19,9 @@ import {
 } from '@/components/ui/chart';
 import { DAILY_CHART_PADDING, useAdminDayAxis } from '@/composables/admin/useAdminDayAxis';
 import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
-import { countIn, formatUsd } from '@/lib/adminFormat';
+import { countIn } from '@/lib/adminFormat';
 import { filled } from '@/lib/helpers';
-import { formatFullNumber } from '@/lib/utils';
+import { formatFullNumber, formatMoney } from '@/lib/utils';
 
 /** One stacked series of the chart: a value per day, in the order of `days`. */
 export interface AdminChartSeries {
@@ -55,7 +55,7 @@ const { ticks, formatDay } = useAdminDayAxis(() => props.days);
 
 const formatValueTick = numericTick((tick, index, ticks): string => {
     if (props.currency) {
-        return formatUsd(tick, 2);
+        return formatMoney(tick);
     }
 
     return formatCountTick(tick, index, ticks);
@@ -71,7 +71,7 @@ const wantsTotal = computed((): boolean => {
 
 const formatTotal = (total: number): string => {
     if (props.currency) {
-        return formatUsd(total, 2);
+        return formatMoney(total);
     }
 
     return formatFullNumber(total);

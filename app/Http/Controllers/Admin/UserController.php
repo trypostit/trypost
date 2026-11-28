@@ -47,7 +47,7 @@ class UserController extends Controller
             'user' => AdminUserResource::make($user),
             'tab' => $tab->value,
             'data' => match ($tab) {
-                UserTab::Overview => BuildUserOverview::execute($user),
+                UserTab::Overview => BuildUserOverview::execute($user, $request->user()->timezone),
                 UserTab::Workspaces => BuildUserWorkspaces::execute($user),
                 UserTab::Posts => BuildUserPosts::execute($user),
                 UserTab::Integrations => BuildUserIntegrations::execute($user),

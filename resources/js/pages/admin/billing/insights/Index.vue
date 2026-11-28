@@ -250,7 +250,7 @@ const referralsSubtitle = computed(
                     test-id="admin-insights-goals"
                 />
                 <AdminBreakdownList
-                    title="How they signed up"
+                    title="Sign-in methods"
                     subtitle="Subscribed is the share of each way"
                     :rows="insights.signup_methods"
                     :answered="insights.totals.signups"

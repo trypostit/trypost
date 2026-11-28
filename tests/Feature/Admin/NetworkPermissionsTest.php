@@ -40,3 +40,18 @@ test('a feature whose scope the connect does not ask for is off and names the sc
     expect($replies['enabled'])->toBeFalse()
         ->and($replies['missing'])->toBe(['threads_manage_replies']);
 });
+
+test('a scope the connect always asks for is required, alone or as one of a requirement\'s alternatives', function () {
+    config([
+        'trypost.platforms.mastodon.enabled' => true,
+        'trypost.platforms.mastodon.scopes' => ['read:accounts', 'read:statuses', 'write:statuses', 'write:media'],
+        'trypost.platforms.x.enabled' => true,
+    ]);
+
+    $mastodon = collect(adminNetworkPermissions(Platform::Mastodon)['scopes'])->pluck('required', 'scope');
+    $x = collect(adminNetworkPermissions(Platform::X)['scopes'])->pluck('required', 'scope');
+
+    expect($mastodon->all())->toEqual(['read:accounts' => true, 'read:statuses' => false, 'write:statuses' => true, 'write:media' => true])
+        ->and($x->get('tweet.write'))->toBeTrue()
+        ->and($x->get('tweet.read'))->toBeTrue();
+});

@@ -38,7 +38,7 @@ class IndexSubscriptionRequest extends FormRequest
 
     public function status(): SubscriptionStatusFilter
     {
-        return SubscriptionStatusFilter::tryFrom((string) $this->validated('status')) ?? SubscriptionStatusFilter::All;
+        return $this->enum('status', SubscriptionStatusFilter::class) ?? SubscriptionStatusFilter::All;
     }
 
     public function search(): ?string

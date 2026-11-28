@@ -28,18 +28,17 @@ import {
     TableLoadMore,
     TableRow,
 } from '@/components/ui/table';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { needsReconnect } from '@/lib/adminChannels';
+import { channelDisplayName, channelStatusLabel, needsReconnect } from '@/lib/adminChannels';
 import { errorCategoryLabel } from '@/lib/adminErrorCategories';
 import { countIn, firstError, joinFilled } from '@/lib/adminFormat';
 import { originLabel } from '@/lib/adminPublishing';
+import { profileUrl } from '@/lib/adminUsers';
 import { blank, filled, transform } from '@/lib/helpers';
 import { formatFullNumber, MISSING_VALUE } from '@/lib/utils';
 import { index as failedIndex } from '@/routes/admin/posts/failed';
 import { store as retryStore } from '@/routes/admin/posts/retry';
-import { show as userShow } from '@/routes/admin/users';
 import type { AdminFailedPost, ScrollPage } from '@/types/admin';
 
 const props = defineProps<{
@@ -238,13 +237,6 @@ const confirmRetry = (): void => {
 const isRetrying = (post: AdminFailedPost): boolean => retryingId.value === post.id;
 const isRetryingAny = computed(() => filled(retryingId.value));
 
-const channelLabel = (post: AdminFailedPost): string => {
-    if (filled(post.channel_name)) {
-        return post.channel_name;
-    }
-
-    return getPlatformLabel(post.platform);
-};
 </script>
 
 <template>
@@ -342,7 +334,7 @@ const channelLabel = (post: AdminFailedPost): string => {
                                         <div class="grid min-w-0">
                                             <span
                                                 class="truncate text-sm font-emphasis text-foreground"
-                                                >{{ channelLabel(post) }}</span
+                                                >{{ channelDisplayName(post.channel_name, post.platform) }}</span
                                             >
                                             <span
                                                 class="truncate text-xs text-muted-foreground"
@@ -350,7 +342,7 @@ const channelLabel = (post: AdminFailedPost): string => {
                                             >
                                             <Link
                                                 v-if="post.owner_id"
-                                                :href="userShow.url(post.owner_id)"
+                                                :href="profileUrl(post.owner_id)"
                                                 class="truncate text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                                                 >{{ post.owner_name }}</Link
                                             >
@@ -391,7 +383,7 @@ const channelLabel = (post: AdminFailedPost): string => {
                                             v-if="channelMissing(post)"
                                             variant="secondary"
                                             title="The channel was disconnected and deleted."
-                                            >Channel gone</Badge
+                                            >{{ channelStatusLabel(post.channel_status) }}</Badge
                                         >
                                         <Badge
                                             v-else-if="mustReconnect(post)"

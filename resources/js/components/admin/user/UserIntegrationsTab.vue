@@ -16,7 +16,7 @@ import date from '@/date';
 import { countLabel, humanize, joinFilled } from '@/lib/adminFormat';
 import { filled, transform } from '@/lib/helpers';
 import { mcpAppLogos } from '@/lib/mcpClients';
-import type { AdminUserIntegrationsData, BadgeVariant } from '@/types/admin';
+import type { AdminUserIntegrationsData, BadgeVariant, WebhookStatus } from '@/types/admin';
 
 /** The media sources a user links, with the logos the composer shows. */
 const MEDIA_SOURCES: Record<string, { label: string; logo: Component }> = {
@@ -27,8 +27,8 @@ const MEDIA_SOURCES: Record<string, { label: string; logo: Component }> = {
     giphy: { label: 'Giphy', logo: Giphy },
 };
 
-const WEBHOOK_STATUS_BADGES: Record<string, { label: string; variant: BadgeVariant }> = {
-    active: { label: 'Active', variant: 'success' },
+const WEBHOOK_STATUS_BADGES: Record<WebhookStatus, { label: string; variant: BadgeVariant }> = {
+    enabled: { label: 'Enabled', variant: 'success' },
     paused: { label: 'Paused', variant: 'warning' },
     disabled: { label: 'Disabled', variant: 'destructive' },
 };
@@ -88,11 +88,9 @@ const mediaSource = (source: string | null): { label: string; logo: Component | 
     return { label: humanize(source), logo: null };
 };
 
-const webhookBadge = (status: string | null): { label: string; variant: BadgeVariant } => {
-    const badge = transform(status, (value) => WEBHOOK_STATUS_BADGES[value]);
-
-    if (filled(badge)) {
-        return badge;
+const webhookBadge = (status: WebhookStatus | null): { label: string; variant: BadgeVariant } => {
+    if (filled(status)) {
+        return WEBHOOK_STATUS_BADGES[status];
     }
 
     return { label: humanize(status), variant: 'secondary' };

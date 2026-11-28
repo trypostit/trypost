@@ -65,7 +65,7 @@ class BuildChannelDistribution
             'accounts' => collect(self::rows($accountCounts, $accountsWithChannel))
                 ->map(fn (array $row): array => [
                     ...$row,
-                    'per_account' => round((int) $channelCounts->get($row['key'], 0) / $row['count'], 1),
+                    'per_account' => round((int) $channelCounts->get(data_get($row, 'key'), 0) / data_get($row, 'count'), 1),
                 ])
                 ->all(),
             'first' => self::rows($firstCounts, $firstCounts->sum()),

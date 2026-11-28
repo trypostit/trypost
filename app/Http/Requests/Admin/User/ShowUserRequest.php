@@ -27,6 +27,6 @@ class ShowUserRequest extends FormRequest
 
     public function tab(): UserTab
     {
-        return UserTab::tryFrom((string) $this->validated('tab')) ?? UserTab::Overview;
+        return $this->enum('tab', UserTab::class) ?? UserTab::Overview;
     }
 }

@@ -5,16 +5,14 @@ declare(strict_types=1);
 namespace App\Actions\Admin\Users;
 
 use App\Actions\Account\ResolveLifecycleStage;
+use App\Dto\Admin\AccountActivity;
 use App\Enums\Account\LifecycleStage;
-use App\Enums\Post\CreatedVia;
-use App\Enums\Post\PublishStatus;
 use App\Models\Account;
-use App\Support\Admin\AccountActivity;
 use App\Support\Admin\AccountSummary;
-use App\Support\Admin\KeyLabel;
 use App\Support\Percent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class BuildUsageInsights
 {
@@ -46,11 +44,9 @@ class BuildUsageInsights
      */
     public static function execute(AccountActivity $activity): array
     {
-        $range = $activity->range;
-        $automated = CountAccountActivity::posts($range->startsAt(), $range->endsAt(), PublishStatus::wentOutCases(), [CreatedVia::Api, CreatedVia::Mcp]);
         $channels = $activity->channels->map(fn (array $health): int => data_get($health, 'total'));
 
-        $topIds = collect([$activity->sent, $activity->failed, $automated, $channels])
+        $topIds = collect([$activity->sent, $activity->failed, $activity->automated, $channels])
             ->flatMap(fn (Collection $counts): array => $counts->sortDesc()->take(self::TOP_PER_MEASURE)->keys()->all())
             ->unique()
             ->values();
@@ -68,7 +64,7 @@ class BuildUsageInsights
                     ...AccountSummary::of($accounts->get($accountId)),
                     'account_id' => $accountId,
                     'posts' => $activity->sentBy($accountId),
-                    'automated' => (int) $automated->get($accountId, 0),
+                    'automated' => $activity->automatedBy($accountId),
                     'channels' => (int) $channels->get($accountId, 0),
                     'failed' => $activity->failedFor($accountId),
                 ])
@@ -147,12 +143,21 @@ class BuildUsageInsights
             'stages' => collect(self::CUSTOMER_STAGES)
                 ->map(fn (LifecycleStage $stage): array => [
                     'key' => $stage->value,
-                    'label' => KeyLabel::of($stage->value),
+                    'label' => self::stageLabel($stage),
                     'count' => (int) $counts->get($stage->value, 0),
                     'share' => Percent::of((int) $counts->get($stage->value, 0), $customers),
                 ])
                 ->all(),
         ];
+    }
+
+    /**
+     * A stage as people read it, as the backoffice's `humanize()` writes a
+     * key on the frontend: `at_risk` becomes "At risk".
+     */
+    private static function stageLabel(LifecycleStage $stage): string
+    {
+        return Str::ucfirst(Str::replace('_', ' ', $stage->value));
     }
 
     /**
@@ -181,7 +186,7 @@ class BuildUsageInsights
     {
         return collect($ranges)
             ->map(function (array $range, string $label) use ($counts): array {
-                $inRange = $counts->filter(fn (int $count): bool => $count >= $range[0] && $count <= $range[1])->count();
+                $inRange = $counts->filter(fn (int $count): bool => $count >= data_get($range, 0) && $count <= data_get($range, 1))->count();
 
                 return [
                     'key' => $label,

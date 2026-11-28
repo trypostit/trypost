@@ -25,7 +25,7 @@ class AdminUserResource extends JsonResource
             'photo_url' => $this->photo_url,
             'email_verified' => filled($this->email_verified_at),
             'is_backoffice_admin' => $this->isBackofficeAdmin(),
-            'is_owner' => $this->account?->owner_id === $this->id,
+            'is_owner' => $this->isAccountOwner(),
             'plan' => $this->account?->plan?->name,
             'has_app_access' => $this->account?->hasAppAccess() === true,
             'workspaces_count' => $this->whenCounted('workspaces'),

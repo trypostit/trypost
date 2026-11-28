@@ -21,17 +21,17 @@ use Throwable;
  */
 final class StripeNetMrr
 {
-    public const string CACHE_KEY = 'admin:stripe-net-mrr';
+    private const string CACHE_KEY = 'admin:stripe-net-mrr';
 
-    public const int CACHE_SECONDS = 3600;
+    private const int CACHE_SECONDS = 3600;
 
     /** How long a failed read is kept before Stripe is asked again, in seconds. */
     public const int ERROR_CACHE_SECONDS = 60;
 
     /**
-     * @return array{cents: int, list_cents: int, subscriptions: int, discounted: int, taken_at: string}|array{error: string}|null
+     * @return array{cents: int}|array{error: string}
      */
-    public static function read(): ?array
+    public static function read(): array
     {
         $cached = Cache::get(self::CACHE_KEY);
 
@@ -61,7 +61,7 @@ final class StripeNetMrr
      * whole: a percentage takes its share of every item, a fixed amount is
      * taken once, however many items the invoice has.
      *
-     * @return array{list: float, net: float, discounted: bool}
+     * @return array{list: float, net: float}
      */
     public static function monthly(StripeSubscription $subscription, CarbonInterface $now): array
     {
@@ -80,7 +80,6 @@ final class StripeNetMrr
         return [
             'list' => $list,
             'net' => self::netShare($list, $perInvoice, self::afterDiscounts($perInvoice, $discounts)),
-            'discounted' => $discounts->isNotEmpty(),
         ];
     }
 
@@ -92,7 +91,7 @@ final class StripeNetMrr
      */
     private static function itemCharge(object $item): ?array
     {
-        $months = data_get(SubscriptionPlans::MONTHS_PER_INTERVAL, (string) data_get($item, 'price.recurring.interval'));
+        $months = SubscriptionPlans::monthsPerInvoice(data_get($item, 'price'));
 
         if ($months === null) {
             return null;
@@ -100,7 +99,7 @@ final class StripeNetMrr
 
         return [
             'per_invoice' => (float) data_get($item, 'price.unit_amount', 0) * max(1, (int) data_get($item, 'quantity', 1)),
-            'months' => $months * (int) data_get($item, 'price.recurring.interval_count', 1),
+            'months' => $months,
         ];
     }
 
@@ -115,14 +114,11 @@ final class StripeNetMrr
     }
 
     /**
-     * @return array{cents: int, list_cents: int, subscriptions: int, discounted: int, taken_at: string}
+     * @return array{cents: int}
      */
     private static function fromStripe(CarbonImmutable $now): array
     {
-        $list = 0.0;
         $net = 0.0;
-        $count = 0;
-        $discounted = 0;
 
         foreach (Subscription::PAYING_STATUSES as $status) {
             $page = Cashier::stripe()->subscriptions->all([
@@ -132,21 +128,11 @@ final class StripeNetMrr
             ]);
 
             foreach ($page->autoPagingIterator() as $subscription) {
-                $monthly = self::monthly($subscription, $now);
-                $list += $monthly['list'];
-                $net += $monthly['net'];
-                $count++;
-                $discounted += (int) $monthly['discounted'];
+                $net += data_get(self::monthly($subscription, $now), 'net');
             }
         }
 
-        return [
-            'cents' => (int) round($net),
-            'list_cents' => (int) round($list),
-            'subscriptions' => $count,
-            'discounted' => $discounted,
-            'taken_at' => $now->toIso8601String(),
-        ];
+        return ['cents' => (int) round($net)];
     }
 
     /**

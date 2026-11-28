@@ -125,7 +125,7 @@ const lifecycle = computed((): AdminDetailRow[] => [
 const welcome = computed((): AdminDetailRow[] => [
     { key: 'persona', label: 'Persona', value: humanize(props.data.welcome.persona) },
     { key: 'goals', label: 'Goals', value: goalsLabel.value },
-    { key: 'software', label: 'Used before', value: humanize(props.data.welcome.previous_software) },
+    { key: 'software', label: 'Used before', value: orDash(props.data.welcome.previous_software) },
     { key: 'referral', label: 'Found us through', value: humanize(props.data.welcome.referral_source) },
 ]);
 
@@ -154,7 +154,7 @@ const language = computed((): Language | undefined => {
     const languages = page.props.languages;
 
     if (filled(languages)) {
-        return languages.find((option) => option.code === props.data.signup.locale);
+        return languages.find((option) => option.code === props.data.preferences.locale);
     }
 
     return undefined;
@@ -178,7 +178,7 @@ const themeIcon = (theme: string | null): Component => {
 
 /** Each preference row's icon, as the app's preferences page draws it. */
 const preferenceIcons = computed((): { key: string; icon: Component; value: string }[] => [
-    { key: 'timezone', icon: IconWorld, value: orDash(props.data.signup.timezone) },
+    { key: 'timezone', icon: IconWorld, value: orDash(props.data.preferences.timezone) },
     { key: 'theme', icon: themeIcon(props.data.preferences.theme), value: humanize(props.data.preferences.theme) },
     { key: 'time-format', icon: IconClock, value: orDash(props.data.preferences.time_format) },
     { key: 'week', icon: IconCalendarWeek, value: humanize(props.data.preferences.week_starts_on) },
