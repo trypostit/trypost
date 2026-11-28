@@ -137,7 +137,7 @@ class BuildChurnRisk
             $signals[] = ChurnSignal::NeverPosted;
         }
 
-        if ($subscription?->ends_at !== null) {
+        if (filled($subscription?->ends_at)) {
             $signals[] = ChurnSignal::Cancelling;
         }
 
@@ -145,11 +145,11 @@ class BuildChurnRisk
             $signals[] = ChurnSignal::PastDue;
         }
 
-        if ($settled && $channels === null) {
+        if ($settled && blank($channels)) {
             $signals[] = ChurnSignal::NoChannels;
         }
 
-        if ($channels !== null && Percent::of(data_get($channels, 'broken'), data_get($channels, 'total')) >= self::BROKEN_CHANNELS_SHARE) {
+        if (filled($channels) && Percent::of(data_get($channels, 'broken'), data_get($channels, 'total')) >= self::BROKEN_CHANNELS_SHARE) {
             $signals[] = ChurnSignal::ChannelsBroken;
         }
 

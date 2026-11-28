@@ -35,7 +35,7 @@ class AdminSubscriptionResource extends JsonResource
             'started_at' => $this->created_at?->toIso8601String(),
             'trial_ends_at' => $this->trial_ends_at?->toIso8601String(),
             'ends_at' => $this->ends_at?->toIso8601String(),
-            'offers' => $this->owner?->redeemedOffers->map(fn (Offer $offer): string => $offer->slug)->values()->all() ?? [],
+            'offers' => collect($this->owner?->redeemedOffers)->map(fn (Offer $offer): string => $offer->slug)->values()->all(),
         ];
     }
 }

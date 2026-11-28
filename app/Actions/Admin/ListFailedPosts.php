@@ -68,8 +68,9 @@ class ListFailedPosts
     }
 
     /**
-     * A failure recorded without a category is listed with the unknown ones,
-     * as `categoryCounts()` counts it.
+     * A failure recorded without a category, or with one the enum does not
+     * know (Google Business writes `review_unconfirmed`), is listed with the
+     * unknown ones, as `categoryCounts()` counts it.
      *
      * @param  Builder<Post>  $query
      * @return Builder<Post>
@@ -80,9 +81,14 @@ class ListFailedPosts
             return $query->where('posts.error_context->category', $category->value);
         }
 
+        $known = collect(ErrorCategory::cases())
+            ->reject(fn (ErrorCategory $case): bool => $case === ErrorCategory::Unknown)
+            ->map(fn (ErrorCategory $case): string => $case->value)
+            ->all();
+
         return $query->where(fn (Builder $unknown) => $unknown
-            ->where('posts.error_context->category', $category->value)
-            ->orWhereNull('posts.error_context->category'));
+            ->whereNull('posts.error_context->category')
+            ->orWhereNotIn('posts.error_context->category', $known));
     }
 
     /**

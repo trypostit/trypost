@@ -71,7 +71,7 @@ enum SubscriptionStatusFilter: string
             return self::Canceled;
         }
 
-        if ($subscription->ends_at !== null) {
+        if (filled($subscription->ends_at)) {
             return self::Cancelling;
         }
 

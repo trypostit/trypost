@@ -31,7 +31,7 @@ class SaveOffer
             'ends_at' => transform(data_get($data, 'ends_at'), fn (string $day): CarbonImmutable => CarbonImmutable::parse($day, $timezone)->endOfDay()->utc()),
         ];
 
-        if ($offer === null) {
+        if (blank($offer)) {
             $offer = Offer::query()->create([...$attributes, 'slug' => (string) data_get($data, 'slug')]);
             $this->recordAdminAction->execute($admin, AdminActionType::CreateOffer, $offer, ['slug' => $offer->slug]);
 
@@ -55,11 +55,11 @@ class SaveOffer
      */
     private static function keepIfSameDay(?CarbonInterface $stored, ?CarbonImmutable $submitted, string $timezone): ?CarbonInterface
     {
-        if ($stored === null || $submitted === null) {
+        if (blank($stored) || blank($submitted)) {
             return $submitted;
         }
 
-        if ($stored->copy()->setTimezone($timezone)->toDateString() === $submitted->setTimezone($timezone)->toDateString()) {
+        if ($stored->copy()->setTimezone($timezone)->isSameDay($submitted->setTimezone($timezone))) {
             return $stored;
         }
 

@@ -37,7 +37,7 @@ class AdminFailedPostResource extends JsonResource
             'content_type_label' => $this->content_type?->label(),
             'created_via' => $this->created_via?->value,
             'content' => app(ContentSanitizer::class)->plainText((string) $this->content),
-            'media' => collect($this->media ?? [])->map(fn (array $item): array => [
+            'media' => collect($this->media)->map(fn (array $item): array => [
                 'url' => data_get($item, 'url'),
                 'type' => data_get($item, 'type'),
                 'mime_type' => data_get($item, 'mime_type'),

@@ -94,7 +94,7 @@ class Subscription extends CashierSubscription
     /** Its end came by then. */
     public function endedBy(CarbonInterface $moment): bool
     {
-        if ($this->ends_at === null) {
+        if (blank($this->ends_at)) {
             return false;
         }
 

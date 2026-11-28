@@ -65,11 +65,11 @@ final class StripeNetMrr
      */
     public static function monthly(StripeSubscription $subscription, CarbonInterface $now): array
     {
-        $discounts = collect($subscription->discounts ?? [])
+        $discounts = collect($subscription->discounts)
             ->filter(fn (mixed $discount): bool => is_object($discount))
             ->filter(fn (object $discount): bool => blank(data_get($discount, 'end')) || (int) data_get($discount, 'end') > $now->getTimestamp());
 
-        $items = collect($subscription->items->data ?? [])
+        $items = collect(data_get($subscription, 'items.data'))
             ->map(fn (object $item): ?array => self::itemCharge($item))
             ->filter()
             ->values();
@@ -93,7 +93,7 @@ final class StripeNetMrr
     {
         $months = SubscriptionPlans::monthsPerInvoice(data_get($item, 'price'));
 
-        if ($months === null) {
+        if (blank($months)) {
             return null;
         }
 

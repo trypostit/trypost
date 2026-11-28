@@ -54,7 +54,7 @@ final class SubscriptionPlans
     {
         $months = data_get(self::MONTHS_PER_INTERVAL, (string) data_get($price, 'recurring.interval'));
 
-        if ($months === null) {
+        if (blank($months)) {
             return null;
         }
 

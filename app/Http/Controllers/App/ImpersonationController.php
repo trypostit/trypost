@@ -23,7 +23,7 @@ class ImpersonationController extends Controller
         $impersonated = $request->user();
         $admin = $stopImpersonation->execute($request, $impersonated);
 
-        if ($admin === null) {
+        if (blank($admin)) {
             return redirect()->route('login');
         }
 

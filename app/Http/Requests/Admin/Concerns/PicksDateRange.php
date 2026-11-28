@@ -41,7 +41,7 @@ trait PicksDateRange
     {
         $dates = $this->dates();
 
-        return DateRange::fromDates($dates['start'], $dates['end'], $this->timezone());
+        return DateRange::fromDates(data_get($dates, 'start'), data_get($dates, 'end'), $this->timezone());
     }
 
     /** The viewing admin's zone, whose calendar days the page counts in. */
@@ -90,8 +90,8 @@ trait PicksDateRange
 
         return [
             'range' => $this->range()->value,
-            'start' => $dates['start'],
-            'end' => $dates['end'],
+            'start' => data_get($dates, 'start'),
+            'end' => data_get($dates, 'end'),
         ];
     }
 }

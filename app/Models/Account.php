@@ -78,7 +78,7 @@ class Account extends Model
     {
         $paying = $this->subscriptions->filter(fn (Subscription $subscription): bool => $subscription->isPaying());
 
-        return $paying->first(fn (Subscription $subscription): bool => $subscription->ends_at === null) ?? $paying->first();
+        return $paying->first(fn (Subscription $subscription): bool => blank($subscription->ends_at)) ?? $paying->first();
     }
 
     public function plan(): BelongsTo

@@ -57,7 +57,7 @@ class BuildSignupInsights
             'funnel' => self::funnel($owners, $subscribed, $answered),
             'personas' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->persona?->value], fn (string $value): string => (string) __("welcome.personas.{$value}", [], 'en')),
             'software' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->previous_software?->value], fn (string $value): string => PreviousSoftware::from($value)->label()),
-            'goals' => self::breakdown($owners, $subscribed, fn (User $user): array => collect($user->goals ?? [])->filter(fn (mixed $goal): bool => is_string($goal) && Goal::tryFrom($goal) !== null)->values()->all(), fn (string $value): string => (string) __("welcome.goals.{$value}", [], 'en')),
+            'goals' => self::breakdown($owners, $subscribed, fn (User $user): array => collect($user->goals)->filter(fn (mixed $goal): bool => is_string($goal) && filled(Goal::tryFrom($goal)))->values()->all(), fn (string $value): string => (string) __("welcome.goals.{$value}", [], 'en')),
             'referral_sources' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->referral_source?->value], fn (string $value): string => (string) __("referral_source.options.{$value}", [], 'en')),
             'signup_methods' => self::breakdown($owners, $subscribed, fn (User $user): array => collect(SignInMethod::of($user))->map->value->all(), fn (string $value): string => SignInMethod::from($value)->label()),
             'answered' => $answered,

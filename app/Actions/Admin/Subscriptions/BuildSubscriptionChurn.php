@@ -89,7 +89,7 @@ class BuildSubscriptionChurn
     /** Alive now and not cancelling at its period end. */
     private static function stays(Subscription $subscription, CarbonImmutable $now): bool
     {
-        return $subscription->isAliveAt($now) && $subscription->ends_at === null;
+        return $subscription->isAliveAt($now) && blank($subscription->ends_at);
     }
 
     /**

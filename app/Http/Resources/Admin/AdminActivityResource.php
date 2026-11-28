@@ -23,7 +23,7 @@ class AdminActivityResource extends JsonResource
             'event' => $this->event,
             'causer_name' => data_get($this->causer, 'name'),
             'causer_email' => data_get($this->causer, 'email'),
-            'properties' => $this->properties?->except(['user_agent'])->all() ?? [],
+            'properties' => collect($this->properties)->except('user_agent')->all(),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

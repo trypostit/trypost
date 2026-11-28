@@ -49,7 +49,7 @@ test('counts subscriptions alive per day, new and canceled ones, churn and list-
     $overview = BuildSubscriptionOverview::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'), SubscriptionHistory::read());
 
     expect($overview['now'])->toMatchArray(['alive' => 3, 'active' => 1, 'past_due' => 1, 'cancelling' => 1])
-        ->and($overview['period'])->toMatchArray(['new' => 2, 'canceled' => 1, 'alive_at_start' => 2, 'churn_rate' => 50.0])
+        ->and($overview['period'])->toMatchArray(['new' => 2, 'canceled' => 1, 'alive_at_start' => 2, 'churn_rate' => 25.0])
         ->and($overview['alive_by_day'][0])->toBe(2)
         ->and($overview['alive_by_day'][6])->toBe(3)
         ->and(array_sum($overview['canceled_by_day']))->toBe(1)
@@ -170,6 +170,18 @@ test('churn sums up the period and draws the daily cancellations and the rolling
         ->and(end($churn['churn_rate_by_day']))->toBe(50.0);
 });
 
+test('churn counts a subscription that started and ended in the period on both sides, so it never passes 100%', function () {
+    adminSubscriptionFor('Stayer', ['created_at' => $this->now->subDays(40)]);
+    foreach (['Quick one', 'Quick two', 'Quick three'] as $name) {
+        adminSubscriptionFor($name, ['stripe_status' => 'canceled', 'created_at' => $this->now->subDays(5), 'ends_at' => $this->now->subDays(2)]);
+    }
+
+    $churn = BuildSubscriptionChurn::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'), SubscriptionHistory::read());
+
+    expect($churn['summary'])->toMatchArray(['canceled' => 3, 'churn_rate' => 75.0])
+        ->and(end($churn['churn_rate_by_day']))->toBe(75.0);
+});
+
 test('a user who is not an admin cannot see subscriptions', function () {
     $this->actingAs(User::factory()->create())
         ->get(route('admin.billing.subscriptions.index'))
@@ -183,7 +195,7 @@ test('the overview carries the period before, to compare with', function () {
 
     $previous = BuildSubscriptionOverview::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'), SubscriptionHistory::read())['previous'];
 
-    expect($previous)->toMatchArray(['new' => 1, 'canceled' => 1, 'churn_rate' => 100.0, 'mrr_cents' => 1900]);
+    expect($previous)->toMatchArray(['new' => 1, 'canceled' => 1, 'churn_rate' => 50.0, 'mrr_cents' => 1900]);
 });
 
 test('the MRR after coupons takes a fixed amount off once per invoice, however many items it has', function () {

@@ -19,7 +19,7 @@ import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { planName, profileUrl } from '@/lib/adminUsers';
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { destroy as blockDestroy } from '@/routes/admin/users/block';
 import { store as startImpersonation } from '@/routes/admin/users/impersonation';
 import type {
@@ -134,7 +134,7 @@ const hasNoAccount = computed((): boolean => {
         return false;
     }
 
-    return props.data.account === null;
+    return blank(props.data.account);
 });
 
 const activity = computed((): AdminUserActivityData | null => {

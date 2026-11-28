@@ -57,7 +57,7 @@ class BuildQuotaCards
      */
     private static function xUsageBetween(?array $usage, DateRange $range): ?array
     {
-        if ($usage === null) {
+        if (blank($usage)) {
             return null;
         }
 

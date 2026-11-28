@@ -141,7 +141,7 @@ class ContentSanitizer
      */
     private function isLink(string $prefix, string $tld): bool
     {
-        if ($prefix !== '') {
+        if (filled($prefix)) {
             return true;
         }
 

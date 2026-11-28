@@ -68,7 +68,7 @@ final readonly class DateRange
      */
     public function calendarDays(): array
     {
-        return collect(range(0, $this->days() - 1))
+        return Collection::range(0, $this->days() - 1)
             ->map(fn (int $offset): string => $this->start->addDays($offset)->toDateString())
             ->all();
     }

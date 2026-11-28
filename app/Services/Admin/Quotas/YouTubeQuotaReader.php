@@ -119,7 +119,7 @@ class YouTubeQuotaReader
         $point = Collection::make($series->getPoints())->first();
         $value = $point?->getValue();
 
-        if ($value === null) {
+        if (blank($value)) {
             return 0;
         }
 

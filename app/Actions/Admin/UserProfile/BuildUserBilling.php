@@ -35,7 +35,7 @@ class BuildUserBilling
     {
         $account = $user->account?->loadMissing(['plan', 'subscriptions', 'offers']);
 
-        if ($account === null) {
+        if (blank($account)) {
             return ['account' => null];
         }
 
@@ -67,7 +67,7 @@ class BuildUserBilling
      */
     private static function subscription(?Subscription $subscription): ?array
     {
-        if ($subscription === null) {
+        if (blank($subscription)) {
             return null;
         }
 
@@ -120,10 +120,10 @@ class BuildUserBilling
     private static function usedDiscounts(Invoice $invoice): array
     {
         $stripeInvoice = $invoice->asStripeInvoice();
-        $amounts = collect($stripeInvoice->total_discount_amounts ?? [])
+        $amounts = collect($stripeInvoice->total_discount_amounts)
             ->mapWithKeys(fn (object $amount): array => [(string) data_get($amount, 'discount') => (int) data_get($amount, 'amount')]);
 
-        return collect($stripeInvoice->discounts ?? [])
+        return collect($stripeInvoice->discounts)
             ->filter(fn (mixed $discount): bool => is_object($discount))
             ->map(fn (object $discount): array => [
                 'name' => data_get($discount, 'coupon.name') ?? data_get($discount, 'coupon.id'),
@@ -142,7 +142,7 @@ class BuildUserBilling
      */
     private static function cards(Account $account, ?Subscription $subscription): array
     {
-        if ($subscription !== null) {
+        if (filled($subscription)) {
             return ListAccountCards::execute($account, $subscription);
         }
 
@@ -164,7 +164,7 @@ class BuildUserBilling
      */
     private static function discount(?Discount $discount): ?array
     {
-        if ($discount === null) {
+        if (blank($discount)) {
             return null;
         }
 

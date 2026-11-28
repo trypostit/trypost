@@ -37,7 +37,7 @@ final class StripePriceAmounts
 
         $monthly = self::monthlyCents($subscription->stripe_price);
 
-        if ($monthly === null) {
+        if (blank($monthly)) {
             return null;
         }
 
@@ -75,7 +75,7 @@ final class StripePriceAmounts
 
         $monthly = self::fromStripe($priceId);
 
-        if ($monthly === null) {
+        if (blank($monthly)) {
             Cache::put($key, self::UNKNOWN, self::UNKNOWN_SECONDS);
 
             return null;
@@ -97,7 +97,7 @@ final class StripePriceAmounts
         $months = SubscriptionPlans::monthsPerInvoice($price);
         $amount = data_get($price, 'unit_amount');
 
-        if ($months === null || ! is_numeric($amount)) {
+        if (blank($months) || ! is_numeric($amount)) {
             return null;
         }
 

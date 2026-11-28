@@ -29,7 +29,7 @@ class UserController extends Controller
                 ListUsers::execute($request->search(), $request->status())->paginate((int) config('app.pagination.default')),
             )),
             'filters' => [
-                'search' => $request->search() ?? '',
+                'search' => (string) $request->search(),
                 'status' => $request->status()->value,
             ],
         ]);

@@ -36,7 +36,7 @@ class BuildUserHealth
             ->withLifecycleActivity()
             ->first();
 
-        if ($account === null) {
+        if (blank($account)) {
             return null;
         }
 
@@ -78,7 +78,7 @@ class BuildUserHealth
      */
     private static function risk(Account $account, LifecycleStage $stage, ?array $channels, int $sent, int $previousSent, int $failed): ?array
     {
-        if ($account->payingSubscription() === null) {
+        if (blank($account->payingSubscription())) {
             return null;
         }
 

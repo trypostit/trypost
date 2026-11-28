@@ -124,7 +124,7 @@ class RetryFailedPost
         $canResumeRemote = ErrorCategory::tryFromContext($context)?->isResumable() === true;
         $tiktokPublishId = $canResumeRemote ? PublishCheckpoint::tiktokPublishId($context) : null;
         $instagramWorkflow = $canResumeRemote ? PublishCheckpoint::instagramWorkflow($context) : null;
-        $tiktokPaths = $tiktokPublishId === null ? [] : PublishCheckpoint::tiktokDerivativePaths($context);
+        $tiktokPaths = transform($tiktokPublishId, fn (): array => PublishCheckpoint::tiktokDerivativePaths($context), []);
 
         $checkpoints = Arr::whereNotNull([
             ThreadProgress::KEY => filled($threadProgress) ? $threadProgress : null,

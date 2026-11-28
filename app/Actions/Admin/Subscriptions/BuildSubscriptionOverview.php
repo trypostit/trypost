@@ -99,7 +99,7 @@ class BuildSubscriptionOverview
             return false;
         }
 
-        return $subscription->trial_ends_at === null || $subscription->trial_ends_at->lte($moment);
+        return blank($subscription->trial_ends_at) || $subscription->trial_ends_at->lte($moment);
     }
 
     private static function planKey(Subscription $subscription): string
@@ -121,7 +121,7 @@ class BuildSubscriptionOverview
     {
         $paying = $alive->whereIn('stripe_status', Subscription::PAYING_STATUSES)->whereNotNull('stripe_price');
         $amounts = $paying->map(fn (Subscription $subscription): ?float => StripePriceAmounts::forSubscription($subscription));
-        $priced = $amounts->reject(fn (?float $amount): bool => $amount === null);
+        $priced = $amounts->reject(fn (?float $amount): bool => blank($amount));
 
         return [
             'cents' => (int) round($priced->sum()),

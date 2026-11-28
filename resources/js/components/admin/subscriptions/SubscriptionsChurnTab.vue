@@ -55,7 +55,13 @@ const visibleRecent = computed(() => {
     return props.churn.recent.slice(0, COLLAPSED_ROWS);
 });
 
-const hasMore = computed(() => !showsAll.value && props.churn.recent.length > COLLAPSED_ROWS);
+const hasMore = computed((): boolean => {
+    if (showsAll.value) {
+        return false;
+    }
+
+    return props.churn.recent.length > COLLAPSED_ROWS;
+});
 
 const showAll = (): void => {
     showsAll.value = true;

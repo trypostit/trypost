@@ -60,10 +60,27 @@ final readonly class SubscriptionHistory
         return $this->ended->filter(fn (Subscription $subscription): bool => $subscription->ends_at->between($range->startsAt(), $range->endsAt()));
     }
 
-    /** The share of the subscriptions alive when the range starts that ended in it. */
+    /**
+     * The share of the subscriptions alive at some point of the range (alive
+     * when it starts, or started in it) that ended in it, so a subscription
+     * that starts and ends inside the range counts on both sides and the
+     * rate never passes 100%.
+     */
     public function churnRate(DateRange $range): float
     {
-        return Percent::of($this->canceledIn($range)->count(), $this->aliveAt($range->startsAt())->count());
+        return Percent::of($this->canceledIn($range)->count(), $this->aliveBetween($range->startsAt(), $range->endsAt())->count());
+    }
+
+    /**
+     * The subscriptions alive at some moment between the two: started by the
+     * last and not ended before the first.
+     *
+     * @return Collection<int, Subscription>
+     */
+    private function aliveBetween(CarbonImmutable $from, CarbonImmutable $until): Collection
+    {
+        return $this->subscriptions->filter(fn (Subscription $subscription): bool => $subscription->created_at->lte($until)
+            && (blank($subscription->ends_at) || $subscription->ends_at->gte($from)));
     }
 
     /**
@@ -89,8 +106,8 @@ final readonly class SubscriptionHistory
     }
 
     /**
-     * Each of the range's days, the share of the subscriptions alive 30 days
-     * before its end that ended in those 30 days.
+     * Each of the range's days, the share of the subscriptions alive at some
+     * point of the 30 days up to its end that ended in those 30 days.
      *
      * @return list<float>
      */
@@ -106,7 +123,7 @@ final readonly class SubscriptionHistory
         $from = $moment->subDays(self::ROLLING_DAYS);
         $left = $this->ended->filter(fn (Subscription $subscription): bool => $subscription->ends_at->gt($from) && $subscription->ends_at->lte($moment));
 
-        return Percent::of($left->count(), $this->aliveAt($from)->count());
+        return Percent::of($left->count(), $this->aliveBetween($from, $moment)->count());
     }
 
     /** The UTC instant a calendar day of the range ends in the viewer's zone. */

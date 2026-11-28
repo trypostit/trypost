@@ -96,7 +96,7 @@ class HandleInertiaRequests extends Middleware
      */
     private function impersonating(?User $user): ?array
     {
-        if ($user === null || ! Impersonation::isActive()) {
+        if (blank($user) || ! Impersonation::isActive()) {
             return null;
         }
 

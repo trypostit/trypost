@@ -36,7 +36,7 @@ class SubscriptionController extends Controller
             'filters' => [
                 ...$request->rangeFilters(),
                 'status' => $request->status()->value,
-                'search' => $request->search() ?? '',
+                'search' => (string) $request->search(),
             ],
         ]);
     }

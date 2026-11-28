@@ -67,24 +67,25 @@ test('filters failed posts by one or more networks, every way of connecting them
         );
 });
 
-test('filters failed posts by error category and counts each, an uncategorized failure as unknown', function () {
+test('filters failed posts by error category and counts each, an uncategorized or unknown-category failure as unknown', function () {
     adminFailedPostOn(Platform::X, ['error_context' => ['category' => 'rate_limit']]);
     adminFailedPostOn(Platform::X, ['error_context' => ['category' => 'rate_limit']]);
     adminFailedPostOn(Platform::X, ['error_context' => ['category' => 'unknown']]);
     adminFailedPostOn(Platform::X, ['error_context' => null]);
+    adminFailedPostOn(Platform::GoogleBusiness, ['error_context' => ['category' => 'review_unconfirmed']]);
 
     $this->actingAs($this->admin)
         ->get(route('admin.posts.failed.index', ['category' => 'rate_limit']))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('posts.data', 2)
             ->where('posts.data.0.error_category', 'rate_limit')
-            ->where('categories', ['rate_limit' => 2, 'unknown' => 2])
+            ->where('categories', ['unknown' => 3, 'rate_limit' => 2])
             ->where('filters.category', 'rate_limit'),
         );
 
     $this->actingAs($this->admin)
         ->get(route('admin.posts.failed.index', ['category' => 'unknown']))
-        ->assertInertia(fn (AssertableInertia $page) => $page->has('posts.data', 2));
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('posts.data', 3));
 });
 
 test('a failed post carries its content, how it was made and its channel status', function () {
