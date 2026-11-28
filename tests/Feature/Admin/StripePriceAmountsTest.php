@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Subscription;
 use App\Models\User;
-use App\Support\Admin\StripePriceAmounts;
+use App\Support\Billing\StripePriceAmounts;
 use Illuminate\Support\Once;
 use Stripe\ApiRequestor;
 

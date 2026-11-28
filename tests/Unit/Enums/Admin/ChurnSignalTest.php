@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\Admin\ChurnSignal;
+use App\Enums\Account\ChurnSignal;
 
 test('churn signal values are stable', function () {
     expect(collect(ChurnSignal::cases())->map->value->all())

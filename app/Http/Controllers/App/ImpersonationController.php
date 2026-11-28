@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Actions\Admin\StopImpersonation;
-use App\Support\Admin\Impersonation;
+use App\Actions\User\StopImpersonation;
+use App\Support\Auth\Impersonation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;

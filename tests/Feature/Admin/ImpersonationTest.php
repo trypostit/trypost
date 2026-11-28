@@ -7,7 +7,7 @@ use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Activity;
 use App\Models\User;
 use App\Services\PostHogService;
-use App\Support\Admin\Impersonation;
+use App\Support\Auth\Impersonation;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia;
 

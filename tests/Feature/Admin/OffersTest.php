@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\Offers\DeleteOffer;
-use App\Actions\Admin\Offers\ListOffers;
+use App\Actions\Offer\DeleteOffer;
+use App\Actions\Offer\ListOffers;
 use App\Enums\Activity\LogName;
 use App\Enums\Offer\OfferState;
 use App\Enums\User\Locale;
@@ -11,7 +11,7 @@ use App\Models\Activity;
 use App\Models\Offer;
 use App\Models\User;
 use App\Rules\StripeCouponExists;
-use App\Support\Admin\OfferCopy;
+use App\Support\Billing\OfferCopy;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;

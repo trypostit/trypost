@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Console\Commands\Admin\SyncPlatformQuotas;
-use App\Enums\Admin\QuotaSource;
-use App\Services\Admin\Quotas\YouTubeQuotaReader;
-use App\Support\Admin\QuotaSnapshots;
+use App\Console\Commands\SyncPlatformQuotas;
+use App\Enums\Quota\QuotaSource;
+use App\Services\Quota\YouTubeQuotaReader;
+use App\Support\Quota\QuotaSnapshots;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
@@ -176,7 +176,7 @@ test('keeps only the latest reading, no history', function () {
 
 test('runs four times a day', function () {
     $event = collect(app(Schedule::class)->events())
-        ->first(fn (Event $event): bool => str_contains((string) $event->command, 'admin:sync-platform-quotas'));
+        ->first(fn (Event $event): bool => str_contains((string) $event->command, 'quotas:sync'));
 
     expect($event?->expression)->toBe('0 */6 * * *');
 });

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Actions\Admin\BlockUser;
-use App\Actions\Admin\UnblockUser;
+use App\Actions\User\BlockUser;
+use App\Actions\User\UnblockUser;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\BlockUserRequest;
 use App\Http\Requests\Admin\User\UnblockUserRequest;

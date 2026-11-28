@@ -7,7 +7,7 @@ namespace App\Http\Requests\Admin\Post;
 use App\Enums\Analytics\DateRangePreset;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\Admin\Concerns\PicksDateRange;
-use App\Support\Admin\AdminNetworks;
+use App\Support\Social\NetworkFilter;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -33,7 +33,7 @@ class IndexPostStatsRequest extends FormRequest
             'start' => [Rule::requiredIf($this->picksCustomRange()), 'nullable', 'date_format:Y-m-d', "after_or_equal:{$this->earliestDay()}"],
             'end' => [Rule::requiredIf($this->picksCustomRange()), 'nullable', 'date_format:Y-m-d', 'after_or_equal:start', "before_or_equal:{$this->today()}"],
             'networks' => ['nullable', 'array'],
-            'networks.*' => ['string', Rule::in(AdminNetworks::options())],
+            'networks.*' => ['string', Rule::in(NetworkFilter::options())],
         ];
     }
 
@@ -50,6 +50,6 @@ class IndexPostStatsRequest extends FormRequest
      */
     public function platforms(): array
     {
-        return AdminNetworks::platformsFor($this->networks());
+        return NetworkFilter::platformsFor($this->networks());
     }
 }

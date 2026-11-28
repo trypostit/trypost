@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\ListFailedPosts;
-use App\Actions\Admin\UserProfile\BuildUserPosts;
+use App\Actions\Post\ListFailedPosts;
+use App\Actions\User\Profile\BuildUserPosts;
 use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;

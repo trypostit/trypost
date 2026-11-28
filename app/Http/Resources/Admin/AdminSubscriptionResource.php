@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Admin;
 
-use App\Enums\Admin\SubscriptionStatusFilter;
+use App\Enums\Billing\SubscriptionStatusFilter;
 use App\Models\Offer;
 use App\Models\Subscription;
-use App\Support\Admin\SubscriptionPlans;
+use App\Support\Billing\SubscriptionPlans;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 

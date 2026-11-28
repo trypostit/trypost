@@ -7,13 +7,13 @@ import type { SocialAccountStatusValue } from '@/types/social-account-status';
 /** A `Badge` variant, as the admin maps a state to one. */
 export type BadgeVariant = NonNullable<BadgeVariants['variant']>;
 
-/** The Users list's tabs (`App\Enums\Admin\UserStatusFilter`). */
+/** The Users list's tabs (`App\Enums\User\UserStatusFilter`). */
 export type UserStatusFilter = 'all' | 'blocked';
 
-/** The Subscriptions list's tabs (`App\Enums\Admin\SubscriptionStatusFilter`). */
+/** The Subscriptions list's tabs (`App\Enums\Billing\SubscriptionStatusFilter`). */
 export type SubscriptionStatusFilter = 'all' | 'active' | 'cancelling' | 'past_due' | 'trialing' | 'canceled';
 
-/** A network whose quota the admin reads (`App\Enums\Admin\QuotaSource`). */
+/** A network whose quota the admin reads (`App\Enums\Quota\QuotaSource`). */
 export type QuotaSource = 'youtube' | 'x';
 
 /** Where a post was made (`App\Enums\Post\CreatedVia`). */
@@ -281,7 +281,7 @@ export type AdminUserTabData =
     | { tab: 'billing'; data: AdminUserBillingData }
     | { tab: 'activity'; data: AdminUserActivityData };
 
-/** A tab of a user's profile (`App\Enums\Admin\UserTab`). */
+/** A tab of a user's profile (`App\Enums\User\UserProfileTab`). */
 export type AdminUserTab = AdminUserTabData['tab'];
 
 export interface AdminUserHealth {

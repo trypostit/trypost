@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\Admin\RiskLevel;
+use App\Enums\Account\RiskLevel;
 
 test('a score reads as a risk level, none without a signal', function (int $score, ?RiskLevel $level) {
     expect(RiskLevel::fromScore($score))->toBe($level);

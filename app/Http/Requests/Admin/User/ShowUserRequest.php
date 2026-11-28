@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin\User;
 
-use App\Enums\Admin\UserTab;
+use App\Enums\User\UserProfileTab;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,12 +21,12 @@ class ShowUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tab' => ['nullable', Rule::enum(UserTab::class)],
+            'tab' => ['nullable', Rule::enum(UserProfileTab::class)],
         ];
     }
 
-    public function tab(): UserTab
+    public function tab(): UserProfileTab
     {
-        return $this->enum('tab', UserTab::class) ?? UserTab::Overview;
+        return $this->enum('tab', UserProfileTab::class) ?? UserProfileTab::Overview;
     }
 }

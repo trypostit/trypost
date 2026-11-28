@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Actions\Admin\Offers\EndOffer;
+use App\Actions\Offer\EndOffer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Offer\EndOfferRequest;
 use App\Models\Offer;

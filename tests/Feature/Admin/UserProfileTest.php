@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\RecordAdminAction;
-use App\Actions\Admin\UserProfile\BuildUserActivity;
-use App\Actions\Admin\UserProfile\BuildUserPosts;
-use App\Enums\Admin\AdminActionType;
+use App\Actions\Activity\RecordAdminAction;
+use App\Actions\User\Profile\BuildUserActivity;
+use App\Actions\User\Profile\BuildUserPosts;
+use App\Enums\Activity\AdminActionType;
 use App\Enums\Changelog\Reaction;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;

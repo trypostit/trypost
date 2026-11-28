@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\BuildDashboard;
-use App\Actions\Admin\BuildNetworkHealth;
-use App\Actions\Admin\BuildPublishingStats;
-use App\Actions\Admin\Users\CountAccountActivity;
+use App\Actions\Account\CountAccountActivity;
+use App\Actions\Dashboard\BuildAdminDashboard;
+use App\Actions\Post\BuildPublishingStats;
+use App\Actions\SocialAccount\BuildNetworkHealth;
 use App\Dto\Analytics\DateRange;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
@@ -167,7 +167,7 @@ test('a post counts as sent when it was published, never when a later write move
     expect($stats['totals'])->toMatchArray(['published' => 0, 'failed' => 1])
         ->and(collect($stats['days'])->firstWhere('date', $now->toDateString()))->toBe(['date' => $now->toDateString(), 'published' => 0, 'failed' => 1])
         ->and(collect(BuildNetworkHealth::execute())->firstWhere('platform', 'x')['last_24h'])->toMatchArray(['published' => 0, 'failed' => 1])
-        ->and(BuildDashboard::execute('UTC')['last_24h'])->toMatchArray(['published' => 0, 'failed' => 1])
+        ->and(BuildAdminDashboard::execute('UTC')['last_24h'])->toMatchArray(['published' => 0, 'failed' => 1])
         ->and($activity->sentBy($owner->account_id))->toBe(0)
         ->and($activity->failedFor($owner->account_id))->toBe(1);
 });

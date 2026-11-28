@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Support\Admin\StripeDashboard;
+use App\Support\Billing\StripeDashboard;
 
 test('a Stripe customer links to the live dashboard on live keys and to test mode on test keys', function () {
     config(['cashier.secret' => 'sk_live_fake']);

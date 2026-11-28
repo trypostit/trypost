@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Actions\Admin\Subscriptions\BuildSubscriptionChurn;
-use App\Actions\Admin\Subscriptions\BuildSubscriptionOverview;
-use App\Actions\Admin\Subscriptions\ListSubscriptions;
+use App\Actions\Billing\BuildSubscriptionChurn;
+use App\Actions\Billing\BuildSubscriptionOverview;
+use App\Actions\Billing\ListSubscriptions;
 use App\Enums\Analytics\DateRangePreset;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Subscription\IndexSubscriptionRequest;
 use App\Http\Resources\Admin\AdminSubscriptionResource;
-use App\Support\Admin\StripeNetMrr;
-use App\Support\Admin\SubscriptionHistory;
+use App\Support\Billing\StripeNetMrr;
+use App\Support\Billing\SubscriptionHistory;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Inertia\Inertia;
 use Inertia\Response;

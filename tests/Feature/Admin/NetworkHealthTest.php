@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\BuildChannelDistribution;
-use App\Actions\Admin\BuildNetworkHealth;
+use App\Actions\SocialAccount\BuildChannelDistribution;
+use App\Actions\SocialAccount\BuildNetworkHealth;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\SocialAccount;

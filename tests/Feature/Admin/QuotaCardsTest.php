@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\BuildQuotaCards;
+use App\Actions\Quota\BuildQuotaCards;
 use App\Dto\Analytics\DateRange;
-use App\Enums\Admin\QuotaSource;
-use App\Support\Admin\QuotaSnapshots;
-use App\Support\Admin\XPricing;
+use App\Enums\Quota\QuotaSource;
+use App\Support\Quota\QuotaSnapshots;
+use App\Support\Quota\XPricing;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Admin;
 
 use App\Models\Offer;
-use App\Support\Admin\OfferCopy;
+use App\Support\Billing\OfferCopy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 

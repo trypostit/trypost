@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin\Subscription;
 
-use App\Enums\Admin\SubscriptionStatusFilter;
 use App\Enums\Analytics\DateRangePreset;
+use App\Enums\Billing\SubscriptionStatusFilter;
 use App\Http\Requests\Admin\Concerns\PicksDateRange;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;

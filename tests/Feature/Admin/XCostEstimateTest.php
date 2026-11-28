@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\BuildXCostEstimate;
+use App\Actions\Quota\BuildXCostEstimate;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
-use App\Support\Admin\XPricing;
+use App\Support\Quota\XPricing;
 use Carbon\CarbonImmutable;
 
 test('counts the posts TryPost created on X per UTC day, with and without a link', function () {

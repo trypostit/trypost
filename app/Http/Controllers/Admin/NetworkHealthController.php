@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Actions\Admin\BuildChannelDistribution;
-use App\Actions\Admin\BuildChannelGrowth;
-use App\Actions\Admin\BuildNetworkHealth;
-use App\Actions\Admin\BuildNetworkPermissions;
+use App\Actions\SocialAccount\BuildChannelDistribution;
+use App\Actions\SocialAccount\BuildChannelGrowth;
+use App\Actions\SocialAccount\BuildNetworkHealth;
+use App\Actions\SocialAccount\BuildNetworkPermissions;
 use App\Enums\Analytics\DateRangePreset;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Network\IndexNetworkHealthRequest;

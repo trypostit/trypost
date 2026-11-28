@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\UserProfile\BuildUserHealth;
-use App\Actions\Admin\Users\BuildChurnRisk;
-use App\Actions\Admin\Users\BuildUsageInsights;
-use App\Actions\Admin\Users\CountAccountActivity;
+use App\Actions\Account\BuildChurnRisk;
+use App\Actions\Account\BuildUsageInsights;
+use App\Actions\Account\CountAccountActivity;
+use App\Actions\User\Profile\BuildUserHealth;
 use App\Dto\Analytics\DateRange;
 use App\Enums\Account\LifecycleStage;
-use App\Enums\Admin\RiskLevel;
+use App\Enums\Account\RiskLevel;
 use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;

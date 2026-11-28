@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Actions\Admin\ListUsers;
-use App\Actions\Admin\UserProfile\BuildUserActivity;
-use App\Actions\Admin\UserProfile\BuildUserBilling;
-use App\Actions\Admin\UserProfile\BuildUserIntegrations;
-use App\Actions\Admin\UserProfile\BuildUserOverview;
-use App\Actions\Admin\UserProfile\BuildUserPosts;
-use App\Actions\Admin\UserProfile\BuildUserWorkspaces;
-use App\Enums\Admin\UserTab;
+use App\Actions\User\ListUsersForAdmin;
+use App\Actions\User\Profile\BuildUserActivity;
+use App\Actions\User\Profile\BuildUserBilling;
+use App\Actions\User\Profile\BuildUserIntegrations;
+use App\Actions\User\Profile\BuildUserOverview;
+use App\Actions\User\Profile\BuildUserPosts;
+use App\Actions\User\Profile\BuildUserWorkspaces;
+use App\Enums\User\UserProfileTab;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\IndexUserRequest;
 use App\Http\Requests\Admin\User\ShowUserRequest;
@@ -26,7 +26,7 @@ class UserController extends Controller
     {
         return Inertia::render('admin/users/Index', [
             'users' => Inertia::scroll(fn () => AdminUserResource::collection(
-                ListUsers::execute($request->search(), $request->status())->paginate((int) config('app.pagination.default')),
+                ListUsersForAdmin::execute($request->search(), $request->status())->paginate((int) config('app.pagination.default')),
             )),
             'filters' => [
                 'search' => (string) $request->search(),
@@ -47,12 +47,12 @@ class UserController extends Controller
             'user' => AdminUserResource::make($user),
             'tab' => $tab->value,
             'data' => match ($tab) {
-                UserTab::Overview => BuildUserOverview::execute($user, $request->user()->timezone),
-                UserTab::Workspaces => BuildUserWorkspaces::execute($user),
-                UserTab::Posts => BuildUserPosts::execute($user),
-                UserTab::Integrations => BuildUserIntegrations::execute($user),
-                UserTab::Billing => BuildUserBilling::execute($user),
-                UserTab::Activity => BuildUserActivity::execute($user),
+                UserProfileTab::Overview => BuildUserOverview::execute($user, $request->user()->timezone),
+                UserProfileTab::Workspaces => BuildUserWorkspaces::execute($user),
+                UserProfileTab::Posts => BuildUserPosts::execute($user),
+                UserProfileTab::Integrations => BuildUserIntegrations::execute($user),
+                UserProfileTab::Billing => BuildUserBilling::execute($user),
+                UserProfileTab::Activity => BuildUserActivity::execute($user),
             },
         ]);
     }

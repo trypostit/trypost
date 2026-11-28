@@ -26,7 +26,7 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Support\Admin\Impersonation;
+use App\Support\Auth\Impersonation;
 use App\Support\HeicConverter;
 use App\Support\LinkTlds;
 use Illuminate\Http\Request;

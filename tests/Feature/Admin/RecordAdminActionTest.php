@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\RecordAdminAction;
+use App\Actions\Activity\RecordAdminAction;
+use App\Enums\Activity\AdminActionType;
 use App\Enums\Activity\LogName;
-use App\Enums\Admin\AdminActionType;
 use App\Models\Activity;
 use App\Models\User;
 

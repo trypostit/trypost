@@ -6,7 +6,7 @@ namespace App\Http\Requests\Admin\Post;
 
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
-use App\Support\Admin\AdminNetworks;
+use App\Support\Social\NetworkFilter;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -24,7 +24,7 @@ class IndexFailedPostRequest extends FormRequest
     {
         return [
             'networks' => ['nullable', 'array'],
-            'networks.*' => ['string', Rule::in(AdminNetworks::options())],
+            'networks.*' => ['string', Rule::in(NetworkFilter::options())],
             'category' => ['nullable', Rule::enum(ErrorCategory::class)],
         ];
     }
@@ -47,6 +47,6 @@ class IndexFailedPostRequest extends FormRequest
      */
     public function platforms(): array
     {
-        return AdminNetworks::platformsFor($this->networks());
+        return NetworkFilter::platformsFor($this->networks());
     }
 }

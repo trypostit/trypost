@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Console\Commands\Admin\SyncPlatformQuotas;
 use App\Console\Commands\Analytics\DispatchAccountDailyAnalytics;
 use App\Console\Commands\Analytics\DispatchPublicationDiscovery;
 use App\Console\Commands\Analytics\DispatchPublicationMetrics;
@@ -19,6 +18,7 @@ use App\Console\Commands\RefreshExpiringTokens;
 use App\Console\Commands\Repurpose\PollRepurposes;
 use App\Console\Commands\ResolveTikTokVideoIds;
 use App\Console\Commands\RssFeed\PollRssFeeds;
+use App\Console\Commands\SyncPlatformQuotas;
 use App\Console\Commands\SyncPostHogLifecycleStages;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\FinalizeAccountDailySnapshots;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin\Offer;
 
-use App\Actions\Admin\Offers\DeleteOffer;
+use App\Actions\Offer\DeleteOffer;
 use App\Models\Offer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;

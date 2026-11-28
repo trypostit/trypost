@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\BuildNetworkPermissions;
+use App\Actions\SocialAccount\BuildNetworkPermissions;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 

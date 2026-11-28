@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\BuildDashboard;
-use App\Enums\Admin\QuotaSource;
+use App\Actions\Dashboard\BuildAdminDashboard;
 use App\Enums\Post\PublishStatus;
+use App\Enums\Quota\QuotaSource;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\Post;
 use App\Models\SocialAccount;
-use App\Support\Admin\QuotaSnapshots;
+use App\Support\Quota\QuotaSnapshots;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia;
 
@@ -23,7 +23,7 @@ test('sums up the last 24 hours of publishing and the channels to reconnect', fu
         channelPostAt($channel, $now->subHour(), $state);
     }
 
-    $dashboard = BuildDashboard::execute('UTC');
+    $dashboard = BuildAdminDashboard::execute('UTC');
 
     expect($dashboard)->not->toHaveKeys(['users', 'accounts'])
         ->and($dashboard['last_24h'])->toMatchArray(['published' => 2, 'failed' => 1])
@@ -52,7 +52,7 @@ test('flags a network failing often, posts stuck publishing and quotas running o
     QuotaSnapshots::put(QuotaSource::YouTube, ['quotas' => [['metric' => 'youtube.googleapis.com/default', 'usage' => 9000, 'limits' => [['name' => 'defaultPerDayPerProject', 'value' => 10000]]]]]);
     QuotaSnapshots::put(QuotaSource::X, ['credits' => ['total_balance' => 4.5]]);
 
-    $attention = BuildDashboard::execute('UTC')['attention'];
+    $attention = BuildAdminDashboard::execute('UTC')['attention'];
 
     expect(collect($attention['networks'])->pluck('platform')->all())->toBe(['linkedin-page'])
         ->and($attention['networks'][0]['network'])->toBe('linkedin')
@@ -75,23 +75,23 @@ test('the admin dashboard renders the summary', function () {
 
 test('raises no quota alert while YouTube is under the warning share and X credits are not low', function () {
     QuotaSnapshots::put(QuotaSource::YouTube, ['quotas' => [['metric' => 'youtube.googleapis.com/default', 'usage' => 7900, 'limits' => [['name' => 'defaultPerDayPerProject', 'value' => 10000]]]]]);
-    QuotaSnapshots::put(QuotaSource::X, ['credits' => ['total_balance' => BuildDashboard::X_LOW_BALANCE]]);
+    QuotaSnapshots::put(QuotaSource::X, ['credits' => ['total_balance' => BuildAdminDashboard::X_LOW_BALANCE]]);
 
-    expect(BuildDashboard::execute('UTC')['attention']['quotas'])->toBe([]);
+    expect(BuildAdminDashboard::execute('UTC')['attention']['quotas'])->toBe([]);
 });
 
 test('a network with a few failures among many posts does not need attention', function () {
     $now = CarbonImmutable::now('UTC');
     $busy = SocialAccount::factory()->create(['platform' => Platform::X]);
 
-    foreach ([...array_fill(0, BuildDashboard::ALARMING_FAILURES, 'failed'), ...array_fill(0, 30, 'published')] as $state) {
+    foreach ([...array_fill(0, BuildAdminDashboard::ALARMING_FAILURES, 'failed'), ...array_fill(0, 30, 'published')] as $state) {
         channelPostAt($busy, $now->subHour(), $state);
     }
 
-    $dashboard = BuildDashboard::execute('UTC');
+    $dashboard = BuildAdminDashboard::execute('UTC');
 
-    expect($dashboard['last_24h']['failure_rate'])->toBeLessThan(BuildDashboard::ALARMING_FAILURE_RATE)
-        ->and($dashboard['last_24h']['failed'])->toBe(BuildDashboard::ALARMING_FAILURES)
+    expect($dashboard['last_24h']['failure_rate'])->toBeLessThan(BuildAdminDashboard::ALARMING_FAILURE_RATE)
+        ->and($dashboard['last_24h']['failed'])->toBe(BuildAdminDashboard::ALARMING_FAILURES)
         ->and($dashboard['attention']['networks'])->toBe([]);
 });
 
@@ -107,26 +107,26 @@ test('counts the queue, draws each day\'s publishing and leaves a failure older 
     $retrying = Post::factory()->forAccount($channel)->publishing()->create();
     Post::query()->whereKey($retrying->id)->toBase()->update(['publish_status' => PublishStatus::Retrying->value]);
 
-    $dashboard = BuildDashboard::execute('UTC');
+    $dashboard = BuildAdminDashboard::execute('UTC');
 
     expect($dashboard['queue'])->toBe(['scheduled' => 2, 'publishing' => 1, 'retrying' => 1, 'pending_review' => 1])
         ->and($dashboard['last_24h'])->toBe(['published' => 1, 'failed' => 0, 'failure_rate' => 0.0])
         ->and(collect($dashboard['publishing_days'])->last())->toBe(['date' => $now->toDateString(), 'published' => 1, 'failed' => 0])
-        ->and($dashboard['publishing_days'][BuildDashboard::CHART_DAYS - 2])->toBe(['date' => $now->subDay()->toDateString(), 'published' => 0, 'failed' => 1])
-        ->and(collect($dashboard['publishing_days'])->first()['date'])->toBe($now->subDays(BuildDashboard::CHART_DAYS - 1)->toDateString());
+        ->and($dashboard['publishing_days'][BuildAdminDashboard::CHART_DAYS - 2])->toBe(['date' => $now->subDay()->toDateString(), 'published' => 0, 'failed' => 1])
+        ->and(collect($dashboard['publishing_days'])->first()['date'])->toBe($now->subDays(BuildAdminDashboard::CHART_DAYS - 1)->toDateString());
 });
 
 test('a network failing exactly at the alarming share with enough failures needs attention', function () {
     $now = CarbonImmutable::now('UTC');
     $channel = SocialAccount::factory()->create(['platform' => Platform::X]);
-    $published = (int) (BuildDashboard::ALARMING_FAILURES * (100 / BuildDashboard::ALARMING_FAILURE_RATE - 1));
+    $published = (int) (BuildAdminDashboard::ALARMING_FAILURES * (100 / BuildAdminDashboard::ALARMING_FAILURE_RATE - 1));
 
-    foreach ([...array_fill(0, BuildDashboard::ALARMING_FAILURES, 'failed'), ...array_fill(0, $published, 'published')] as $state) {
+    foreach ([...array_fill(0, BuildAdminDashboard::ALARMING_FAILURES, 'failed'), ...array_fill(0, $published, 'published')] as $state) {
         channelPostAt($channel, $now->subHour(), $state);
     }
 
-    $dashboard = BuildDashboard::execute('UTC');
+    $dashboard = BuildAdminDashboard::execute('UTC');
 
-    expect($dashboard['last_24h']['failure_rate'])->toBe(BuildDashboard::ALARMING_FAILURE_RATE)
+    expect($dashboard['last_24h']['failure_rate'])->toBe(BuildAdminDashboard::ALARMING_FAILURE_RATE)
         ->and(collect($dashboard['attention']['networks'])->pluck('platform')->all())->toBe(['x']);
 });

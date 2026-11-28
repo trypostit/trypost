@@ -38,7 +38,7 @@ return [
 
         /*
          * API quotas and spend shown in the admin, read at most four
-         * times a day by `admin:sync-platform-quotas`. Each source runs only
+         * times a day by `quotas:sync`. Each source runs only
          * when it is on and its credentials are set.
          */
         'quotas' => [

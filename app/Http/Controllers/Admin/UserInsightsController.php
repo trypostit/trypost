@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Actions\Admin\Users\BuildChurnRisk;
-use App\Actions\Admin\Users\BuildUsageInsights;
-use App\Actions\Admin\Users\CountAccountActivity;
+use App\Actions\Account\BuildChurnRisk;
+use App\Actions\Account\BuildUsageInsights;
+use App\Actions\Account\CountAccountActivity;
 use App\Enums\Analytics\DateRangePreset;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\IndexUserInsightsRequest;

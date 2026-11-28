@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\BuildSignupInsights;
+use App\Actions\User\BuildSignupInsights;
 use App\Dto\Analytics\DateRange;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;

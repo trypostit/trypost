@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Actions\Admin\Offers\DeleteOffer;
-use App\Actions\Admin\Offers\ListOffers;
-use App\Actions\Admin\Offers\SaveOffer;
+use App\Actions\Offer\DeleteOffer;
+use App\Actions\Offer\ListOffers;
+use App\Actions\Offer\SaveOffer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Offer\DestroyOfferRequest;
 use App\Http\Requests\Admin\Offer\StoreOfferRequest;

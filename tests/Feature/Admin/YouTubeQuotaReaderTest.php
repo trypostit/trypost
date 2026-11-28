@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Console\Commands\Admin\SyncPlatformQuotas;
-use App\Enums\Admin\QuotaSource;
-use App\Services\Admin\Quotas\YouTubeQuotaReader;
-use App\Support\Admin\QuotaSnapshots;
+use App\Console\Commands\SyncPlatformQuotas;
+use App\Enums\Quota\QuotaSource;
+use App\Services\Quota\YouTubeQuotaReader;
+use App\Support\Quota\QuotaSnapshots;
 use Google\Client as GoogleClient;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Handler\MockHandler;

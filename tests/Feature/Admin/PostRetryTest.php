@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\RetryPost;
+use App\Actions\Post\RetryFailedPostFromAdmin;
 use App\Enums\Activity\LogName;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
@@ -194,7 +194,7 @@ test('a post that changed while the retry was prepared is not retried', function
     $request = RetryPostRequest::create(route('admin.posts.retry.store', $post), 'POST');
     $request->setUserResolver(fn (): User => $this->admin);
 
-    $response = app(PostRetryController::class)->store($request, $stale, app(RetryPost::class));
+    $response = app(PostRetryController::class)->store($request, $stale, app(RetryFailedPostFromAdmin::class));
 
     expect($response->getSession()->get('errors')->first('post'))->toBe('The post changed meanwhile; nothing was retried.')
         ->and($post->fresh()->status)->toBe(PostStatus::Failed)

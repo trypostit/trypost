@@ -6,7 +6,7 @@ namespace App\Services;
 
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
-use App\Support\Admin\Impersonation;
+use App\Support\Auth\Impersonation;
 use Illuminate\Support\Facades\Log;
 use PostHog\PostHog;
 use RuntimeException;

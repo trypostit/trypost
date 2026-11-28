@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Actions\Admin\BuildSignupInsights;
+use App\Actions\User\BuildSignupInsights;
 use App\Enums\Analytics\DateRangePreset;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Insights\IndexSignupInsightsRequest;

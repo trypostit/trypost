@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Actions\Admin\Subscriptions\BuildSubscriptionChurn;
-use App\Actions\Admin\Subscriptions\BuildSubscriptionOverview;
-use App\Actions\Admin\Subscriptions\ListSubscriptions;
+use App\Actions\Billing\BuildSubscriptionChurn;
+use App\Actions\Billing\BuildSubscriptionOverview;
+use App\Actions\Billing\ListSubscriptions;
 use App\Dto\Analytics\DateRange;
 use App\Enums\Plan\Slug;
 use App\Http\Resources\Admin\AdminSubscriptionResource;
@@ -12,8 +12,8 @@ use App\Models\Offer;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
-use App\Support\Admin\StripeNetMrr;
-use App\Support\Admin\SubscriptionHistory;
+use App\Support\Billing\StripeNetMrr;
+use App\Support\Billing\SubscriptionHistory;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Inertia\Testing\AssertableInertia;

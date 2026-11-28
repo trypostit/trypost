@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Actions\Admin\StartImpersonation;
+use App\Actions\User\StartImpersonation;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\ImpersonateUserRequest;
 use App\Models\User;

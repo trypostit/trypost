@@ -6,7 +6,7 @@ use App\Http\Middleware\Admin\EnsureAdminEnabled;
 use App\Http\Middleware\Admin\EnsureCanAccessAdmin;
 use App\Models\Activity;
 use App\Models\User;
-use App\Support\Admin\Impersonation;
+use App\Support\Auth\Impersonation;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
 use Laravel\Socialite\Facades\Socialite;
