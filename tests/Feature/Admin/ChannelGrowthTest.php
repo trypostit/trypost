@@ -39,7 +39,7 @@ test('counts a channel on the day it was connected in the viewer\'s zone', funct
 });
 
 test('the networks page takes the Insights range, 30 days by default', function () {
-    $this->actingAs(backofficeAdmin())
+    $this->actingAs(admin())
         ->get(route('admin.networks.index'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page

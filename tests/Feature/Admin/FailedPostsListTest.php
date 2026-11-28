@@ -22,7 +22,7 @@ test('a post the network rejected in review is listed and counted with the faile
     expect(ListFailedPosts::execute()->pluck('id')->all())->toEqualCanonicalizing([$failed->id, $rejected->id])
         ->and(ListFailedPosts::categoryCounts())->toBe([ErrorCategory::Unknown->value => 2]);
 
-    $this->actingAs(backofficeAdmin())
+    $this->actingAs(admin())
         ->get(route('admin.posts.failed.index'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('posts.data', 2)
@@ -33,8 +33,8 @@ test('a post the network rejected in review is listed and counted with the faile
 test('failures are listed by when they failed, so editing an older one does not move it to the top', function () {
     $owner = workspaceOwner();
     $channel = SocialAccount::factory()->create(['workspace_id' => $owner->current_workspace_id, 'platform' => Platform::X]);
-    $older = adminPostSentAt($channel, now()->subHours(2), 'failed', ['user_id' => $owner->id]);
-    $newer = adminPostSentAt($channel, now()->subHour(), 'failed', ['user_id' => $owner->id]);
+    $older = channelPostAt($channel, now()->subHours(2), 'failed', ['user_id' => $owner->id]);
+    $newer = channelPostAt($channel, now()->subHour(), 'failed', ['user_id' => $owner->id]);
     Post::query()->whereKey($older->id)->toBase()->update(['updated_at' => now()->addMinute()]);
 
     $recent = BuildUserPosts::execute($owner)['recent_failures'];

@@ -47,8 +47,7 @@ test('paying keeps the live active and past due account subscriptions, as isPayi
 });
 
 test('a subscription is alive from its start until its end', function () {
-    $subscription = subscribeAccount(Account::factory()->create(), ['ends_at' => $this->now->addDays(10)]);
-    adminBackdateSubscription($subscription, $this->now->subDays(10));
+    $subscription = subscribeAccount(Account::factory()->create(), ['ends_at' => $this->now->addDays(10), 'created_at' => $this->now->subDays(10)]);
 
     expect($subscription->isAliveAt($this->now->subDays(11)))->toBeFalse()
         ->and($subscription->isAliveAt($this->now->subDays(10)))->toBeTrue()
@@ -70,14 +69,12 @@ test('the paying subscription is the one not cancelling, whatever order they wer
     $make = fn (array $attributes): Subscription => subscribeAccount($account, $attributes);
 
     if ($cancellingFirst) {
-        $cancelling = $make(['ends_at' => $this->now->addDays(5)]);
+        $cancelling = $make(['ends_at' => $this->now->addDays(5), 'created_at' => $this->now->subMonth()]);
         $renewed = $make([]);
     } else {
         $renewed = $make([]);
-        $cancelling = $make(['ends_at' => $this->now->addDays(5)]);
+        $cancelling = $make(['ends_at' => $this->now->addDays(5), 'created_at' => $this->now->subMonth()]);
     }
-
-    adminBackdateSubscription($cancelling, $this->now->subMonth());
 
     expect($account->fresh()->payingSubscription()->id)->toBe($renewed->id);
 })->with(['cancelling made first' => true, 'renewed made first' => false]);

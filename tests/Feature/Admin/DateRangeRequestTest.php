@@ -11,7 +11,7 @@ use App\Http\Requests\Admin\User\IndexUserInsightsRequest;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
-    $this->admin = backofficeAdmin(['timezone' => 'Asia/Tokyo']);
+    $this->admin = admin(['timezone' => 'Asia/Tokyo']);
     $this->travelTo(now('UTC')->startOfDay()->addHours(23));
 });
 

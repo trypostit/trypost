@@ -20,7 +20,7 @@ test('sums up the last 24 hours of publishing and the channels to reconnect', fu
     SocialAccount::factory()->create(['status' => Status::TokenExpired]);
 
     foreach (['published', 'published', 'failed'] as $state) {
-        adminPostSentAt($channel, $now->subHour(), $state);
+        channelPostAt($channel, $now->subHour(), $state);
     }
 
     $dashboard = BuildDashboard::execute('UTC');
@@ -37,11 +37,11 @@ test('flags a network failing often, posts stuck publishing and quotas running o
     $noisy = SocialAccount::factory()->create(['platform' => Platform::GoogleBusiness]);
 
     foreach (['failed', 'failed', 'failed', 'published'] as $state) {
-        adminPostSentAt($failing, $now->subHour(), $state);
+        channelPostAt($failing, $now->subHour(), $state);
     }
 
     foreach (['failed', 'published'] as $state) {
-        adminPostSentAt($noisy, $now->subHour(), $state);
+        channelPostAt($noisy, $now->subHour(), $state);
     }
 
     $stuck = Post::factory()->forAccount($failing)->create();
@@ -62,7 +62,7 @@ test('flags a network failing often, posts stuck publishing and quotas running o
 });
 
 test('the admin dashboard renders the summary', function () {
-    $this->actingAs(backofficeAdmin())
+    $this->actingAs(admin())
         ->get(route('admin.dashboard'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
@@ -85,7 +85,7 @@ test('a network with a few failures among many posts does not need attention', f
     $busy = SocialAccount::factory()->create(['platform' => Platform::X]);
 
     foreach ([...array_fill(0, BuildDashboard::ALARMING_FAILURES, 'failed'), ...array_fill(0, 30, 'published')] as $state) {
-        adminPostSentAt($busy, $now->subHour(), $state);
+        channelPostAt($busy, $now->subHour(), $state);
     }
 
     $dashboard = BuildDashboard::execute('UTC');
@@ -99,8 +99,8 @@ test('counts the queue, draws each day\'s publishing and leaves a failure older 
     $now = CarbonImmutable::now('UTC')->startOfDay()->addHours(12);
     $this->travelTo($now);
     $channel = SocialAccount::factory()->create(['platform' => Platform::X]);
-    adminPostSentAt($channel, $now->subHour());
-    adminPostSentAt($channel, $now->subHours(25), 'failed');
+    channelPostAt($channel, $now->subHour());
+    channelPostAt($channel, $now->subHours(25), 'failed');
     Post::factory()->forAccount($channel)->scheduled()->count(2)->create();
     Post::factory()->forAccount($channel)->publishing()->create();
     Post::factory()->forAccount($channel)->pendingReview()->create();

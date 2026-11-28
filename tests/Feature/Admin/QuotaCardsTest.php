@@ -69,7 +69,7 @@ test('the x daily usage is cut to the chosen range', function () {
 });
 
 test('the quotas page shows 7, 30, 60 or 90 days of X, 30 by default', function () {
-    $this->actingAs(backofficeAdmin());
+    $this->actingAs(admin());
 
     $this->get(route('admin.quotas.index'))
         ->assertInertia(fn (AssertableInertia $page) => $page
@@ -94,7 +94,7 @@ test('a source that is off reads as not configured', function () {
 });
 
 test('the admin quotas page renders both cards', function () {
-    $this->actingAs(backofficeAdmin())
+    $this->actingAs(admin())
         ->get(route('admin.quotas.index'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page

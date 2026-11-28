@@ -6,7 +6,7 @@ use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
 use App\Models\Offer;
 
 beforeEach(function () {
-    $this->admin = backofficeAdmin();
+    $this->admin = admin();
 });
 
 test('a self-hosted install has no backoffice: every page answers 404, even to an admin', function () {

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 test('an admin views the app as a user and stops from the banner', function () {
-    $admin = backofficeAdmin();
+    $admin = admin();
     $user = workspaceOwner(['name' => 'Grace', 'email' => 'grace@example.test']);
     connectAiTo($user);
 
@@ -27,7 +27,7 @@ test('an admin views the app as a user and stops from the banner', function () {
 });
 
 test('an admin viewing as a user without a plan can stop from the welcome steps', function () {
-    $admin = backofficeAdmin();
+    $admin = admin();
     $user = workspaceOwner(['name' => 'No Plan', 'email' => 'noplan@example.test']);
 
     $this->actingAs($admin);

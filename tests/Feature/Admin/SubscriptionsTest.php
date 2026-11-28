@@ -21,7 +21,7 @@ use Stripe\ApiRequestor;
 use Stripe\Subscription as StripeSubscription;
 
 beforeEach(function () {
-    $this->admin = backofficeAdmin();
+    $this->admin = admin();
     $this->now = CarbonImmutable::now('UTC')->startOfDay()->addHours(12);
     $this->travelTo($this->now);
     Plan::query()->where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly', 'stripe_yearly_price_id' => 'price_socials_yearly']);
@@ -39,12 +39,9 @@ function adminSubscriptionFor(string $name, array $attributes = []): Subscriptio
 }
 
 test('counts subscriptions alive per day, new and canceled ones, churn and list-price MRR', function () {
-    $old = adminSubscriptionFor('Old');
-    adminBackdateSubscription($old, $this->now->subDays(20));
-    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2)]);
-    adminBackdateSubscription($leaver, $this->now->subDays(20));
-    $cancelling = adminSubscriptionFor('Cancelling', ['ends_at' => $this->now->addDays(5)]);
-    adminBackdateSubscription($cancelling, $this->now->subDays(3));
+    $old = adminSubscriptionFor('Old', ['created_at' => $this->now->subDays(20)]);
+    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2), 'created_at' => $this->now->subDays(20)]);
+    $cancelling = adminSubscriptionFor('Cancelling', ['ends_at' => $this->now->addDays(5), 'created_at' => $this->now->subDays(3)]);
     adminSubscriptionFor('Legacy', ['stripe_price' => 'price_gone', 'stripe_status' => 'past_due']);
     adminSubscriptionFor('Never paid', ['stripe_status' => 'incomplete']);
     fakeStripeReads(['price_socials_monthly' => [1900, 'month'], 'price_gone' => [1200, 'month']]);
@@ -74,8 +71,7 @@ test('an offer counts its redemptions and the accounts still subscribed', functi
 });
 
 test('churn lists who left in the period, how long subscriptions lasted and retention by start month', function () {
-    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2)]);
-    adminBackdateSubscription($leaver, $this->now->subDays(40));
+    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2), 'created_at' => $this->now->subDays(40)]);
     adminSubscriptionFor('Stayer');
 
     $churn = BuildSubscriptionChurn::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'), SubscriptionHistory::read());
@@ -87,8 +83,7 @@ test('churn lists who left in the period, how long subscriptions lasted and rete
 });
 
 test('retention counts accounts by their first month, and one cancelling at its period end as lost', function () {
-    $stayer = adminSubscriptionFor('Stayer');
-    adminBackdateSubscription($stayer, $this->now->subDays(3));
+    $stayer = adminSubscriptionFor('Stayer', ['created_at' => $this->now->subDays(3)]);
     adminSubscriptionFor('Switcher', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
     $switcher = User::query()->where('name', 'Switcher')->first()->account;
     subscribeAccount($switcher, ['stripe_price' => 'price_socials_yearly']);
@@ -165,10 +160,8 @@ test('a subscription is in All and at most one other group; an unpaid one withou
 });
 
 test('churn sums up the period and draws the daily cancellations and the rolling rate', function () {
-    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2)]);
-    adminBackdateSubscription($leaver, $this->now->subDays(40));
-    $stayer = adminSubscriptionFor('Stayer');
-    adminBackdateSubscription($stayer, $this->now->subDays(40));
+    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2), 'created_at' => $this->now->subDays(40)]);
+    $stayer = adminSubscriptionFor('Stayer', ['created_at' => $this->now->subDays(40)]);
 
     $churn = BuildSubscriptionChurn::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'), SubscriptionHistory::read());
 
@@ -184,10 +177,8 @@ test('a user who is not an admin cannot see subscriptions', function () {
 });
 
 test('the overview carries the period before, to compare with', function () {
-    $before = adminSubscriptionFor('Before');
-    adminBackdateSubscription($before, $this->now->subDays(10));
-    $leftBefore = adminSubscriptionFor('Left before', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(9)]);
-    adminBackdateSubscription($leftBefore, $this->now->subDays(20));
+    $before = adminSubscriptionFor('Before', ['created_at' => $this->now->subDays(10)]);
+    $leftBefore = adminSubscriptionFor('Left before', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(9), 'created_at' => $this->now->subDays(20)]);
     fakeStripeReads(['price_socials_monthly' => [1900, 'month']]);
 
     $previous = BuildSubscriptionOverview::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'), SubscriptionHistory::read())['previous'];
@@ -244,7 +235,7 @@ test('the MRR after coupons reads every paying subscription from Stripe', functi
 
 test('the overview counts a subscription on the day it started in the viewer\'s zone', function () {
     $today = $this->now->startOfDay();
-    adminBackdateSubscription(adminSubscriptionFor('Night owl'), $today->addHour());
+    adminSubscriptionFor('Night owl', ['created_at' => $today->addHour()]);
 
     $saoPaulo = BuildSubscriptionOverview::execute(DateRange::fromDates($today->subDay()->toDateString(), $today->toDateString(), 'America/Sao_Paulo'), SubscriptionHistory::read());
     $utc = BuildSubscriptionOverview::execute(DateRange::fromDates($today->subDay()->toDateString(), $today->toDateString(), 'UTC'), SubscriptionHistory::read());
@@ -270,8 +261,7 @@ test('a subscription lists only the offers its account redeemed, not those it on
 });
 
 test('a canceled subscription in the churn list reads like a row of the subscriptions table, with how long it lasted', function () {
-    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2)]);
-    adminBackdateSubscription($leaver, $this->now->subDays(40));
+    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2), 'created_at' => $this->now->subDays(40)]);
 
     $row = BuildSubscriptionChurn::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'), SubscriptionHistory::read())['recent'][0];
 

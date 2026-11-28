@@ -31,7 +31,7 @@ test('an admin opens the backoffice from the user menu and gets its own sidebar'
 });
 
 test('a user who is not an admin has no backoffice item in the user menu', function () {
-    backofficeAdmin();
+    admin();
     $user = workspaceOwner();
     $user->account->forceFill(['trial_ends_at' => now()->addWeek()])->save();
     connectAiTo($user);

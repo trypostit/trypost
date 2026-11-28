@@ -26,7 +26,7 @@ use Stripe\HttpClient\ClientInterface;
 
 beforeEach(function () {
     config()->set('cashier.secret', 'sk_test_fake');
-    $this->admin = backofficeAdmin(['timezone' => 'UTC']);
+    $this->admin = admin(['timezone' => 'UTC']);
     adminFakeStripeCoupons(['REAL']);
 });
 

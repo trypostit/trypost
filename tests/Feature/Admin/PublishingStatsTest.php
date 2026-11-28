@@ -23,10 +23,10 @@ test('counts published and failed posts per day and network', function () {
     $today = CarbonImmutable::now('UTC');
     $yesterday = $today->subDay();
 
-    adminPostSentAt($x, $today);
-    adminPostSentAt($x, $today, 'failed', ['error_message' => 'Rate limit']);
-    adminPostSentAt($linkedin, $yesterday);
-    adminPostSentAt($linkedin, $yesterday, 'deletedOnNetwork');
+    channelPostAt($x, $today);
+    channelPostAt($x, $today, 'failed', ['error_message' => 'Rate limit']);
+    channelPostAt($linkedin, $yesterday);
+    channelPostAt($linkedin, $yesterday, 'deletedOnNetwork');
 
     $stats = BuildPublishingStats::execute(DateRange::fromDates($today->subDays(6)->toDateString(), $today->toDateString(), 'UTC'));
 
@@ -43,7 +43,7 @@ test('counts published and failed posts per day and network', function () {
 test('ignores posts outside the range, imported posts and posts that did not finish', function () {
     $x = SocialAccount::factory()->create(['platform' => Platform::X]);
 
-    adminPostSentAt($x, CarbonImmutable::now('UTC')->subDays(8));
+    channelPostAt($x, CarbonImmutable::now('UTC')->subDays(8));
     $imported = Post::factory()->forAccount($x)->imported()->create();
     $publishing = Post::factory()->forAccount($x)->publishing()->create();
     Post::factory()->forAccount($x)->scheduled()->create();
@@ -56,10 +56,10 @@ test('ignores posts outside the range, imported posts and posts that did not fin
 
 test('filters by one or more platforms', function () {
     $today = CarbonImmutable::now('UTC')->toDateString();
-    adminPostSentAt(SocialAccount::factory()->create(['platform' => Platform::X]), CarbonImmutable::now('UTC'));
-    adminPostSentAt(SocialAccount::factory()->create(['platform' => Platform::LinkedIn]), CarbonImmutable::now('UTC'));
-    adminPostSentAt(SocialAccount::factory()->create(['platform' => Platform::LinkedInPage]), CarbonImmutable::now('UTC'));
-    adminPostSentAt(SocialAccount::factory()->create(['platform' => Platform::Threads]), CarbonImmutable::now('UTC'));
+    channelPostAt(SocialAccount::factory()->create(['platform' => Platform::X]), CarbonImmutable::now('UTC'));
+    channelPostAt(SocialAccount::factory()->create(['platform' => Platform::LinkedIn]), CarbonImmutable::now('UTC'));
+    channelPostAt(SocialAccount::factory()->create(['platform' => Platform::LinkedInPage]), CarbonImmutable::now('UTC'));
+    channelPostAt(SocialAccount::factory()->create(['platform' => Platform::Threads]), CarbonImmutable::now('UTC'));
 
     expect(BuildPublishingStats::execute(DateRange::fromDates($today, $today, 'UTC'), [Platform::X])['totals'])->toMatchArray(['published' => 1])
         ->and(BuildPublishingStats::execute(DateRange::fromDates($today, $today, 'UTC'), [Platform::X, Platform::LinkedIn, Platform::LinkedInPage])['totals'])->toMatchArray(['published' => 3]);
@@ -69,9 +69,9 @@ test('groups the most frequent errors per network', function () {
     $x = SocialAccount::factory()->create(['platform' => Platform::X]);
     $now = CarbonImmutable::now('UTC');
 
-    adminPostSentAt($x, $now, 'failed', ['error_message' => 'Rate limit']);
-    adminPostSentAt($x, $now, 'failed', ['error_message' => 'Rate limit']);
-    adminPostSentAt($x, $now, 'failed', ['error_message' => 'Token expired']);
+    channelPostAt($x, $now, 'failed', ['error_message' => 'Rate limit']);
+    channelPostAt($x, $now, 'failed', ['error_message' => 'Rate limit']);
+    channelPostAt($x, $now, 'failed', ['error_message' => 'Token expired']);
 
     expect(BuildPublishingStats::execute(DateRange::fromDates($now->toDateString(), $now->toDateString(), 'UTC'))['top_errors'])->toBe([
         ['platform' => 'x', 'network' => 'x', 'category' => 'unknown', 'message' => 'Rate limit', 'count' => 2],
@@ -80,10 +80,10 @@ test('groups the most frequent errors per network', function () {
 });
 
 test('the admin posts page reads the range and networks like Insights', function () {
-    $admin = backofficeAdmin();
+    $admin = admin();
     $today = CarbonImmutable::now('UTC');
-    adminPostSentAt(SocialAccount::factory()->create(['platform' => Platform::LinkedInPage]), $today);
-    adminPostSentAt(SocialAccount::factory()->create(['platform' => Platform::X]), $today);
+    channelPostAt(SocialAccount::factory()->create(['platform' => Platform::LinkedInPage]), $today);
+    channelPostAt(SocialAccount::factory()->create(['platform' => Platform::X]), $today);
 
     $this->actingAs($admin)
         ->get(route('admin.posts.index', ['range' => '7d', 'networks' => ['linkedin']]))
@@ -112,8 +112,8 @@ test('the admin posts page reads the range and networks like Insights', function
 
 test('the by-network table puts every way of connecting a network together', function () {
     $now = CarbonImmutable::now('UTC');
-    adminPostSentAt(SocialAccount::factory()->create(['platform' => Platform::Instagram]), $now);
-    adminPostSentAt(SocialAccount::factory()->create(['platform' => Platform::InstagramFacebook]), $now);
+    channelPostAt(SocialAccount::factory()->create(['platform' => Platform::Instagram]), $now);
+    channelPostAt(SocialAccount::factory()->create(['platform' => Platform::InstagramFacebook]), $now);
 
     $networks = collect(BuildPublishingStats::execute(DateRange::fromDates($now->toDateString(), $now->toDateString(), 'UTC'))['networks']);
 
@@ -125,10 +125,10 @@ test('breaks failures down by cause, posts by origin and by post type', function
     $x = SocialAccount::factory()->create(['platform' => Platform::X]);
     $today = CarbonImmutable::now('UTC');
 
-    $rateLimited = adminPostSentAt($x, $today, 'failed', ['error_message' => 'Too many']);
+    $rateLimited = channelPostAt($x, $today, 'failed', ['error_message' => 'Too many']);
     Post::query()->whereKey($rateLimited->id)->toBase()->update(['error_context' => json_encode(['category' => 'rate_limit']), 'created_via' => 'api']);
-    adminPostSentAt($x, $today, 'failed', ['error_message' => 'Odd']);
-    $viaMcp = adminPostSentAt($x, $today);
+    channelPostAt($x, $today, 'failed', ['error_message' => 'Odd']);
+    $viaMcp = channelPostAt($x, $today);
     Post::query()->whereKey($viaMcp->id)->toBase()->update(['created_via' => 'mcp']);
 
     $stats = BuildPublishingStats::execute(DateRange::fromDates($today->toDateString(), $today->toDateString(), 'UTC'));
@@ -142,7 +142,7 @@ test('breaks failures down by cause, posts by origin and by post type', function
 test('counts each post on the day it went out in the viewer\'s zone', function () {
     $x = SocialAccount::factory()->create(['platform' => Platform::X]);
     $today = CarbonImmutable::now('UTC')->startOfDay();
-    adminPostSentAt($x, $today->addHour());
+    channelPostAt($x, $today->addHour());
 
     $saoPaulo = BuildPublishingStats::execute(DateRange::fromDates($today->subDay()->toDateString(), $today->toDateString(), 'America/Sao_Paulo'));
     $utc = BuildPublishingStats::execute(DateRange::fromDates($today->subDay()->toDateString(), $today->toDateString(), 'UTC'));
@@ -155,7 +155,7 @@ test('a post counts as sent when it was published, never when a later write move
     $owner = workspaceOwner();
     $x = SocialAccount::factory()->create(['workspace_id' => $owner->current_workspace_id, 'platform' => Platform::X]);
     $now = CarbonImmutable::now('UTC');
-    $old = adminPostSentAt($x, $now->subDays(60), 'deletedOnNetwork');
+    $old = channelPostAt($x, $now->subDays(60), 'deletedOnNetwork');
     Post::query()->whereKey($old->id)->toBase()->update(['publication_updated_at' => $now->subHour()]);
     $failure = Post::factory()->forAccount($x)->failed()->create();
     Post::query()->whereKey($failure->id)->toBase()->update(['publication_updated_at' => $now->subHour(), 'published_at' => null]);

@@ -10,7 +10,7 @@ use App\Support\Admin\Impersonation;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
-    $this->admin = backofficeAdmin(['name' => 'Admin']);
+    $this->admin = admin(['name' => 'Admin']);
 });
 
 test('an admin impersonates a user and lands in the app as them', function () {

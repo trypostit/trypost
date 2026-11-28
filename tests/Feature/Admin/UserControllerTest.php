@@ -6,7 +6,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
-    $this->admin = backofficeAdmin(['name' => 'Admin']);
+    $this->admin = admin(['name' => 'Admin']);
 });
 
 test('lists users newest first', function () {

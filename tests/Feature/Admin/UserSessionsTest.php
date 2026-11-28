@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
-    $this->admin = backofficeAdmin();
+    $this->admin = admin();
     $this->user = User::factory()->create();
     DB::table('sessions')->insert(['id' => 'left-over', 'user_id' => $this->user->id, 'ip_address' => '203.0.113.7', 'user_agent' => 'Safari', 'payload' => '', 'last_activity' => now()->timestamp]);
 });

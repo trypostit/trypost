@@ -13,11 +13,11 @@ test('counts the posts TryPost created on X per UTC day, with and without a link
     $day = CarbonImmutable::now('UTC')->startOfDay()->subDay();
     $x = SocialAccount::factory()->create(['platform' => Platform::X]);
 
-    adminPostSentAt($x, $day->addHours(2), 'published', ['content' => '<p>Plain text</p>']);
-    adminPostSentAt($x, $day->addHours(3), 'published', ['content' => '<p>Read https://example.com/post</p>']);
-    adminPostSentAt($x, $day->addHours(4), 'published', ['content' => '<p>Bare host acme.com counts too</p>']);
-    adminPostSentAt($x, $day->addHours(5), 'published', ['content' => '<p>Node.js is not a link</p>']);
-    adminPostSentAt(SocialAccount::factory()->create(['platform' => Platform::LinkedIn]), $day->addHours(6), 'published', ['content' => '<p>Not X</p>']);
+    channelPostAt($x, $day->addHours(2), 'published', ['content' => '<p>Plain text</p>']);
+    channelPostAt($x, $day->addHours(3), 'published', ['content' => '<p>Read https://example.com/post</p>']);
+    channelPostAt($x, $day->addHours(4), 'published', ['content' => '<p>Bare host acme.com counts too</p>']);
+    channelPostAt($x, $day->addHours(5), 'published', ['content' => '<p>Node.js is not a link</p>']);
+    channelPostAt(SocialAccount::factory()->create(['platform' => Platform::LinkedIn]), $day->addHours(6), 'published', ['content' => '<p>Not X</p>']);
 
     $estimate = collect(BuildXCostEstimate::execute([$day->toDateString()], [$day->toDateString() => 100]))->sole();
 
@@ -37,7 +37,7 @@ test('a defused link is billed as a plain post', function () {
     $day = CarbonImmutable::now('UTC')->startOfDay();
     $x = SocialAccount::factory()->create(['platform' => Platform::X]);
 
-    adminPostSentAt($x, $day->addHour(), 'published', ['content' => '<p>Read https://example.com/post</p>']);
+    channelPostAt($x, $day->addHour(), 'published', ['content' => '<p>Read https://example.com/post</p>']);
 
     expect(collect(BuildXCostEstimate::execute([$day->toDateString()], []))->sole())
         ->toMatchArray(['created' => 1, 'created_with_link' => 0, 'reads' => 0]);
@@ -48,7 +48,7 @@ test('every live reply of a thread is a post of its own', function () {
     $day = CarbonImmutable::now('UTC')->startOfDay();
     $x = SocialAccount::factory()->create(['platform' => Platform::X]);
 
-    adminPostSentAt($x, $day->addHour(), 'published', [
+    channelPostAt($x, $day->addHour(), 'published', [
         'content' => '<p>Root</p>',
         'meta' => ['thread_replies' => [['text' => 'Second https://example.com'], ['text' => 'Third'], ['text' => 'Not sent']]],
         'thread_reply_ids' => ['2', '3'],

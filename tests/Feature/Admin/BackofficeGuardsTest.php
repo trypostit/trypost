@@ -13,7 +13,7 @@ use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
 beforeEach(function () {
-    $this->admin = backofficeAdmin();
+    $this->admin = admin();
 });
 
 test('every backoffice route needs a signed-in backoffice admin on Cloud', function () {

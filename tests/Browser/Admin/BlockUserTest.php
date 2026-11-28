@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 
 test('an admin blocks a user with a reason and unblocks them from the user page', function () {
-    $admin = backofficeAdmin();
+    $admin = admin();
     $user = User::factory()->create(['name' => 'Spammer']);
 
     $this->actingAs($admin);
@@ -33,7 +33,7 @@ test('an admin blocks a user with a reason and unblocks them from the user page'
 });
 
 test('the users tabs follow the selected status', function () {
-    $admin = backofficeAdmin();
+    $admin = admin();
     $blocked = User::factory()->blocked()->create();
     $this->actingAs($admin);
 

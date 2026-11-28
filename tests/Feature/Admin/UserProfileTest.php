@@ -23,7 +23,7 @@ use Stripe\ApiRequestor;
 use Stripe\HttpClient\ClientInterface;
 
 beforeEach(function () {
-    $this->admin = backofficeAdmin(['name' => 'Admin']);
+    $this->admin = admin(['name' => 'Admin']);
     $this->user = workspaceOwner(['name' => 'Grace', 'utm_source' => 'google', 'google_id' => 'g-1'], ['name' => 'Grace Co']);
     $this->workspace = $this->user->currentWorkspace;
 });

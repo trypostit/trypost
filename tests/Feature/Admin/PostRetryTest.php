@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
-    $this->admin = backofficeAdmin();
+    $this->admin = admin();
 });
 
 function adminFailedPostOn(Platform $platform = Platform::X, array $attributes = []): Post

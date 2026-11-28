@@ -36,6 +36,7 @@ use Laravel\Mcp\Server\Testing\TestResponse as McpTestResponse;
 use Stripe\ApiRequestor;
 use Stripe\Exception\ApiConnectionException;
 use Stripe\HttpClient\ClientInterface;
+use Stripe\Subscription as StripeSubscription;
 use Tests\BrowserTestCase;
 use Tests\TestCase;
 
@@ -68,7 +69,7 @@ pest()->extend(BrowserTestCase::class)
     })
     ->in('Browser');
 
-/** The backoffice is TryPost Cloud's only, so its tests run as Cloud. */
+/** The admin is TryPost Cloud's only, so its tests run as Cloud. */
 pest()->in('Feature/Admin', 'Browser/Admin')
     ->beforeEach(fn () => config()->set('trypost.self_hosted', false));
 
@@ -375,8 +376,8 @@ function fakePublicDns(string $address = '93.184.216.34'): void
 }
 
 /**
- * Attach a subscription to the given account: active on `price_123` unless the
- * attributes say otherwise.
+ * Attach a subscription to the given account: active on `price_123`, started
+ * now, unless the attributes say otherwise (`created_at` backdates it).
  *
  * @param  array<string, mixed>  $attributes
  */
@@ -387,7 +388,7 @@ function subscribeAccount(Account $account, array $attributes = []): Subscriptio
     return $account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => "sub_{$stripeId}",
-        'stripe_status' => 'active',
+        'stripe_status' => StripeSubscription::STATUS_ACTIVE,
         'stripe_price' => 'price_123',
         ...$attributes,
     ]);
@@ -411,41 +412,33 @@ function workspaceOwner(array $attributes = [], array $workspaceAttributes = [])
 }
 
 /**
- * A backoffice admin: a user whose email is the only one in ADMIN_EMAILS.
+ * A user who may open /admin: the only email in ADMIN_EMAILS. Not a
+ * workspace admin.
  *
  * @param  array<string, mixed>  $attributes
  */
-function backofficeAdmin(array $attributes = []): User
+function admin(array $attributes = []): User
 {
-    $admin = User::factory()->create(['email' => 'admin@trypost.test', ...$attributes]);
+    $admin = User::factory()->create($attributes);
     config()->set('trypost.admin.emails', [$admin->email]);
 
     return $admin;
 }
 
 /**
- * Moves a subscription's start to the given moment, as the backoffice counts
- * subscriptions by the day they started.
- */
-function adminBackdateSubscription(Subscription $subscription, CarbonInterface $at): Subscription
-{
-    Subscription::query()->whereKey($subscription->id)->toBase()->update(['created_at' => $at]);
-
-    return $subscription->refresh();
-}
-
-/**
  * A post of the channel in the given factory state (`published`, `failed`, …)
- * that went out at the given moment, as the backoffice counts posts by day.
+ * whose publish attempt ended at the given moment, the time the admin counts
+ * it by.
  *
  * @param  array<string, mixed>  $attributes
  */
-function adminPostSentAt(SocialAccount $channel, CarbonInterface $at, string $state = 'published', array $attributes = []): Post
+function channelPostAt(SocialAccount $channel, CarbonInterface $at, string $state = 'published', array $attributes = []): Post
 {
-    $post = Post::factory()->forAccount($channel)->{$state}()->create($attributes);
-    Post::query()->whereKey($post->id)->toBase()->update(['publication_updated_at' => $at, 'published_at' => $at]);
-
-    return $post->refresh();
+    return Post::factory()->forAccount($channel)->{$state}()->create([
+        'published_at' => $at,
+        'publication_updated_at' => $at,
+        ...$attributes,
+    ]);
 }
 
 /**
@@ -575,7 +568,7 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
 }
 
 /**
- * Answers Stripe from memory for the backoffice's reads: each price of
+ * Answers Stripe from memory for the admin's reads: each price of
  * `$prices` (id => [unit amount, interval, interval count]) and, for the
  * subscription list, `$subscriptions` (Stripe subscription objects). With
  * `$down`, every request fails as when Stripe is unreachable. The returned
@@ -626,8 +619,8 @@ function fakeStripeReads(array $prices = [], array $subscriptions = [], bool $do
             return [json_encode([
                 'id' => $id,
                 'object' => 'price',
-                'unit_amount' => $price[0],
-                'recurring' => ['interval' => $price[1], 'interval_count' => $price[2] ?? 1],
+                'unit_amount' => data_get($price, 0),
+                'recurring' => ['interval' => data_get($price, 1), 'interval_count' => data_get($price, 2, 1)],
             ]), 200, []];
         }
     };

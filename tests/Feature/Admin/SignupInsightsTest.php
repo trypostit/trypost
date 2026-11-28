@@ -16,7 +16,7 @@ use Stripe\ApiRequestor;
 beforeEach(function () {
     $this->now = CarbonImmutable::now('UTC')->startOfDay()->addHours(12);
     $this->travelTo($this->now->subDays(30));
-    $this->admin = backofficeAdmin();
+    $this->admin = admin();
     $this->travelTo($this->now);
 });
 
@@ -30,7 +30,7 @@ function adminSignup(array $answers = []): User
 
 test('follows the owners who signed up through Welcome, a subscription, a channel and a post', function () {
     $paid = adminSignup(['persona' => 'agency', 'goals' => ['save_time'], 'previous_software' => 'buffer', 'google_id' => 'g-1', 'password' => null]);
-    adminBackdateSubscription(subscribeAccount($paid->account), $paid->created_at->addMinutes(4));
+    subscribeAccount($paid->account, ['created_at' => $paid->created_at->addMinutes(4)]);
     fakeStripeReads(['price_123' => [1900, 'month']]);
     $workspace = Workspace::factory()->create(['user_id' => $paid->id, 'account_id' => $paid->account_id]);
     $channel = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::X]);
@@ -60,7 +60,7 @@ test('counts a signup on the day it happened in the viewer\'s zone', function ()
     $today = $this->now->startOfDay();
     $this->travelTo($today->addHour());
     $owner = adminSignup();
-    adminBackdateSubscription(subscribeAccount($owner->account), $owner->created_at);
+    subscribeAccount($owner->account, ['created_at' => $owner->created_at]);
     $this->travelTo($this->now);
 
     $saoPaulo = BuildSignupInsights::execute(DateRange::fromDates($today->subDay()->toDateString(), $today->toDateString(), 'America/Sao_Paulo'));
@@ -93,10 +93,8 @@ test('a checkout that never billed does not count as subscribed', function (stri
 test('an owner\'s first subscription decides when they subscribed and what it brings', function () {
     fakeStripeReads(['price_123' => [1900, 'month'], 'price_yearly' => [19000, 'year']]);
     $owner = adminSignup();
-    $later = subscribeAccount($owner->account, ['stripe_price' => 'price_yearly']);
-    $first = subscribeAccount($owner->account, ['stripe_status' => 'canceled', 'ends_at' => $this->now->subHour()]);
-    adminBackdateSubscription($first, $owner->created_at->addMinutes(10));
-    adminBackdateSubscription($later, $owner->created_at->addMinutes(90));
+    $later = subscribeAccount($owner->account, ['stripe_price' => 'price_yearly', 'created_at' => $owner->created_at->addMinutes(90)]);
+    $first = subscribeAccount($owner->account, ['stripe_status' => 'canceled', 'ends_at' => $this->now->subHour(), 'created_at' => $owner->created_at->addMinutes(10)]);
 
     $totals = BuildSignupInsights::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'))['totals'];
 

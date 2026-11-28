@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
-    $this->admin = backofficeAdmin();
+    $this->admin = admin();
 });
 
 function adminDueScheduledPost(Workspace $workspace, User $author): Post
