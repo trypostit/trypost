@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Laravel\Cashier\Cashier;
 
 class Account extends Model
 {
@@ -52,6 +53,32 @@ class Account extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    /**
+     * Cashier's subscriptions relation, with each subscription's owner set to
+     * this account as it loads. Cashier reads the owner for every Stripe call
+     * on a subscription (its card, discount, swap), and an account with more
+     * than one subscription would otherwise lazy load it.
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Cashier::$subscriptionModel, $this->getForeignKey())
+            ->orderBy('created_at', 'desc')
+            ->chaperone('owner');
+    }
+
+    /**
+     * The subscription the account pays through now (live, active or past
+     * due). A plan change can leave a subscription cancelling at its period
+     * end next to the new one, so one that is not cancelling comes first,
+     * else the newest.
+     */
+    public function payingSubscription(): ?Subscription
+    {
+        $paying = $this->subscriptions->filter(fn (Subscription $subscription): bool => $subscription->isPaying());
+
+        return $paying->first(fn (Subscription $subscription): bool => blank($subscription->ends_at)) ?? $paying->first();
     }
 
     public function plan(): BelongsTo

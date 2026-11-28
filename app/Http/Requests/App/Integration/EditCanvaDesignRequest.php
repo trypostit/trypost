@@ -44,7 +44,7 @@ class EditCanvaDesignRequest extends FormRequest
     {
         $nonce = $this->query('nonce');
 
-        throw new HttpResponseException(Inertia::render('integrations/MediaSourcePopup', [
+        throw new HttpResponseException(Inertia::render('app/integrations/MediaSourcePopup', [
             'source' => Source::Canva->value,
             'nonce' => is_string($nonce) && preg_match(CreateCanvaDesignRequest::NONCE_PATTERN, $nonce) === 1 ? $nonce : null,
             'success' => false,

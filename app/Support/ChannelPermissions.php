@@ -60,7 +60,7 @@ class ChannelPermissions
 
         $required = [
             ...self::scopes($platform, GatedFeature::Publish),
-            ...config("trypost.platforms.{$platform->value}.required_scopes", []),
+            ...self::requiredScopes($platform),
         ];
 
         return collect($configured)
@@ -68,6 +68,17 @@ class ChannelPermissions
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * What connecting and publishing call on the network beyond the publish
+     * scopes (`required_scopes`: X's `users.read`, Discord's `bot`, …).
+     *
+     * @return list<string>
+     */
+    public static function requiredScopes(Platform $platform): array
+    {
+        return config("trypost.platforms.{$platform->value}.required_scopes", []);
     }
 
     /**

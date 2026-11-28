@@ -18,6 +18,7 @@ use App\Console\Commands\RefreshExpiringTokens;
 use App\Console\Commands\Repurpose\PollRepurposes;
 use App\Console\Commands\ResolveTikTokVideoIds;
 use App\Console\Commands\RssFeed\PollRssFeeds;
+use App\Console\Commands\SyncPlatformQuotas;
 use App\Console\Commands\SyncPostHogLifecycleStages;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
@@ -33,6 +34,8 @@ Schedule::command(RecoverStuckPosts::class)->everyThirtyMinutes()->withoutOverla
 Schedule::command(ReconcileGoogleBusinessPosts::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(ResolveTikTokVideoIds::class)->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneWebhookLogs::class)->daily()->withoutOverlapping()->onOneServer();
+Schedule::command('activitylog:clean', ['--force' => true])->daily()->withoutOverlapping()->onOneServer();
+Schedule::command(SyncPlatformQuotas::class)->cron('0 */6 * * *')->withoutOverlapping()->onOneServer();
 Schedule::command(RankPostingStreaks::class)->daily()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneExpiredPostHistoryCommand::class)->daily()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneTemporaryUploadsCommand::class)->hourly()->withoutOverlapping()->onOneServer();

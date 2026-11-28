@@ -470,3 +470,13 @@ test('youtube publish config exposes only the fixed categories and the default',
         ->and($config['categoryOptions'][0])->toBe(['value' => '2', 'labelKey' => 'posts.form.youtube.categories.autos_and_vehicles'])
         ->and($config['defaultCategoryId'])->toBe('22');
 });
+
+test('enabledCases lists the enabled platforms in their declared order', function () {
+    foreach (Platform::cases() as $platform) {
+        config(["trypost.platforms.{$platform->value}.enabled" => true]);
+    }
+
+    config(['trypost.platforms.x.enabled' => false, 'trypost.platforms.threads.enabled' => false]);
+
+    expect(Platform::enabledCases())->toBe(collect(Platform::cases())->reject(fn (Platform $platform): bool => collect([Platform::X, Platform::Threads])->contains($platform))->values()->all());
+});

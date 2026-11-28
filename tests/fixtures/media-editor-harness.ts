@@ -1,5 +1,5 @@
 /**
- * Runs the real `resources/js/lib/mediaEditor.ts` preset functions over the
+ * Runs the real `resources/js/lib/app/mediaEditor.ts` preset functions over the
  * `ContentType::mediaRules()` payload of every content type and prints the
  * preset values per content type as JSON, so `MediaEditorPresetsParityTest.php`
  * can assert the editor offers exactly `ContentType::cropPresets()`, and
@@ -23,10 +23,10 @@ registerHooks({
 });
 
 const { coverCropPresetFor, cropPresetsFor, editorTabsFor, presetValuesFor } = await import(
-    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/mediaEditor.ts')).href
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/app/mediaEditor.ts')).href
 );
 const { toMediaRules } = await import(
-    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/contentTypeMediaRules.ts')).href
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/app/contentTypeMediaRules.ts')).href
 );
 
 type Bounds = { aspectRatioMin: number | null; aspectRatioMax: number | null };

@@ -1,20 +1,20 @@
 import { InertiaLinkProps } from '@inertiajs/vue3';
 import type { Component } from 'vue';
 
-import type { ContentTypeMediaRule } from '@/lib/contentTypeMediaRules';
+import type { ContentTypeMediaRule } from '@/lib/app/contentTypeMediaRules';
 import type {
     DefaultPostAction,
     Theme,
     TimeFormat,
     WeekStart,
 } from '@/preferences';
+import type { CropPresetValue } from '@/types/app/crop-preset';
+import type { AuthPlan, Features, PlanOption } from '@/types/app/plan';
+import type { PostingStreak } from '@/types/app/posting-streak';
 import type { ScrollChangelogEntries, SharedChangelog } from '@/types/changelog';
-import type { CropPresetValue } from '@/types/crop-preset';
-import type { AuthPlan, Features, PlanOption } from '@/types/plan';
-import type { PostingStreak } from '@/types/posting-streak';
 
-export type { AuthPlan, BillingInterval, Features, PlanOption } from '@/types/plan';
-export type { WelcomeStep } from '@/types/welcome';
+export type { AuthPlan, BillingInterval, Features, PlanOption } from '@/types/app/plan';
+export type { WelcomeStep } from '@/types/app/welcome';
 
 export interface Workspace {
     id: string;
@@ -120,6 +120,9 @@ export interface SharedData {
     changelogEntries?: ScrollChangelogEntries;
     mediaUploadLimits?: MediaUploadLimits | null;
     toursEnabled?: boolean;
+    languages?: Language[];
+    /** The user an admin is viewing the app as; null when nobody is. */
+    impersonating?: { name: string; email: string } | null;
     [key: string]: unknown;
 }
 
@@ -143,6 +146,7 @@ export interface User {
     week_starts_on: WeekStart;
     default_post_action: DefaultPostAction;
     email_verified_at: string | null;
+    can_access_admin: boolean;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;

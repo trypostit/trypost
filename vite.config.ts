@@ -12,7 +12,6 @@ export default defineConfig({
     plugins: [
         laravel({
             input: ['resources/js/app.ts', 'resources/css/app.css'],
-            ssr: 'resources/js/ssr.ts',
             assets: ['resources/changelog/**/*.png'],
             refresh: true,
         }),

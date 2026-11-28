@@ -1,7 +1,7 @@
 import { createContext } from 'reka-ui';
 import type { Ref } from 'vue';
 
-import type { VerifiedBadge } from '@/types/social-account';
+import type { VerifiedBadge } from '@/types/app/social-account';
 
 export {
     VisCrosshair as ChartCrosshair,

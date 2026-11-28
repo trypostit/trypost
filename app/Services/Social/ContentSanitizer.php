@@ -88,6 +88,20 @@ class ContentSanitizer
     }
 
     /**
+     * Whether X will see a link in this text, by the same rule the defusing
+     * uses ({@see self::isLink()}). Pass the text X receives
+     * ({@see self::sanitize()}): a defused link no longer matches.
+     */
+    public function containsXLink(string $text): bool
+    {
+        if (preg_match_all(self::LINK_PATTERN, $text, $matches, PREG_SET_ORDER) === 0) {
+            return false;
+        }
+
+        return collect($matches)->contains(fn (array $match): bool => $this->isLink($match[2], $match[4]));
+    }
+
+    /**
      * Rewrites every URL into a non-clickable form (`example.com` →
      * `example(.)com`), dropping the scheme and any `www.` prefix and breaking
      * every dot of the host — leaving one intact dot would still leave a
@@ -109,7 +123,7 @@ class ContentSanitizer
                 [$whole, $boundary, $prefix, $host, $tld] = $matches;
                 $path = $matches[5] ?? '';
 
-                if ($prefix === '' && ! LinkTlds::has($tld)) {
+                if (! $this->isLink($prefix, $tld)) {
                     return $whole;
                 }
 
@@ -119,6 +133,19 @@ class ContentSanitizer
         );
 
         return $defused ?? $content;
+    }
+
+    /**
+     * A candidate is a link when it carries a scheme or `www.`, or when its
+     * bare host ends in a delegated TLD.
+     */
+    private function isLink(string $prefix, string $tld): bool
+    {
+        if (filled($prefix)) {
+            return true;
+        }
+
+        return LinkTlds::has($tld);
     }
 
     /**

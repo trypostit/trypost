@@ -3,7 +3,9 @@ import { usePage } from '@inertiajs/vue3';
 import { IconAlertTriangle } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import SidebarCollapseToggle from '@/components/SidebarCollapseToggle.vue';
+import SidebarCollapseToggle from '@/components/app/SidebarCollapseToggle.vue';
+import WorkspaceMenuContent from '@/components/app/WorkspaceMenuContent.vue';
+import WorkspaceUpgradeDialog from '@/components/app/workspaces/WorkspaceUpgradeDialog.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,10 +13,8 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
-import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
-import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
+import { useWorkspaceAbilities } from '@/composables/app/useWorkspaceAbilities';
+import { useWorkspaceLimit } from '@/composables/app/useWorkspaceLimit';
 import { portal } from '@/routes/app/billing';
 import type { User } from '@/types';
 

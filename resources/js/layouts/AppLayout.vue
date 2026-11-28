@@ -2,7 +2,7 @@
 import { IconLayoutGrid } from '@tabler/icons-vue';
 import type { Component } from 'vue';
 
-import Breadcrumbs from '@/components/Breadcrumbs.vue';
+import Breadcrumbs from '@/components/app/Breadcrumbs.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import type { BreadcrumbItem } from '@/types';

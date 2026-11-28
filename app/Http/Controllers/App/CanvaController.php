@@ -350,7 +350,7 @@ class CanvaController extends Controller implements HasMiddleware
 
     private function popup(bool $success, ?string $nonce, ?string $messageKey = null, ?string $importId = null, ?string $replaces = null): Response
     {
-        return Inertia::render('integrations/MediaSourcePopup', [
+        return Inertia::render('app/integrations/MediaSourcePopup', [
             'source' => Source::Canva->value,
             'nonce' => $nonce,
             'success' => $success,

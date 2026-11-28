@@ -7,6 +7,7 @@ const props = defineProps<{
     title?: string;
     total?: number | null;
     icon?: Component;
+    description?: string;
 }>();
 
 /** The count shows after the title once there is something to count. */
@@ -47,6 +48,13 @@ const hasTotal = computed((): boolean => {
                     </span>
                 </h1>
             </slot>
+            <p
+                v-if="description"
+                class="mt-1 text-sm text-muted-foreground"
+                data-testid="header-description"
+            >
+                {{ description }}
+            </p>
         </div>
     </div>
 </template>

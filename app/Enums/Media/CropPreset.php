@@ -6,7 +6,7 @@ namespace App\Enums\Media;
 
 /**
  * A crop the media editor offers: free, the image's own ratio, or a fixed
- * width:height ratio. Mirrored by `CropPresetValue` in `types/crop-preset.ts`.
+ * width:height ratio. Mirrored by `CropPresetValue` in `types/app/crop-preset.ts`.
  */
 enum CropPreset: string
 {
@@ -24,7 +24,7 @@ enum CropPreset: string
 
     /**
      * Whether the preset is a fixed width:height ratio, which Freeform and
-     * Original are not (`UNFIXED_CROP_PRESETS` in `types/crop-preset.ts`).
+     * Original are not (`UNFIXED_CROP_PRESETS` in `types/app/crop-preset.ts`).
      */
     public function hasFixedRatio(): bool
     {

@@ -143,8 +143,7 @@ RUN mkdir -p storage/framework/cache/data \
 RUN composer dump-autoload --no-scripts --optimize \
     && php artisan wayfinder:generate --with-form \
     && npm ci --no-audit --no-fund \
-    && npm run build \
-    && npm run build:ssr
+    && npm run build
 
 # ----------------------------------------------------------------------------
 # Stage 6: dev — local development image (bind-mount the source at runtime)
@@ -194,8 +193,8 @@ COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Application source + generated wayfinder TS + built assets — all from
-# asset-build (the merged stage that ran php artisan wayfinder:generate,
-# npm run build, and npm run build:ssr).
+# asset-build (the merged stage that ran php artisan wayfinder:generate
+# and npm run build).
 COPY --from=asset-build /var/www/html /var/www/html
 
 # Replace the dev-equipped vendor/ with production-only deps. composer-deps-prod

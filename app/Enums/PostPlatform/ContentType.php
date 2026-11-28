@@ -88,7 +88,7 @@ enum ContentType: string
 
     /**
      * Published without a caption, so the text is neither counted nor sent.
-     * Mirrored by `CAPTIONLESS_CONTENT_TYPES` in `resources/js/types/content-type.ts`.
+     * Mirrored by `CAPTIONLESS_CONTENT_TYPES` in `resources/js/types/app/content-type.ts`.
      */
     public function isCaptionless(): bool
     {

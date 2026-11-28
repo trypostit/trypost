@@ -18,6 +18,7 @@ use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Jobs\SendNotification;
 use App\Mail\AccountDisconnected;
 use App\Models\Scopes\SocialAccountOrderScope;
+use App\Models\Traits\TalliesRows;
 use App\Observers\ComposerVersionObserver;
 use App\Observers\SocialAccountObserver;
 use App\Support\ChannelPermissions;
@@ -44,7 +45,7 @@ use Illuminate\Support\Facades\Storage;
 class SocialAccount extends Model
 {
     /** @use HasFactory<SocialAccountFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, TalliesRows;
 
     public const int X_LONG_POST_LENGTH = 25000;
 

@@ -1,5 +1,5 @@
 /**
- * Runs `resources/js/lib/facebookLinkPreview.ts` over a corpus and prints the
+ * Runs `resources/js/lib/app/facebookLinkPreview.ts` over a corpus and prints the
  * results as JSON, so the PHP parity test can diff it against
  * `App\Support\FacebookLinkPreview`.
  */

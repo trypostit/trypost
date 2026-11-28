@@ -106,6 +106,8 @@ return [
     'ranges' => [
         '7d' => '7 dias',
         '30d' => '30 dias',
+        '60d' => '60 dias',
+        '90d' => '90 dias',
         'mtd' => 'Mês atual',
         'custom' => 'Personalizado',
         'versus' => 'vs. :range',

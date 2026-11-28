@@ -36,7 +36,7 @@ class BillingController extends Controller
         $account = $request->user()->accountOrFail();
         $returnsToBilling = $request->query('from') === CheckoutOrigin::Billing->value;
 
-        return Inertia::render('billing/Processing', [
+        return Inertia::render('app/billing/Processing', [
             'ready' => $returnsToBilling ? $account->planMatchesSubscription() : $account->hasAppAccess(),
             'returnsToBilling' => $returnsToBilling,
         ]);
@@ -54,7 +54,7 @@ class BillingController extends Controller
 
         $subscription = $account->validSubscription();
 
-        return Inertia::render('settings/account/Billing', [
+        return Inertia::render('app/settings/account/Billing', [
             'hasSubscription' => filled($subscription),
             'onTrial' => $account->isOnTrial(),
             'trialEndsAt' => $account->activeTrialEndsAt(),

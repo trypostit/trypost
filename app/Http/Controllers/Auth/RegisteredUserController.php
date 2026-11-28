@@ -24,7 +24,7 @@ class RegisteredUserController extends Controller
     {
         $this->storeAttributionParameters($request);
 
-        return Inertia::render('auth/Register', [
+        return Inertia::render('app/auth/Register', [
             'email' => $request->query('email'),
             'invite' => $request->query('invite'),
             'passwordRequirements' => PasswordRequirements::checklist(),

@@ -42,7 +42,7 @@ class RepurposeController extends Controller
         $workspace = $request->user()->currentWorkspace;
         $accounts = $this->connectedAccounts($request);
 
-        return Inertia::render('repurposes/Index', [
+        return Inertia::render('app/repurposes/Index', [
             'repurposes' => Inertia::scroll(fn () => RepurposeResource::collection(ListRepurposes::execute($workspace))),
             'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($accounts)),
             'destinationAccounts' => SocialAccountResource::collection($this->destinationAccounts($accounts)),
@@ -55,7 +55,7 @@ class RepurposeController extends Controller
 
         $accounts = $this->connectedAccounts($request);
 
-        return Inertia::render('repurposes/Show', [
+        return Inertia::render('app/repurposes/Show', [
             'repurpose' => new RepurposeResource($repurpose->load('sourceAccount')),
             'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($accounts)),
             'destinationAccounts' => SocialAccountResource::collection($this->destinationAccounts($accounts)),

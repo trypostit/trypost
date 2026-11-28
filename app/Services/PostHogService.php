@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
+use App\Support\Auth\Impersonation;
 use Illuminate\Support\Facades\Log;
 use PostHog\PostHog;
 use RuntimeException;
@@ -15,6 +16,10 @@ class PostHogService
 {
     public static function isEnabled(): bool
     {
+        if (Impersonation::isActive()) {
+            return false;
+        }
+
         return (bool) config('services.posthog.enabled')
             && (bool) config('services.posthog.api_key');
     }
@@ -27,6 +32,10 @@ class PostHogService
      */
     public static function shouldTrack(): bool
     {
+        if (Impersonation::isActive()) {
+            return false;
+        }
+
         return self::isEnabled() || app()->environment('local');
     }
 

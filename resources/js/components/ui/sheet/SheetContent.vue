@@ -10,7 +10,7 @@ import {
   useForwardPropsEmits,
 } from "reka-ui"
 import { buttonVariants } from "@/components/ui/button"
-import { trackDialogForTours } from "@/composables/tours/useTourWaitsForDialogs"
+import { trackDialogForTours } from "@/composables/app/tours/useTourWaitsForDialogs"
 import { cn } from "@/lib/utils"
 import SheetOverlay from "./SheetOverlay.vue"
 

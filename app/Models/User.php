@@ -22,6 +22,7 @@ use App\Support\Timezone;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -84,6 +85,8 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'time_format' => TimeFormat::DEFAULT->value,
         'week_starts_on' => WeekStart::DEFAULT->value,
         'default_post_action' => DefaultPostAction::DEFAULT->value,
+        'blocked_at' => null,
+        'blocked_reason' => null,
     ];
 
     /**
@@ -129,10 +132,43 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return (string) Str::of($this->name ?? '')->trim()->before(' ');
     }
 
+    /**
+     * An admin blocked this user: no sign-in, no API or MCP, and the
+     * scheduled posts of the account they own wait until they are unblocked.
+     */
+    public function isBlocked(): bool
+    {
+        return filled($this->blocked_at);
+    }
+
+    /**
+     * May open the admin and Horizon: an account whose email is in
+     * `ADMIN_EMAILS`. Not the workspace admin (`user_workspace.is_admin`).
+     */
+    public function canAccessAdmin(): bool
+    {
+        return collect(config()->array('trypost.admin.emails'))->contains(Str::lower($this->email));
+    }
+
+    /**
+     * Users whose name or email contains the term, as a search box looks
+     * them up.
+     *
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeMatching(Builder $query, string $term): Builder
+    {
+        return $query->where(fn (Builder $match): Builder => $match
+            ->whereLike('users.name', "%{$term}%")
+            ->orWhereLike('users.email', "%{$term}%"));
+    }
+
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
+            'blocked_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'persona' => Persona::class,

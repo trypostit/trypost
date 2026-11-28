@@ -1,5 +1,5 @@
 /**
- * Runs `labelTextColor()` of `resources/js/lib/labelColor.ts` over a list of
+ * Runs `labelTextColor()` of `resources/js/lib/app/labelColor.ts` over a list of
  * colors and prints the answers as JSON, so `LabelColorTest.php` can check
  * them. Node strips the types, so the source is loaded as-is.
  */

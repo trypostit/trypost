@@ -32,8 +32,8 @@ export const formatNumber = (value: number): string => {
     return value.toLocaleString('en-US');
 };
 
-/** What a number reads while it has no value. */
-const MISSING_VALUE = '—';
+/** What a value reads while it has none. */
+export const MISSING_VALUE = '—';
 
 /** A number that may have no value yet; the formatters below read it as a dash. */
 type MaybeNumber = number | null | undefined;
@@ -117,16 +117,34 @@ export const formatCountChange = withDash(
         }).format(value),
 );
 
-export const formatPercentChange = withDash((value: number): string => {
+export const formatPercentChange = withDash((value: number, digits: number = 2): string => {
     const compact = Math.abs(value) >= 1000;
 
     return new Intl.NumberFormat(activeLocale.value, {
         style: 'percent',
         signDisplay: 'exceptZero',
         notation: compact ? 'compact' : 'standard',
-        maximumFractionDigits: compact ? 1 : 2,
+        maximumFractionDigits: compact ? 1 : digits,
     }).format(value / 100);
 });
+
+/** The part's share of the whole, in percent; an empty whole gives 0. Mirrors `App\Support\Percent::of()`. */
+export const percentOf = (part: number, whole: number): number => {
+    if (whole === 0) {
+        return 0;
+    }
+
+    return (part / whole) * 100;
+};
+
+/** How far the value moved from the past one, in percent; null when there is nothing to compare with. Mirrors `App\Support\Percent::change()`. */
+export const percentChange = (current: number, past: number): number | null => {
+    if (past === 0) {
+        return null;
+    }
+
+    return ((current - past) / past) * 100;
+};
 
 export const formatMoney = (cents: number): string => {
     const dollars = cents / 100;

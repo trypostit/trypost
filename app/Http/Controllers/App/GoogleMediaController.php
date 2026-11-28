@@ -218,7 +218,7 @@ class GoogleMediaController extends Controller
 
     private function popup(Source $source, bool $success, ?string $nonce, ?string $messageKey = null, ?string $pickerUri = null): Response
     {
-        return Inertia::render('integrations/MediaSourcePopup', [
+        return Inertia::render('app/integrations/MediaSourcePopup', [
             'source' => $source->value,
             'nonce' => $nonce,
             'success' => $success,

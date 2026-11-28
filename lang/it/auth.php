@@ -18,6 +18,7 @@ return [
     'failed' => 'Queste credenziali non corrispondono ai nostri dati.',
     'password' => 'La password fornita non è corretta.',
     'throttle' => 'Troppi tentativi di accesso. Riprova tra :seconds secondi.',
+    'blocked' => 'Questo account è stato sospeso. Contatta il supporto se pensi che sia un errore.',
 
     'flash' => [
         'welcome' => 'Benvenuto su TryPost!',

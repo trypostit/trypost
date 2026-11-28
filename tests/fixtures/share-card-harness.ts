@@ -1,6 +1,6 @@
 /**
- * Runs the share card's pure arithmetic (`resources/js/lib/shareCard/scale.ts`,
- * `curve.ts` and `lib/labelLayout.ts`) over fixed inputs and prints the results
+ * Runs the share card's pure arithmetic (`resources/js/lib/app/shareCard/scale.ts`,
+ * `curve.ts` and `lib/app/labelLayout.ts`) over fixed inputs and prints the results
  * as JSON, so `ShareCardArithmeticTest.php` can hold them to d3's own output
  * and to hand-worked layouts.
  *
@@ -27,9 +27,9 @@ registerHooks({
 type Op = [string, ...number[]];
 
 const load = (file: string) => import(pathToFileURL(path.join(root, file)).href);
-const { comboDates, evenDates, fittingColumns, linearTicks, quantizeLevel, valueAxis } = await load('lib/shareCard/scale.ts');
-const { traceMonotone } = await load('lib/shareCard/curve.ts');
-const { spreadLabels } = await load('lib/labelLayout.ts');
+const { comboDates, evenDates, fittingColumns, linearTicks, quantizeLevel, valueAxis } = await load('lib/app/shareCard/scale.ts');
+const { traceMonotone } = await load('lib/app/shareCard/curve.ts');
+const { spreadLabels } = await load('lib/app/labelLayout.ts');
 
 /** A canvas context that records the path it is asked to draw. */
 const recorder = () => {

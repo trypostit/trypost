@@ -49,7 +49,7 @@ trait RendersPublishPage
             }
         }
 
-        return Inertia::render('publish/Index', BuildPublishPageProps::handle($request, $workspace, $channel, $composerPost));
+        return Inertia::render('app/publish/Index', BuildPublishPageProps::handle($request, $workspace, $channel, $composerPost));
     }
 
     /**

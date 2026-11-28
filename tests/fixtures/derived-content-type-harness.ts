@@ -23,7 +23,7 @@ registerHooks({
 });
 
 const { derivedContentTypeFor } = await import(
-    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/derivedContentType.ts')).href
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/app/derivedContentType.ts')).href
 );
 const { getContentTypeOptions } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'composables/usePlatformLogo.ts')).href

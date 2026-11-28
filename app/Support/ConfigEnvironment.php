@@ -25,4 +25,19 @@ final class ConfigEnvironment
 
         return OAuthScopes::parse($scopes);
     }
+
+    /**
+     * Email addresses from a comma-separated env value, trimmed and lowercased.
+     *
+     * @return list<string>
+     */
+    public static function emails(string $key): array
+    {
+        return Str::of((string) env($key))
+            ->explode(',')
+            ->map(fn (string $email): string => Str::lower(Str::trim($email)))
+            ->filter()
+            ->values()
+            ->all();
+    }
 }

@@ -1,5 +1,5 @@
 /**
- * Prints the composer's content types (`types/content-type.ts`): every value,
+ * Prints the composer's content types (`types/app/content-type.ts`): every value,
  * the polls, the post each poll goes back to and the types that carry no
  * media, so `ContentTypeParityTest.php` can compare them with `ContentType`
  * on the server.
@@ -21,7 +21,7 @@ registerHooks({
 });
 
 const { ContentType, MEDIALESS_CONTENT_TYPE_REASONS, POLL_CONTENT_TYPES, POLL_POST_CONTENT_TYPES } = await import(
-    pathToFileURL(path.join(path.resolve(resourcesDir), 'types/content-type.ts')).href
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'types/app/content-type.ts')).href
 );
 
 console.log(

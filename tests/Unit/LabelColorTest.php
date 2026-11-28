@@ -33,7 +33,7 @@ test('a label chip reads in white on its color while white still contrasts, near
     $process = (new Process([
         $node,
         base_path('tests/fixtures/label-color-harness.ts'),
-        resource_path('js/lib/labelColor.ts'),
+        resource_path('js/lib/app/labelColor.ts'),
         ...array_map('strval', array_keys($cases)),
     ]))->mustRun();
 

@@ -3,13 +3,13 @@ import { usePage } from '@inertiajs/vue3';
 import { IconCircleCheck } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import AppLogo from '@/components/AppLogo.vue';
-import LanguageSelect from '@/components/LanguageSelect.vue';
-import G2ReviewsLink from '@/components/reviews/G2ReviewsLink.vue';
-import ReviewCard from '@/components/reviews/ReviewCard.vue';
+import AppLogo from '@/components/app/AppLogo.vue';
+import LanguageSelect from '@/components/app/LanguageSelect.vue';
+import G2ReviewsLink from '@/components/app/reviews/G2ReviewsLink.vue';
+import ReviewCard from '@/components/app/reviews/ReviewCard.vue';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useGuestLocale } from '@/composables/useGuestLocale';
-import { REVIEWS } from '@/lib/reviews';
+import { useGuestLocale } from '@/composables/app/useGuestLocale';
+import { REVIEWS } from '@/lib/app/reviews';
 import type { Auth } from '@/types';
 
 const widthClass = {

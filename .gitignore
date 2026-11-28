@@ -1,5 +1,4 @@
 /.phpunit.cache
-/bootstrap/ssr
 /node_modules
 /tests/Browser/Screenshots
 /tests/Browser/Traces

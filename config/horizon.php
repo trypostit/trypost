@@ -35,18 +35,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Horizon Allowed Emails
-    |--------------------------------------------------------------------------
-    |
-    | This is a comma-separated list of email addresses that are allowed to
-    | access Horizon in non-local environments. Leave empty to deny all.
-    |
-    */
-
-    'allowed_emails' => env('HORIZON_ALLOWED_EMAILS', ''),
-
-    /*
-    |--------------------------------------------------------------------------
     | Horizon Path
     |--------------------------------------------------------------------------
     |

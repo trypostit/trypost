@@ -8,7 +8,7 @@ use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 /**
- * Runs `tests/fixtures/tours-harness.ts` over `resources/js/lib/tours.ts`.
+ * Runs `tests/fixtures/tours-harness.ts` over `resources/js/lib/app/tours.ts`.
  *
  * @param  list<array{steps: list<string>, onPage: list<string>, current: string}>  $cases
  * @return array{tours: array<string, list<string>>, cases: list<array{shown: list<string>, first: ?string, after: ?string, before: ?string}>}
@@ -24,7 +24,7 @@ function runToursHarness(array $cases = []): array
     $process = (new Process([
         $node,
         base_path('tests/fixtures/tours-harness.ts'),
-        resource_path('js/lib/tours.ts'),
+        resource_path('js/lib/app/tours.ts'),
         json_encode($cases),
     ]))->mustRun();
 

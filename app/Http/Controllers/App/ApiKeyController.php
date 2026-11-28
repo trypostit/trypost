@@ -38,7 +38,7 @@ class ApiKeyController extends Controller
                 'status' => ExpiryStatus::for($token->expires_at)->value,
             ]);
 
-        return Inertia::render('settings/workspace/ApiKeys', [
+        return Inertia::render('app/settings/workspace/ApiKeys', [
             'workspace' => $workspace,
             'apiTokens' => $tokens,
         ]);

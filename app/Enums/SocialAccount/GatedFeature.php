@@ -41,7 +41,7 @@ enum GatedFeature: string
     /**
      * Whether a post uses the feature, so a channel lacking its scope cannot
      * schedule or publish it. Mirrored by `requiresFeatureToPublish()` in
-     * `lib/channelPermissions.ts`: every post publishes, a post with replies
+     * `lib/app/channelPermissions.ts`: every post publishes, a post with replies
      * uses them, a Facebook Reel whose video has a cover image uses the Reel cover,
      * analytics are never part of a post.
      *

@@ -9,7 +9,7 @@ use Carbon\CarbonImmutable;
 /**
  * Shared keys and readers for in-flight publish checkpoints on
  * posts.error_context. Used by the publishers, the TikTok
- * derivative cleaner, and posts:retry.
+ * derivative cleaner, and RetryFailedPost.
  */
 final class PublishCheckpoint
 {

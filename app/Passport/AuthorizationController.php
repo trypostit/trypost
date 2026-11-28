@@ -55,7 +55,7 @@ class AuthorizationController extends PassportAuthorizationController
 
             $oauth = $exception->getPrevious();
 
-            return Inertia::render('mcp/AuthorizeError', $oauth instanceof LeagueOAuthServerException
+            return Inertia::render('app/mcp/AuthorizeError', $oauth instanceof LeagueOAuthServerException
                 ? [
                     'error' => $oauth->getErrorType(),
                     'errorDescription' => $oauth->getMessage(),

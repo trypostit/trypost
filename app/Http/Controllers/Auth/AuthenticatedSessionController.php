@@ -22,7 +22,7 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(Request $request): Response
     {
-        return Inertia::render('auth/Login', [
+        return Inertia::render('app/auth/Login', [
             'status' => session('status'),
             'email' => $request->query('email'),
             'invite' => $request->query('invite'),

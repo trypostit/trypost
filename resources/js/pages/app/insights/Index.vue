@@ -1,0 +1,284 @@
+<script setup lang="ts">
+import { Head, router } from '@inertiajs/vue3';
+import { IconTrendingUp } from '@tabler/icons-vue';
+import { computed, ref, watch } from 'vue';
+
+import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
+import InsightsExportMenu from '@/components/app/analytics/InsightsExportMenu.vue';
+import InsightsSyncStatus from '@/components/app/analytics/InsightsSyncStatus.vue';
+import PostingActivityCard from '@/components/app/analytics/PostingActivityCard.vue';
+import FollowersChart from '@/components/app/analytics/workspace/FollowersChart.vue';
+import ImportCoverage from '@/components/app/analytics/workspace/ImportCoverage.vue';
+import InsightsEmptyState from '@/components/app/analytics/workspace/InsightsEmptyState.vue';
+import PerformanceTable from '@/components/app/analytics/workspace/PerformanceTable.vue';
+import PostsChart from '@/components/app/analytics/workspace/PostsChart.vue';
+import SummaryCards from '@/components/app/analytics/workspace/SummaryCards.vue';
+import TopPosts from '@/components/app/analytics/workspace/TopPosts.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import LabelFilter from '@/components/app/labels/LabelFilter.vue';
+import PostChannelFilter from '@/components/app/posts/PostChannelFilter.vue';
+import TourStep from '@/components/app/tours/TourStep.vue';
+import HeaderTitle from '@/components/HeaderTitle.vue';
+import { useAnalyticsCoveragePoll } from '@/composables/app/useAnalyticsCoveragePoll';
+import AppLayout from '@/layouts/AppLayout.vue';
+import { accountColor } from '@/lib/analyticsColors';
+import { filled } from '@/lib/helpers';
+import { insights as insightsRoute } from '@/routes/app';
+import type {
+    AnalyticsChannelOption,
+    InsightsSyncCadence,
+    PostingActivity,
+    SummaryMetric,
+    WorkspaceAnalyticsReport,
+} from '@/types/analytics';
+import type { PostCardLabel } from '@/types/app/publish';
+
+const props = defineProps<{
+    report: WorkspaceAnalyticsReport;
+    channelOptions: AnalyticsChannelOption[];
+    labels: PostCardLabel[];
+    availableMetrics: SummaryMetric[] | null;
+    sync: InsightsSyncCadence;
+    postingActivity?: PostingActivity;
+}>();
+
+const selectedChannelIds = ref<string[]>([...props.report.filters.channels]);
+const selectedLabelIds = ref<string[]>([...props.report.filters.labels]);
+const selectedUntagged = ref<boolean>(props.report.filters.untagged);
+
+/** The channels and labels picked, as the page's query (an empty pick is left out). */
+const filterQuery = computed((): Record<string, string | string[]> => {
+    const query: Record<string, string | string[]> = {};
+
+    if (filled(selectedChannelIds.value)) {
+        query.channels = selectedChannelIds.value;
+    }
+
+    if (filled(selectedLabelIds.value)) {
+        query.labels = selectedLabelIds.value;
+    }
+
+    if (selectedUntagged.value) {
+        query.untagged = '1';
+    }
+
+    return query;
+});
+
+/** Followers follow the channels only: labels narrow the post metrics. */
+const channelFiltered = computed(() => filled(props.report.filters.channels));
+
+/** Whether the post metrics are narrowed, by channel or by label. */
+const filtered = computed((): boolean => {
+    if (channelFiltered.value) {
+        return true;
+    }
+
+    if (props.report.filters.untagged) {
+        return true;
+    }
+
+    return filled(props.report.filters.labels);
+});
+
+const sameIds = (left: string[], right: string[]): boolean =>
+    left.length === right.length && left.every((id) => right.includes(id));
+
+const selectionMatchesServer = (): boolean => {
+    const { channels, labels, untagged } = props.report.filters;
+
+    if (!sameIds(selectedChannelIds.value, channels)) {
+        return false;
+    }
+
+    if (!sameIds(selectedLabelIds.value, labels)) {
+        return false;
+    }
+
+    return selectedUntagged.value === untagged;
+};
+
+watch(
+    () => props.report.filters,
+    (filters) => {
+        if (!sameIds(selectedChannelIds.value, filters.channels)) {
+            selectedChannelIds.value = [...filters.channels];
+        }
+
+        if (!sameIds(selectedLabelIds.value, filters.labels)) {
+            selectedLabelIds.value = [...filters.labels];
+        }
+
+        if (selectedUntagged.value !== filters.untagged) {
+            selectedUntagged.value = filters.untagged;
+        }
+    },
+);
+
+const rangeQuery = (): Record<string, string> => {
+    const { range, start, end } = props.report.filters;
+
+    if (range === 'custom') {
+        return { range, start, end };
+    }
+
+    return { range };
+};
+
+watch(
+    [selectedChannelIds, selectedLabelIds, selectedUntagged],
+    () => {
+        if (selectionMatchesServer()) {
+            return;
+        }
+
+        router.get(
+            insightsRoute.url(),
+            { ...rangeQuery(), ...filterQuery.value },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    },
+    { deep: true },
+);
+
+useAnalyticsCoveragePoll(() => props.report.coverage, {
+    firstDay: () => props.report.bounds.min,
+    only: ['postingActivity'],
+});
+
+const accountColors = computed<Record<string, string>>(() => {
+    const keys = [
+        ...new Set([
+            ...props.channelOptions.map((channel) => channel.analytics_key),
+            ...[
+                ...props.report.followers.accounts,
+                ...props.report.posts.accounts,
+            ].map((account) => account.social_account_key),
+        ]),
+    ];
+
+    return Object.fromEntries(
+        keys.map((key, index) => [key, accountColor(index)]),
+    );
+});
+</script>
+
+<template>
+    <AppLayout full-width>
+        <Head :title="$t('analytics.title')" />
+        <div
+            class="flex min-h-full min-w-0 shrink-0 flex-col gap-6 px-4 pt-6 pb-10 md:px-8"
+        >
+            <header
+                class="sticky top-0 z-20 -mx-4 -mt-6 flex min-w-0 flex-col gap-2 bg-card px-4 pt-6 md:-mx-8 md:px-8"
+                data-testid="analytics-page-header"
+            >
+                <div class="flex min-w-0 items-center justify-between gap-4">
+                    <HeaderTitle
+                        :title="$t('analytics.title')"
+                        :icon="IconTrendingUp"
+                    />
+                    <div class="flex shrink-0 items-center gap-2">
+                        <InsightsSyncStatus
+                            :cadence="sync"
+                            :coverage="report.coverage"
+                        />
+                        <InsightsExportMenu
+                            :query="{ ...rangeQuery(), ...filterQuery }"
+                        />
+                    </div>
+                </div>
+                <div
+                    class="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border-strong pt-2 pb-3"
+                    data-testid="analytics-toolbar"
+                >
+                    <TourStep
+                        tour="insights.filters"
+                        step="range"
+                        align="start"
+                    >
+                        <AnalyticsRangePresets
+                            :filters="report.filters"
+                            :bounds="report.bounds"
+                            :url="insightsRoute.url()"
+                            :range="report.range"
+                            :keep="filterQuery"
+                        />
+                    </TourStep>
+                    <div
+                        class="flex min-w-0 flex-wrap items-center gap-2"
+                        data-testid="analytics-filters"
+                    >
+                        <TourStep tour="insights.filters" step="channels">
+                            <PostChannelFilter
+                                v-model="selectedChannelIds"
+                                :channels="channelOptions"
+                                test-id="analytics-channel"
+                                sheet-below-sm
+                            />
+                        </TourStep>
+                        <TourStep tour="insights.filters" step="labels">
+                            <LabelFilter
+                                v-model="selectedLabelIds"
+                                v-model:untagged="selectedUntagged"
+                                :labels="labels"
+                                test-id="analytics-label"
+                                sheet-below-sm
+                            />
+                        </TourStep>
+                    </div>
+                </div>
+            </header>
+
+            <ImportCoverage :coverage="report.coverage" />
+
+            <EmptyState
+                v-if="!report.bounds.min && channelFiltered"
+                data-testid="analytics-filtered-empty-state"
+                :icon="IconTrendingUp"
+                :title="$t('analytics.dashboard.filtered_no_data_title')"
+                :description="$t('analytics.dashboard.filtered_no_data_body')"
+            />
+            <InsightsEmptyState
+                v-else-if="!report.bounds.min"
+                :has-channels="channelOptions.length > 0"
+            />
+
+            <template v-else>
+                <SummaryCards
+                    :report="report"
+                    :available-metrics="availableMetrics ?? undefined"
+                    subtitle-testid="insights-range-caption"
+                />
+                <TopPosts
+                    :top-posts="report.top_posts"
+                    :range="report.range"
+                    :filtered="filtered"
+                />
+                <PerformanceTable
+                    :rows="report.performance"
+                    :range="report.range"
+                    :previous-range="report.previous_range"
+                    :filtered="filtered"
+                />
+                <FollowersChart
+                    :followers="report.followers"
+                    :range="report.range"
+                    :colors="accountColors"
+                    :filtered="channelFiltered"
+                    :channel-filtered="channelFiltered"
+                    :total-channels="channelOptions.length"
+                />
+                <PostsChart
+                    :posts="report.posts"
+                    :range="report.range"
+                    :colors="accountColors"
+                    :filtered="filtered"
+                    :channel-filtered="channelFiltered"
+                    :total-channels="channelOptions.length"
+                />
+                <PostingActivityCard :activity="postingActivity" />
+            </template>
+        </div>
+    </AppLayout>
+</template>

@@ -20,6 +20,7 @@ use App\Http\Controllers\App\GooglePhotosSessionController;
 use App\Http\Controllers\App\IdeaController;
 use App\Http\Controllers\App\IdeaGenerateController;
 use App\Http\Controllers\App\IdeaStageController;
+use App\Http\Controllers\App\ImpersonationController;
 use App\Http\Controllers\App\InsightsController;
 use App\Http\Controllers\App\InstagramAudioController;
 use App\Http\Controllers\App\LibraryTemplateController;
@@ -436,6 +437,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 });
 
 Route::middleware(['auth'])->group(function () {
+    Route::delete('impersonation', [ImpersonationController::class, 'destroy'])->name('app.impersonation.destroy');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('app.profile.edit');
     Route::put('settings/profile', [ProfileController::class, 'update'])->name('app.profile.update');

@@ -2,8 +2,8 @@
 import { IconExternalLink } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import SettingsSidebar from '@/components/app/settings/SettingsSidebar.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
-import SettingsSidebar from '@/components/settings/SettingsSidebar.vue';
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 
 type Props = {

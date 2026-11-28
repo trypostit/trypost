@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import ChannelAvatar from '@/components/ChannelAvatar.vue';
+import ChannelAvatar from '@/components/app/ChannelAvatar.vue';
 
 import { activeLocale } from '@/language';
+import { filled } from '@/lib/helpers';
 
 import type { ChartConfig, ChartTooltipDetail } from '.';
 
@@ -14,12 +15,23 @@ const props = withDefaults(
         labelFormatter?: (value: number | Date) => string;
         /** The labelled numbers listed under an entry, such as where it started and what it gained. */
         detailFormatter?: (key: string, value: number) => ChartTooltipDetail[];
+        /** How an entry's value reads; a plain number in the reader's language without it. */
+        valueFormatter?: (key: string, value: number) => string;
         /** A labelled total for the whole point, shown under its heading, such as a day's posts. */
         totalFormatter?: (x: number | Date) => ChartTooltipDetail | null;
         x?: number | Date;
     }>(),
     { payload: () => ({}), config: () => ({}) },
 );
+
+/** How an entry's value reads: through `valueFormatter`, else as a plain number in the reader's language. */
+const displayValue = (key: string, value: number): string => {
+    if (filled(props.valueFormatter)) {
+        return props.valueFormatter(key, value);
+    }
+
+    return value.toLocaleString(activeLocale.value);
+};
 
 const entries = computed(() =>
     Object.entries(props.config).flatMap(([key, item]) => {
@@ -30,6 +42,7 @@ const entries = computed(() =>
                       key,
                       item,
                       value,
+                      display: displayValue(key, value),
                       details: props.detailFormatter?.(key, value) ?? [],
                   },
               ]
@@ -91,7 +104,7 @@ const DETAIL_TONES: Record<NonNullable<ChartTooltipDetail['tone']>, string> = {
                     <span
                         class="font-medium text-foreground tabular-nums"
                         data-testid="analytics-tooltip-value"
-                        >{{ entry.value.toLocaleString(activeLocale) }}</span
+                        >{{ entry.display }}</span
                     >
                 </div>
                 <dl

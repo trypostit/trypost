@@ -11,7 +11,6 @@ export default defineConfigWithVueTs(
             'vendor',
             'node_modules',
             'public',
-            'bootstrap/ssr',
             'tailwind.config.js',
             'resources/js/components/ui/*',
             // Wayfinder regenerates these on every build with import order

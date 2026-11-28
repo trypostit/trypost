@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 
-import AppLogo from '@/components/AppLogo.vue';
+import AppLogo from '@/components/app/AppLogo.vue';
 
 defineProps<{
     title: string;

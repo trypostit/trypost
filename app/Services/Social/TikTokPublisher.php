@@ -498,7 +498,7 @@ class TikTokPublisher
      * Persist the publish_id before status polling so a crash after /init/
      * can resume without creating a second publish, with the moment the status
      * checks are timed from. A resume whose checkpoint has no such moment
-     * (written before it existed, or reset by posts:retry) starts it there.
+     * (written before it existed, or reset by a retry) starts it there.
      *
      * @param  list<string>  $derivatives
      */

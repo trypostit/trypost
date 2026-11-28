@@ -64,7 +64,7 @@ function mediaEditorPresetRatio(string $preset): float
 }
 
 /**
- * `resources/js/lib/mediaEditor.ts` holds no per-network preset table: it reads
+ * `resources/js/lib/app/mediaEditor.ts` holds no per-network preset table: it reads
  * `crop_presets` from `ContentType::mediaRules()`. The harness feeds the real
  * payload of every content type through `cropPresetsFor()` so the editor offers
  * exactly `cropPresets()`, in order, with nothing dropped by the bounds filter,

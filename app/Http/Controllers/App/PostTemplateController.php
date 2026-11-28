@@ -30,7 +30,7 @@ class PostTemplateController extends Controller
     {
         $user = $request->user();
 
-        return Inertia::render('create/Templates', BuildTemplatesPageProps::execute($request, $user->currentWorkspace, $user));
+        return Inertia::render('app/create/Templates', BuildTemplatesPageProps::execute($request, $user->currentWorkspace, $user));
     }
 
     public function store(StorePostTemplateRequest $request): RedirectResponse|JsonResponse|HttpResponse

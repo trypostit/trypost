@@ -39,4 +39,15 @@ enum PreviousSoftware: string
             self::None, self::Other => null,
         };
     }
+
+    /** The name the admin shows, in English: the brand's own spelling, or the option's. */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Buffer, self::Hootsuite, self::Later, self::Metricool, self::Typefully, self::Hypefury,
+            self::Publer, self::Postiz, self::SproutSocial, self::SocialBee => (string) $this->brandName(),
+            self::None => 'None yet',
+            self::Other => 'Other',
+        };
+    }
 }

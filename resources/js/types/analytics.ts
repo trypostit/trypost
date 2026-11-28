@@ -1,5 +1,5 @@
-import type { MediaItem } from '@/types/media';
-import type { VerifiedBadge } from '@/types/social-account';
+import type { MediaItem } from '@/types/app/media';
+import type { VerifiedBadge } from '@/types/app/social-account';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
 
 export interface Comparison {
@@ -161,6 +161,8 @@ export interface WorkspaceAnalyticsReport extends AnalyticsReport {
 export type AnalyticsRangePreset =
     | '7d'
     | '30d'
+    | '60d'
+    | '90d'
     | 'mtd'
     | 'custom';
 

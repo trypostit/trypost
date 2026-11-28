@@ -1,6 +1,6 @@
 import { type ChartConfig, numericTick } from '@/components/ui/chart';
-import { accountLabel } from '@/lib/analyticsAccounts';
 import { accountColor } from '@/lib/analyticsColors';
+import { accountLabel } from '@/lib/app/analyticsAccounts';
 import { distinctCountLabels } from '@/lib/utils';
 import type { AccountIdentityData } from '@/types/analytics';
 

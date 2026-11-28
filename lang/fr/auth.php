@@ -18,6 +18,7 @@ return [
     'failed' => 'Ces identifiants ne correspondent pas à nos enregistrements.',
     'password' => 'Le mot de passe fourni est incorrect.',
     'throttle' => 'Trop de tentatives de connexion. Veuillez réessayer dans :seconds secondes.',
+    'blocked' => 'Ce compte a été suspendu. Contactez le support si vous pensez qu’il s’agit d’une erreur.',
 
     'flash' => [
         'welcome' => 'Bienvenue sur TryPost !',

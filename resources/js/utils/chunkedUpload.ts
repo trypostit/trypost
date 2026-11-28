@@ -1,9 +1,9 @@
 import { objectOmit } from '@vueuse/core';
 
+import { uuid } from '@/lib/app/uuid';
+import { probeVideoDuration } from '@/lib/app/videoDuration';
 import { classifyBy, MediaType } from '@/lib/mediaType';
-import { uuid } from '@/lib/uuid';
-import { probeVideoDuration } from '@/lib/videoDuration';
-import type { MediaItem } from '@/types/media';
+import type { MediaItem } from '@/types/app/media';
 
 interface ChunkedUploadOptions {
     file: File;

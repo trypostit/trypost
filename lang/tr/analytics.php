@@ -106,6 +106,8 @@ return [
     'ranges' => [
         '7d' => '7 gün',
         '30d' => '30 gün',
+        '60d' => '60 gün',
+        '90d' => '90 gün',
         'mtd' => 'Bu ay',
         'custom' => 'Özel',
         'versus' => 'vs :range',

@@ -31,3 +31,11 @@ test('every branded option has its logo in the competitors folder', function () 
         expect(public_path("images/competitors/{$software->value}.svg"))->toBeFile();
     }
 });
+
+test('the admin names a brand as it spells itself and the other options in words', function () {
+    expect(PreviousSoftware::SproutSocial->label())->toBe('Sprout Social')
+        ->and(PreviousSoftware::SocialBee->label())->toBe('SocialBee')
+        ->and(PreviousSoftware::None->label())->toBe('None yet')
+        ->and(PreviousSoftware::Other->label())->toBe('Other')
+        ->and(collect(PreviousSoftware::cases())->every(fn (PreviousSoftware $software): bool => filled($software->label())))->toBeTrue();
+});

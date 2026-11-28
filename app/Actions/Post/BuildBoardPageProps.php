@@ -19,7 +19,7 @@ use Inertia\Inertia;
 
 class BuildBoardPageProps
 {
-    public const COMPONENT = 'posts/Board';
+    public const COMPONENT = 'app/posts/Board';
 
     private const GROUPS = ['status', 'tag', 'channel'];
 

@@ -3,7 +3,7 @@ import type { HTMLAttributes } from "vue"
 import { computed } from "vue"
 import { AvatarRoot } from "reka-ui"
 import { cn } from "@/lib/utils"
-import { getInitials } from "@/composables/useInitials"
+import { getInitials } from "@/composables/app/useInitials"
 
 const props = defineProps<{
   class?: HTMLAttributes["class"]

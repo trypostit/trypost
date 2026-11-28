@@ -8,7 +8,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/** | .ai/rules/app.md |
 | app/Http/Controllers/Auth/GoogleBusinessController.php, app/Http/Controllers/Auth/** | .ai/rules/auth.md |
 | app/Services/Analytics/Collectors/** | .ai/rules/collectors.md |
-| resources/js/components/posts/editor/** | .ai/rules/editor.md |
+| resources/js/components/app/posts/editor/** | .ai/rules/editor.md |
 | app/Enums/GoogleBusiness/**, app/Jobs/PublishToSocialPlatform.php, app/Jobs/ReconcileGoogleBusinessPost.php, app/Console/Commands/ReconcileGoogleBusinessPosts.php, app/Services/Social/GoogleBusinessPublisher.php, app/Support/PostPlatformMetaRules.php | .ai/rules/google-business.md |
 | app/Listeners/Stripe*.php, app/Jobs/PostHog/** | .ai/rules/jobs-post-hog.md |
 | app/Jobs/SendNotification.php, app/Jobs/ReconcileGoogleBusinessPost.php, app/Console/Commands/RecoverStuckPosts.php | .ai/rules/jobs.md |

@@ -18,6 +18,10 @@ class LoadWorkspaceFromToken
         $user = $request->user();
         $authenticatedToken = $user?->token();
 
+        if ($user?->isBlocked() === true) {
+            return response()->json(['message' => __('auth.blocked')], Response::HTTP_FORBIDDEN);
+        }
+
         if (! $authenticatedToken instanceof PassportAccessToken) {
             return response()->json(['message' => 'Token not found.'], Response::HTTP_UNAUTHORIZED);
         }

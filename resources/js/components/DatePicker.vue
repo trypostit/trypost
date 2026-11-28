@@ -16,7 +16,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { useCalendarLocale } from '@/composables/useCalendarLocale';
+import { useCalendarLocale } from '@/composables/app/useCalendarLocale';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import { cn } from '@/lib/utils';

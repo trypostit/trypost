@@ -32,7 +32,7 @@ class WorkspaceController extends Controller
             ->latest()
             ->get();
 
-        return Inertia::render('workspaces/Index', [
+        return Inertia::render('app/workspaces/Index', [
             'workspaces' => $workspaces,
             'currentWorkspaceId' => $user->current_workspace_id,
         ]);
@@ -57,7 +57,7 @@ class WorkspaceController extends Controller
                 ->with('flash.error', __('workspaces.limit_reached'));
         }
 
-        return Inertia::render('workspaces/Create');
+        return Inertia::render('app/workspaces/Create');
     }
 
     private function denyAdditionalWorkspace(User $user): ?RedirectResponse
@@ -138,7 +138,7 @@ class WorkspaceController extends Controller
 
         $this->authorize('update', $workspace);
 
-        return Inertia::render('settings/workspace/Workspace', [
+        return Inertia::render('app/settings/workspace/Workspace', [
             'workspace' => $workspace,
             'isOnlyWorkspace' => ! config('trypost.self_hosted')
                 && $workspace->account->workspaces()->count() <= 1,

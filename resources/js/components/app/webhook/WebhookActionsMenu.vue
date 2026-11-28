@@ -1,0 +1,113 @@
+<script setup lang="ts">
+import { router } from '@inertiajs/vue3';
+import {
+    IconDotsVertical,
+    IconPencil,
+    IconPlayerPause,
+    IconPlayerPlay,
+    IconRefresh,
+    IconTrash,
+} from '@tabler/icons-vue';
+import { ref } from 'vue';
+
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { update } from '@/routes/app/webhooks';
+import type { Webhook } from '@/types/app/webhook';
+import { WebhookStatus } from '@/types/app/webhook-status';
+
+const props = defineProps<{
+    webhook: Webhook;
+}>();
+
+const emit = defineEmits<{
+    edit: [];
+    rotate: [];
+    delete: [];
+}>();
+
+const togglingStatus = ref(false);
+
+const toggleStatus = () => {
+    togglingStatus.value = true;
+
+    router.put(
+        update.url(props.webhook),
+        {
+            status:
+                props.webhook.status === WebhookStatus.Enabled
+                    ? WebhookStatus.Disabled
+                    : WebhookStatus.Enabled,
+        },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                togglingStatus.value = false;
+            },
+        },
+    );
+};
+</script>
+
+<template>
+    <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+            <Button
+                variant="outline"
+                size="icon"
+                class="data-[state=open]:bg-accent"
+                :aria-label="$t('webhooks.row_actions')"
+                data-testid="webhook-actions-trigger"
+            >
+                <IconDotsVertical class="size-4" />
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+            <DropdownMenuItem
+                data-testid="edit-webhook-button"
+                @click="emit('edit')"
+            >
+                <IconPencil class="size-4" />
+                {{ $t('webhooks.actions.edit') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                data-testid="toggle-webhook-status"
+                :disabled="togglingStatus"
+                @click="toggleStatus"
+            >
+                <IconPlayerPlay
+                    v-if="webhook.status !== WebhookStatus.Enabled"
+                    class="size-4"
+                />
+                <IconPlayerPause v-else class="size-4" />
+                {{
+                    webhook.status === WebhookStatus.Enabled
+                        ? $t('webhooks.actions.disable')
+                        : $t('webhooks.actions.enable')
+                }}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                data-testid="rotate-secret-menu-item"
+                @click="emit('rotate')"
+            >
+                <IconRefresh class="size-4" />
+                {{ $t('webhooks.actions.rotate') }}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+                variant="destructive"
+                data-testid="delete-webhook-button"
+                @click="emit('delete')"
+            >
+                <IconTrash class="size-4" />
+                {{ $t('webhooks.actions.delete') }}
+            </DropdownMenuItem>
+        </DropdownMenuContent>
+    </DropdownMenu>
+</template>

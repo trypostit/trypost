@@ -15,7 +15,7 @@ import OpenWebui from '@thesvg/vue/open-webui';
 import OpenaiChatgpt from '@thesvg/vue/openai-chatgpt';
 import Opencode from '@thesvg/vue/opencode';
 
-import type { McpAppLogo, McpClient } from '@/types/mcp';
+import type { McpAppLogo, McpClient } from '@/types/app/mcp';
 
 /** TryPost's page in the ChatGPT app store. */
 const CHATGPT_APP_URL =

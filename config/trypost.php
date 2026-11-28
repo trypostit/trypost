@@ -23,6 +23,44 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Admin
+    |--------------------------------------------------------------------------
+    |
+    | The people who may open the admin (/admin) and Horizon: a
+    | comma-separated list of emails, matched without case against the
+    | accounts' emails, verified or not: list only emails that already have
+    | an account. Empty by default, which closes both to everyone.
+    |
+    */
+
+    'admin' => [
+        'emails' => ConfigEnvironment::emails('ADMIN_EMAILS'),
+
+        /*
+         * API quotas and spend shown in the admin, read at most four
+         * times a day by `quotas:sync`. Each source runs only
+         * when it is on and its credentials are set.
+         */
+        'quotas' => [
+            // YouTube's project quota, from Google Cloud Monitoring. The
+            // credentials are a service account JSON (base64) holding only
+            // the Monitoring Viewer role, in the project of the YouTube app.
+            'youtube' => [
+                'enabled' => (bool) env('YOUTUBE_QUOTA_MONITORING_ENABLED', false),
+                'project_id' => env('YOUTUBE_QUOTA_GCP_PROJECT_ID'),
+                'credentials' => env('YOUTUBE_QUOTA_GCP_CREDENTIALS'),
+                'timezone' => 'America/Los_Angeles',
+            ],
+            // X's credit balance and post usage, read with the app's bearer token.
+            'x' => [
+                'enabled' => (bool) env('X_USAGE_MONITORING_ENABLED', false),
+                'bearer_token' => env('X_BEARER_TOKEN'),
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Changelog ("What's New")
     |--------------------------------------------------------------------------
     |

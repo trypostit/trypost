@@ -87,7 +87,7 @@ class RssFeedController extends Controller
 
     private function page(ListRssFeedsRequest $request, ?RssFeed $feed = null, ?RssFeedCollection $collection = null): Response
     {
-        return Inertia::render('create/Feeds', BuildRssFeedsPageProps::execute(
+        return Inertia::render('app/create/Feeds', BuildRssFeedsPageProps::execute(
             $request,
             $request->user()->currentWorkspace,
             $feed,

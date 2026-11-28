@@ -18,6 +18,7 @@ return [
     'failed' => 'Essas credenciais não correspondem aos nossos registros.',
     'password' => 'A senha fornecida está incorreta.',
     'throttle' => 'Muitas tentativas de login. Por favor, tente novamente em :seconds segundos.',
+    'blocked' => 'Esta conta foi suspensa. Fale com o suporte se achar que é um engano.',
 
     'flash' => [
         'welcome' => 'Bem-vindo ao TryPost!',

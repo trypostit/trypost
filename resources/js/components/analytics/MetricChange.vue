@@ -7,16 +7,26 @@ const props = withDefaults(
         change: number;
         label: string;
         compact?: boolean;
+        /** Going up is bad news (cancellations, churn): up reads red, down green. */
+        inverted?: boolean;
     }>(),
-    { compact: false },
+    { compact: false, inverted: false },
 );
 
+const goodChange = computed((): number => {
+    if (props.inverted) {
+        return -props.change;
+    }
+
+    return props.change;
+});
+
 const tone = computed((): string => {
-    if (props.change > 0) {
+    if (goodChange.value > 0) {
         return 'text-success-text';
     }
 
-    if (props.change < 0) {
+    if (goodChange.value < 0) {
         return 'text-destructive-text';
     }
 

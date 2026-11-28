@@ -18,6 +18,7 @@ return [
     'failed' => 'Kredensial ini tidak cocok dengan data kami.',
     'password' => 'Kata sandi yang dimasukkan salah.',
     'throttle' => 'Terlalu banyak percobaan masuk. Coba lagi dalam :seconds detik.',
+    'blocked' => 'Akun ini telah ditangguhkan. Hubungi dukungan jika menurutmu ini sebuah kesalahan.',
 
     'flash' => [
         'welcome' => 'Selamat datang di TryPost!',

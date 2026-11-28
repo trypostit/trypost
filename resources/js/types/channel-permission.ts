@@ -1,5 +1,5 @@
-import type { ContentTypeValue } from '@/types/content-type';
-import type { MediaItem } from '@/types/media';
+import type { ContentTypeValue } from '@/types/app/content-type';
+import type { MediaItem } from '@/types/app/media';
 
 /**
  * What TryPost does on a channel that needs the account to have granted a

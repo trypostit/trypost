@@ -6,6 +6,7 @@ return [
     'failed' => 'Estas credenciales no coinciden con nuestros registros.',
     'password' => 'La contraseña proporcionada es incorrecta.',
     'throttle' => 'Demasiados intentos de inicio de sesión. Inténtalo de nuevo en :seconds segundos.',
+    'blocked' => 'Esta cuenta ha sido suspendida. Contacta con soporte si crees que es un error.',
 
     'flash' => [
         'welcome' => '¡Bienvenido a TryPost!',
