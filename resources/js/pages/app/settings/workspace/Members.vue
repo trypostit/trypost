@@ -3,11 +3,11 @@ import { Head } from '@inertiajs/vue3';
 import { IconPlus } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
-import UsersTab from '@/components/settings/UsersTab.vue';
+import UsersTab from '@/components/app/settings/UsersTab.vue';
 import { Button } from '@/components/ui/button';
-import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+import { useWorkspaceAbilities } from '@/composables/app/useWorkspaceAbilities';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
-import type { WorkspaceInvitation, WorkspaceMember } from '@/types/members';
+import type { WorkspaceInvitation, WorkspaceMember } from '@/types/app/members';
 
 defineProps<{
     workspace: { id: string; name: string };

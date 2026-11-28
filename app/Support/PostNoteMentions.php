@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
  * body; they come from the note's `mentions`, and everyone is read in each
  * reader's language. This is the one place that reads the markup: the app gets
  * a note split into parts (`parts()`), and the note editor writes the markup
- * back through TipTap (`components/tiptap/plugins/noteBody.ts`).
+ * back through TipTap (`components/app/tiptap/plugins/noteBody.ts`).
  */
 final class PostNoteMentions
 {

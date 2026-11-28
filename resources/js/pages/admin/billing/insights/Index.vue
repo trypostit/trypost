@@ -16,30 +16,27 @@ import Reddit from '@thesvg/vue/reddit';
 import YCombinator from '@thesvg/vue/y-combinator';
 import { computed } from 'vue';
 
-import AdminDailyBarChart, {
-    type AdminChartSeries,
-} from '@/components/admin/AdminDailyBarChart.vue';
-import AdminFunnelChart from '@/components/admin/AdminFunnelChart.vue';
-import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import AdminBreakdownList, {
     type BreakdownArt,
-} from '@/components/admin/insights/AdminBreakdownList.vue';
+} from '@/components/admin/billing/insights/AdminBreakdownList.vue';
+import AdminFunnelChart from '@/components/admin/billing/insights/AdminFunnelChart.vue';
+import AdminDailyBarChart, {
+    type AdminChartSeries,
+} from '@/components/admin/shared/AdminDailyBarChart.vue';
+import AdminStatGrid from '@/components/admin/shared/AdminStatGrid.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { metricChange } from '@/lib/adminChange';
-import { countIn, formatUsd } from '@/lib/adminFormat';
+import { metricChange } from '@/lib/admin/change';
+import { countIn, formatUsd } from '@/lib/admin/format';
 import { accountColor } from '@/lib/analyticsColors';
 import { isNumber } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, MISSING_VALUE, percentOf } from '@/lib/utils';
 import { goalArt, personaArt, softwareArt, type WelcomeOptionArt } from '@/lib/welcomeOptions';
 import { index as insightsIndex } from '@/routes/admin/billing/insights';
-import type {
-    AdminChange,
-    AdminSignupInsights,
-    AdminStat,
-} from '@/types/admin';
+import type { AdminSignupInsights } from '@/types/admin/billing';
+import type { AdminChange, AdminStat } from '@/types/admin/shared';
 import type { AnalyticsFilters, AnalyticsRangePreset, DateRange } from '@/types/analytics';
 
 /** Logos sit on a white tile, like the Welcome software step, so dark marks stay readable in dark mode. */

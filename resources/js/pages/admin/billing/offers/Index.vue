@@ -4,9 +4,9 @@ import { IconDots, IconPlus } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
-import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
-import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
-import OfferFormDialog from '@/components/admin/offers/OfferFormDialog.vue';
+import OfferFormDialog from '@/components/admin/billing/offers/OfferFormDialog.vue';
+import AdminEmptyState from '@/components/admin/shared/AdminEmptyState.vue';
+import AdminStatGrid from '@/components/admin/shared/AdminStatGrid.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import {
     AlertDialog,
@@ -38,12 +38,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { countLabel, firstError } from '@/lib/adminFormat';
+import { countLabel, firstError } from '@/lib/admin/format';
 import { filled, isNumber } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, MISSING_VALUE, percentOf } from '@/lib/utils';
 import { destroy as offersDestroy, index as offersIndex } from '@/routes/admin/billing/offers';
 import { store as offerEndStore } from '@/routes/admin/billing/offers/end';
-import type { AdminOffer, AdminStat, BadgeVariant, OfferState } from '@/types/admin';
+import type { AdminOffer, OfferState } from '@/types/admin/billing';
+import type { AdminStat, BadgeVariant } from '@/types/admin/shared';
 
 const STATES: Record<OfferState, { label: string; variant: BadgeVariant }> = {
     live: { label: 'Live', variant: 'success' },

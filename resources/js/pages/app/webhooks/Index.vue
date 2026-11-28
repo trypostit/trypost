@@ -9,8 +9,10 @@ import {
 } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import CreateWebhookDialog from '@/components/app/webhook/CreateWebhookDialog.vue';
+import WebhooksEmptyIllustration from '@/components/app/webhooks/WebhooksEmptyIllustration.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,13 +22,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import CreateWebhookDialog from '@/components/webhook/CreateWebhookDialog.vue';
-import WebhooksEmptyIllustration from '@/components/webhooks/WebhooksEmptyIllustration.vue';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { destroy, show } from '@/routes/app/webhooks';
-import { webhookEndpointParts, type Webhook } from '@/types/webhook';
-import { webhookStatusDot } from '@/types/webhook-status';
+import { webhookEndpointParts, type Webhook } from '@/types/app/webhook';
+import { webhookStatusDot } from '@/types/app/webhook-status';
 
 defineProps<{
     webhooks: Webhook[];

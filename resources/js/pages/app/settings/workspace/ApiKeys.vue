@@ -10,11 +10,11 @@ import {
 import { ref, watch } from 'vue';
 
 import ApiKeyController from '@/actions/App/Http/Controllers/App/ApiKeyController';
-import ApiKeyGeneratedDialog from '@/components/api-keys/ApiKeyGeneratedDialog.vue';
-import CreateApiKeyDialog from '@/components/api-keys/CreateApiKeyDialog.vue';
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import ApiKeysEmptyIllustration from '@/components/settings/ApiKeysEmptyIllustration.vue';
+import ApiKeyGeneratedDialog from '@/components/app/api-keys/ApiKeyGeneratedDialog.vue';
+import CreateApiKeyDialog from '@/components/app/api-keys/CreateApiKeyDialog.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import ApiKeysEmptyIllustration from '@/components/app/settings/ApiKeysEmptyIllustration.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import { Button } from '@/components/ui/button';
 import {

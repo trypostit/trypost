@@ -8,13 +8,13 @@ import {
 } from '@tabler/icons-vue';
 import { ref, watch } from 'vue';
 
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import CreateDialog from '@/components/app/signatures/CreateDialog.vue';
+import EditDialog from '@/components/app/signatures/EditDialog.vue';
+import SignaturesEmptyIllustration from '@/components/app/signatures/SignaturesEmptyIllustration.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import SettingsSearch from '@/components/settings/SettingsSearch.vue';
-import CreateDialog from '@/components/signatures/CreateDialog.vue';
-import EditDialog from '@/components/signatures/EditDialog.vue';
-import SignaturesEmptyIllustration from '@/components/signatures/SignaturesEmptyIllustration.vue';
 import { Button } from '@/components/ui/button';
 import { TableLoadMore } from '@/components/ui/table';
 import {

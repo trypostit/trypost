@@ -2,12 +2,12 @@
 import { Head } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
+import QuotaBar from '@/components/admin/quotas/QuotaBar.vue';
 import AdminDailyBarChart, {
     type AdminChartSeries,
-} from '@/components/admin/AdminDailyBarChart.vue';
-import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
-import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
-import QuotaBar from '@/components/admin/QuotaBar.vue';
+} from '@/components/admin/shared/AdminDailyBarChart.vue';
+import AdminEmptyState from '@/components/admin/shared/AdminEmptyState.vue';
+import AdminStatGrid from '@/components/admin/shared/AdminStatGrid.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
@@ -20,21 +20,13 @@ import {
 import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { countIn, humanize, joinFilled } from '@/lib/adminFormat';
+import { countIn, humanize, joinFilled } from '@/lib/admin/format';
 import { accountColor } from '@/lib/analyticsColors';
 import { blank, filled, isNumber } from '@/lib/helpers';
 import { formatFullNumber, formatMoney } from '@/lib/utils';
 import { index as quotasIndex } from '@/routes/admin/quotas';
-import type {
-    AdminQuotaCards,
-    AdminStat,
-    AdminUsageDay,
-    AdminXCostDay,
-    AdminXCredits,
-    AdminXUsage,
-    AdminYouTubeQuota,
-    QuotaSource,
-} from '@/types/admin';
+import type { AdminQuotaCards, AdminUsageDay, AdminXCostDay, AdminXCredits, AdminXUsage, AdminYouTubeQuota, QuotaSource } from '@/types/admin/quotas';
+import type { AdminStat } from '@/types/admin/shared';
 import type {
     AnalyticsFilters,
     AnalyticsRangePreset,

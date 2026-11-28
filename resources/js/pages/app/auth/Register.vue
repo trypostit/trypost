@@ -3,12 +3,12 @@ import { Form, Head, usePage } from '@inertiajs/vue3';
 import { IconEye, IconEyeOff } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import LegalLinks from '@/components/auth/LegalLinks.vue';
-import PasswordRequirements from '@/components/auth/PasswordRequirements.vue';
-import type { PasswordRequirement } from '@/components/auth/PasswordRequirements.vue';
-import SocialLogin from '@/components/auth/SocialLogin.vue';
+import LegalLinks from '@/components/app/auth/LegalLinks.vue';
+import PasswordRequirements from '@/components/app/auth/PasswordRequirements.vue';
+import type { PasswordRequirement } from '@/components/app/auth/PasswordRequirements.vue';
+import SocialLogin from '@/components/app/auth/SocialLogin.vue';
+import TextLink from '@/components/app/TextLink.vue';
 import InputError from '@/components/InputError.vue';
-import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,9 +19,9 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useGuestLocale } from '@/composables/useGuestLocale';
+import { useGuestLocale } from '@/composables/app/useGuestLocale';
 import AuthBase from '@/layouts/AuthLayout.vue';
-import { detectPreferences } from '@/lib/detectPreferences';
+import { detectPreferences } from '@/lib/app/detectPreferences';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 

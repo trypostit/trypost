@@ -1,5 +1,5 @@
 /**
- * Runs the pattern in `resources/js/lib/hashtags.ts` over a corpus and prints the
+ * Runs the pattern in `resources/js/lib/app/hashtags.ts` over a corpus and prints the
  * counts as JSON, so `tests/Feature/App/Services/Social/HashtagParityTest.php` can
  * compare them with `App\Support\Hashtags`. Reads the source directly instead of
  * importing it, which keeps the harness free of a bundler.

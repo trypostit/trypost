@@ -2,9 +2,9 @@
 import { Head } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
-import ChurnRiskTab from '@/components/admin/user-insights/ChurnRiskTab.vue';
-import TopAccountsTab from '@/components/admin/user-insights/TopAccountsTab.vue';
-import UsageOverviewTab from '@/components/admin/user-insights/UsageOverviewTab.vue';
+import ChurnRiskTab from '@/components/admin/users/insights/ChurnRiskTab.vue';
+import TopAccountsTab from '@/components/admin/users/insights/TopAccountsTab.vue';
+import UsageOverviewTab from '@/components/admin/users/insights/UsageOverviewTab.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUrlTab } from '@/composables/admin/useUrlTab';
@@ -12,7 +12,7 @@ import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { formatFullNumber } from '@/lib/utils';
 import { index as insightsIndex } from '@/routes/admin/users/insights';
-import type { AdminChurnRisk, AdminUsageInsights } from '@/types/admin';
+import type { AdminChurnRisk, AdminUsageInsights } from '@/types/admin/userInsights';
 import type { AnalyticsFilters, AnalyticsRangePreset, DateRange } from '@/types/analytics';
 
 const props = defineProps<{

@@ -2,7 +2,7 @@
 import { IconWorld } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import MultiSelectFilter from '@/components/MultiSelectFilter.vue';
+import MultiSelectFilter from '@/components/app/MultiSelectFilter.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 

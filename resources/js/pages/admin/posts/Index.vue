@@ -2,11 +2,11 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-import AdminBarList from '@/components/admin/AdminBarList.vue';
-import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
-import AdminSortableTable from '@/components/admin/AdminSortableTable.vue';
-import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
-import PublishingBarChart from '@/components/admin/PublishingBarChart.vue';
+import AdminBarList from '@/components/admin/shared/AdminBarList.vue';
+import AdminEmptyState from '@/components/admin/shared/AdminEmptyState.vue';
+import AdminSortableTable from '@/components/admin/shared/AdminSortableTable.vue';
+import AdminStatGrid from '@/components/admin/shared/AdminStatGrid.vue';
+import PublishingBarChart from '@/components/admin/shared/PublishingBarChart.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import NetworkFilter from '@/components/NetworkFilter.vue';
@@ -15,18 +15,14 @@ import { Badge } from '@/components/ui/badge';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { errorCategoryLabel } from '@/lib/adminErrorCategories';
-import { ALARMING_FAILURE_RATE, originLabel } from '@/lib/adminPublishing';
+import { errorCategoryLabel } from '@/lib/admin/errorCategories';
+import { ALARMING_FAILURE_RATE, originLabel } from '@/lib/admin/publishing';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
 import { index as postsIndex } from '@/routes/admin/posts';
 import { index as failedIndex } from '@/routes/admin/posts/failed';
-import type {
-    AdminBarRow,
-    AdminPublishingStats,
-    AdminStat,
-    AdminTableColumn,
-} from '@/types/admin';
+import type { AdminPublishingStats } from '@/types/admin/posts';
+import type { AdminBarRow, AdminStat, AdminTableColumn } from '@/types/admin/shared';
 import type { AnalyticsFilters, DateRange } from '@/types/analytics';
 
 const props = defineProps<{

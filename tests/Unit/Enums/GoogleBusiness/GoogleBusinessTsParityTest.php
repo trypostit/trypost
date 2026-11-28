@@ -6,11 +6,11 @@ use App\Enums\GoogleBusiness\CtaAction;
 use App\Enums\GoogleBusiness\TopicType;
 
 /**
- * `resources/js/types/google-business.ts` mirrors the PHP enums so the editor
+ * `resources/js/types/app/google-business.ts` mirrors the PHP enums so the editor
  * cannot drift. Values are compared as sets — TS object key order is not API order.
  */
 test('typescript google business topic and cta values match the php enums', function () {
-    $source = file_get_contents(resource_path('js/types/google-business.ts'));
+    $source = file_get_contents(resource_path('js/types/app/google-business.ts'));
 
     expect($source)->toBeString();
 
@@ -30,7 +30,7 @@ test('typescript google business topic and cta values match the php enums', func
 });
 
 test('typescript event range helper keeps the same-day time comparison the php rule uses', function () {
-    $source = file_get_contents(resource_path('js/lib/googleBusiness.ts'));
+    $source = file_get_contents(resource_path('js/lib/app/googleBusiness.ts'));
 
     expect($source)->toBeString()
         ->and($source)->toContain('endDate < startDate')

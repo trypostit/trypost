@@ -1,5 +1,5 @@
 /**
- * Runs `displayLength()` from `resources/js/lib/characters.ts` over a corpus for
+ * Runs `displayLength()` from `resources/js/lib/app/characters.ts` over a corpus for
  * each platform and prints the counts as JSON, so
  * `tests/Feature/App/Services/Social/DisplayLengthParityTest.php` can compare them
  * with `ContentSanitizer::displayText()`. Node strips the types; the hook only
@@ -17,7 +17,7 @@ registerHooks({
         specifier.startsWith('@/') ? next(new URL(`${specifier.slice(2)}.ts`, base).href, context) : next(specifier, context),
 });
 
-const { displayLength } = await import(new URL('lib/characters.ts', base).href);
+const { displayLength } = await import(new URL('lib/app/characters.ts', base).href);
 const corpus: string[] = JSON.parse(fs.readFileSync(corpusFile, 'utf8'));
 const platforms: string[] = JSON.parse(fs.readFileSync(platformsFile, 'utf8'));
 

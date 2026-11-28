@@ -2,7 +2,7 @@
 import { Head, InfiniteScroll, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
+import AdminEmptyState from '@/components/admin/shared/AdminEmptyState.vue';
 import SettingsSearch from '@/components/settings/SettingsSearch.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -20,11 +20,12 @@ import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import debounce from '@/debounce';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { planName, profileUrl } from '@/lib/adminUsers';
+import { planName, profileUrl } from '@/lib/admin/users';
 import { blank, filled } from '@/lib/helpers';
 import { formatFullNumber } from '@/lib/utils';
 import { index as usersIndex } from '@/routes/admin/users';
-import type { AdminUser, ScrollPage, UserStatusFilter } from '@/types/admin';
+import type { ScrollPage } from '@/types/admin/shared';
+import type { AdminUser, UserStatusFilter } from '@/types/admin/users';
 
 const STATUS_FILTERS: { value: UserStatusFilter; label: string }[] = [
     { value: 'all', label: 'All users' },

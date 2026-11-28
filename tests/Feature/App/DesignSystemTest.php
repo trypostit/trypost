@@ -50,7 +50,7 @@ test('the shared tokens match the design system', function () {
         ->toContain('data-[state=checked]:bg-primary-strong')
         ->not->toContain('bg-success');
 
-    expect(file_get_contents(resource_path('js/components/command-palette/CommandPaletteItem.vue')))
+    expect(file_get_contents(resource_path('js/components/app/command-palette/CommandPaletteItem.vue')))
         ->toContain('bg-primary-subtle')
         ->not->toContain('success');
 
@@ -64,7 +64,7 @@ test('the shared tokens match the design system', function () {
 
 test('post pages use the full-width design while retaining the composer', function () {
     $posts = file_get_contents(resource_path('js/pages/app/publish/Index.vue'));
-    $tabs = file_get_contents(resource_path('js/components/publish/PublishTabs.vue'));
+    $tabs = file_get_contents(resource_path('js/components/app/publish/PublishTabs.vue'));
     $layout = file_get_contents(resource_path('js/layouts/app/AppSidebarLayout.vue'));
 
     expect($posts)

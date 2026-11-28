@@ -1,7 +1,7 @@
-import { derivesContentType } from '@/lib/derivedContentType';
+import { derivesContentType } from '@/lib/app/derivedContentType';
 import { filled } from '@/lib/helpers';
-import { ContentType, type ContentTypeValue } from '@/types/content-type';
-import { Platform } from '@/types/platform';
+import { ContentType, type ContentTypeValue } from '@/types/app/content-type';
+import { Platform } from '@/types/app/platform';
 
 const PLATFORM_LOGOS: Record<string, string> = {
     [Platform.LinkedIn]: '/images/accounts/linkedin.png',

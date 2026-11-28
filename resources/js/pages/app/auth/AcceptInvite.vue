@@ -8,7 +8,7 @@ import { login, register } from '@/routes';
 import { home } from '@/routes/app';
 import { accept, decline } from '@/routes/app/invites';
 import { type SharedData } from '@/types';
-import { type MemberAccess, memberAccessLabelKey } from '@/types/members';
+import { type MemberAccess, memberAccessLabelKey } from '@/types/app/members';
 
 const props = defineProps<{
     expired: boolean;

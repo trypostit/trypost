@@ -10,11 +10,11 @@ import {
 } from '@tabler/icons-vue';
 import { ref, watch } from 'vue';
 
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import CreateDialog from '@/components/labels/CreateDialog.vue';
-import EditDialog from '@/components/labels/EditDialog.vue';
-import LabelsEmptyIllustration from '@/components/labels/LabelsEmptyIllustration.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import CreateDialog from '@/components/app/labels/CreateDialog.vue';
+import EditDialog from '@/components/app/labels/EditDialog.vue';
+import LabelsEmptyIllustration from '@/components/app/labels/LabelsEmptyIllustration.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import SettingsSearch from '@/components/settings/SettingsSearch.vue';
 import { Button } from '@/components/ui/button';

@@ -9,17 +9,17 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import { computed, onUnmounted, ref, watch } from 'vue';
 
-import ChannelAvatar from '@/components/ChannelAvatar.vue';
-import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import ChannelAvatar from '@/components/app/ChannelAvatar.vue';
+import ChannelConfigurator from '@/components/app/ChannelConfigurator.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import RepurposeHealthBanner from '@/components/app/repurpose/RepurposeHealthBanner.vue';
+import RepurposeItemList from '@/components/app/repurpose/RepurposeItemList.vue';
+import RepurposeLifecycle from '@/components/app/repurpose/RepurposeLifecycle.vue';
+import RepurposesEmptyIllustration from '@/components/app/repurpose/RepurposesEmptyIllustration.vue';
+import RepurposeSummary from '@/components/app/repurpose/RepurposeSummary.vue';
+import SearchableSelect from '@/components/app/SearchableSelect.vue';
 import InputError from '@/components/InputError.vue';
-import RepurposeHealthBanner from '@/components/repurpose/RepurposeHealthBanner.vue';
-import RepurposeItemList from '@/components/repurpose/RepurposeItemList.vue';
-import RepurposeLifecycle from '@/components/repurpose/RepurposeLifecycle.vue';
-import RepurposesEmptyIllustration from '@/components/repurpose/RepurposesEmptyIllustration.vue';
-import RepurposeSummary from '@/components/repurpose/RepurposeSummary.vue';
-import SearchableSelect from '@/components/SearchableSelect.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -30,12 +30,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { usePageErrors } from '@/composables/usePageErrors';
+import { usePageErrors } from '@/composables/app/usePageErrors';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { getPlatformMetaIssue } from '@/lib/app/platformMeta';
 import { MediaType } from '@/lib/mediaType';
-import { getPlatformMetaIssue } from '@/lib/platformMeta';
 import {
     destroy,
     index as repurposesIndex,
@@ -46,8 +46,8 @@ import type {
     Channel,
     ChannelAccount,
     ChannelTikTokCreatorInfo,
-} from '@/types/channel';
-import type { MediaItem } from '@/types/media';
+} from '@/types/app/channel';
+import type { MediaItem } from '@/types/app/media';
 import type {
     PublishModeOption,
     Repurpose,
@@ -56,8 +56,8 @@ import type {
     RepurposePublishMode,
     RepurposeSourceFormat,
     SourceFormatOption,
-} from '@/types/repurpose';
-import { repurposeStatusVariant } from '@/types/repurpose-status';
+} from '@/types/app/repurpose';
+import { repurposeStatusVariant } from '@/types/app/repurpose-status';
 import { SocialAccountStatus } from '@/types/social-account-status';
 
 const props = defineProps<{

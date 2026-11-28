@@ -9,8 +9,8 @@ import { createApp, h } from 'vue';
 
 import { initializeDataLayer } from '@/datalayer';
 import { bootLocale, i18nConfig, syncLocale, textDirection } from '@/language';
-import { syncContentTypeMediaRules } from '@/lib/contentTypeMediaRules';
-import { trackInAppPushes } from '@/lib/inAppHistory';
+import { syncContentTypeMediaRules } from '@/lib/app/contentTypeMediaRules';
+import { trackInAppPushes } from '@/lib/app/inAppHistory';
 import { capturePageview, initializePostHog, syncPostHogContext } from '@/posthog';
 import { syncPreferences } from '@/preferences';
 import type { Auth } from '@/types';

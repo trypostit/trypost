@@ -3,27 +3,27 @@ import { Head, InfiniteScroll, router, usePage } from '@inertiajs/vue3';
 import { IconPlus } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
-import ChannelListItem from '@/components/channels/ChannelListItem.vue';
-import ChannelsEmptyIllustration from '@/components/channels/ChannelsEmptyIllustration.vue';
-import DisconnectChannelDialog from '@/components/channels/DisconnectChannelDialog.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import ChannelListItem from '@/components/app/channels/ChannelListItem.vue';
+import ChannelsEmptyIllustration from '@/components/app/channels/ChannelsEmptyIllustration.vue';
+import DisconnectChannelDialog from '@/components/app/channels/DisconnectChannelDialog.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
 import NetworkFilter from '@/components/NetworkFilter.vue';
 import SettingsSearch from '@/components/settings/SettingsSearch.vue';
 import { Button } from '@/components/ui/button';
 import { TableLoadMore } from '@/components/ui/table';
-import { orderChannels } from '@/composables/useChannelOrder';
-import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
-import { useNetworkConnect } from '@/composables/useNetworkConnect';
+import { orderChannels } from '@/composables/app/useChannelOrder';
+import { useConnectChannelDialog } from '@/composables/app/useConnectChannelDialog';
+import { useNetworkConnect } from '@/composables/app/useNetworkConnect';
 import debounce from '@/debounce';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { blank } from '@/lib/helpers';
 import { channels as channelsSettings } from '@/routes/app/workspace';
-import { Platform } from '@/types/platform';
+import { Platform } from '@/types/app/platform';
 import type {
     AvailablePlatform,
     ChannelListRow,
     ConnectedAccount,
-} from '@/types/social-account';
+} from '@/types/app/social-account';
 
 interface ScrollChannelRows {
     data: ChannelListRow[];

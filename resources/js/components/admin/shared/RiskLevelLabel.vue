@@ -1,0 +1,20 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+
+import { riskLevel } from '@/lib/admin/churnRisk';
+import type { RiskLevel } from '@/types/admin/userInsights';
+
+/** A churn risk level: a colored dot and its name. */
+const props = defineProps<{
+    level: RiskLevel;
+}>();
+
+const shown = computed(() => riskLevel(props.level));
+</script>
+
+<template>
+    <span class="inline-flex items-center gap-1.5 text-sm text-foreground">
+        <span class="size-2 rounded-full" :class="shown.dot" aria-hidden="true" />
+        {{ shown.label }}
+    </span>
+</template>

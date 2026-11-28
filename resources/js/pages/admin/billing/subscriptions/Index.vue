@@ -2,9 +2,9 @@
 import { Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-import SubscriptionsChurnTab from '@/components/admin/subscriptions/SubscriptionsChurnTab.vue';
-import SubscriptionsOverviewTab from '@/components/admin/subscriptions/SubscriptionsOverviewTab.vue';
-import SubscriptionsTableTab from '@/components/admin/subscriptions/SubscriptionsTableTab.vue';
+import SubscriptionsChurnTab from '@/components/admin/billing/subscriptions/SubscriptionsChurnTab.vue';
+import SubscriptionsOverviewTab from '@/components/admin/billing/subscriptions/SubscriptionsOverviewTab.vue';
+import SubscriptionsTableTab from '@/components/admin/billing/subscriptions/SubscriptionsTableTab.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import SettingsSearch from '@/components/settings/SettingsSearch.vue';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,18 +12,12 @@ import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import debounce from '@/debounce';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { countIn } from '@/lib/adminFormat';
+import { countIn } from '@/lib/admin/format';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber } from '@/lib/utils';
 import { index as subscriptionsIndex } from '@/routes/admin/billing/subscriptions';
-import type {
-    AdminNetMrr,
-    AdminSubscription,
-    AdminSubscriptionChurn,
-    AdminSubscriptionOverview,
-    ScrollPage,
-    SubscriptionStatusFilter,
-} from '@/types/admin';
+import type { AdminNetMrr, AdminSubscription, AdminSubscriptionChurn, AdminSubscriptionOverview, SubscriptionStatusFilter } from '@/types/admin/billing';
+import type { ScrollPage } from '@/types/admin/shared';
 import type { AnalyticsFilters, AnalyticsRangePreset, DateRange } from '@/types/analytics';
 
 type SubscriptionsTab = 'overview' | 'subscriptions' | 'churn';

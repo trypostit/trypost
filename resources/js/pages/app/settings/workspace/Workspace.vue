@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 
-import WorkspaceTab from '@/components/settings/WorkspaceTab.vue';
+import WorkspaceTab from '@/components/app/settings/WorkspaceTab.vue';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 
 interface Workspace {

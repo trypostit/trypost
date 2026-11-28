@@ -7,20 +7,20 @@ import {
 } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
-import AppHeaderActions from '@/components/AppHeaderActions.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import MediaLightbox from '@/components/media/MediaLightbox.vue';
-import VideoStill from '@/components/media/VideoStill.vue';
-import ScheduleViewSwitch from '@/components/posts/ScheduleViewSwitch.vue';
-import NewPostButton from '@/components/publish/NewPostButton.vue';
-import PublishHeader from '@/components/publish/PublishHeader.vue';
+import AppHeaderActions from '@/components/app/AppHeaderActions.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import MediaLightbox from '@/components/app/media/MediaLightbox.vue';
+import VideoStill from '@/components/app/media/VideoStill.vue';
+import ScheduleViewSwitch from '@/components/app/posts/ScheduleViewSwitch.vue';
+import NewPostButton from '@/components/app/publish/NewPostButton.vue';
+import PublishHeader from '@/components/app/publish/PublishHeader.vue';
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useBelowBreakpoint } from '@/composables/useBreakpoint';
+import { useBelowBreakpoint } from '@/composables/app/useBreakpoint';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { isVideo } from '@/lib/mediaType';
@@ -30,9 +30,9 @@ import {
     grid,
     publish,
 } from '@/routes/app/channels';
-import { channelName } from '@/types/channel';
-import type { MediaItem } from '@/types/media';
-import type { PublishChannel } from '@/types/publish';
+import { channelName } from '@/types/app/channel';
+import type { MediaItem } from '@/types/app/media';
+import type { PublishChannel } from '@/types/app/publish';
 
 interface GridTile {
     id: string;

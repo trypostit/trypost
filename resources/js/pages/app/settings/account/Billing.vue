@@ -9,8 +9,8 @@ import {
 } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import PlanPicker from '@/components/billing/PlanPicker.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import PlanPicker from '@/components/app/billing/PlanPicker.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Badge, type BadgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,14 +46,14 @@ import type {
     PaymentMethod,
     Subscription,
     SubscriptionDiscount,
-} from '@/types/billing';
+} from '@/types/app/billing';
 import {
     DEFAULT_BILLING_INTERVAL,
     deniedPlanIdsFor,
     isPricedPlanSlug,
     type BillingInterval,
     type PlanOption,
-} from '@/types/plan';
+} from '@/types/app/plan';
 
 interface ScrollInvoices {
     data: Invoice[];

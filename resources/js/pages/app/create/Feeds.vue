@@ -17,19 +17,19 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import CreateHeader from '@/components/create/CreateHeader.vue';
-import CreateTabs from '@/components/create/CreateTabs.vue';
-import AddFeedDialog from '@/components/create/feeds/AddFeedDialog.vue';
-import ExploreFeedsDialog from '@/components/create/feeds/ExploreFeedsDialog.vue';
-import FeedChips from '@/components/create/feeds/FeedChips.vue';
-import FeedItemRow from '@/components/create/feeds/FeedItemRow.vue';
-import FeedListHeader from '@/components/create/feeds/FeedListHeader.vue';
-import FeedNameDialog from '@/components/create/feeds/FeedNameDialog.vue';
-import NewFeedSplitButton from '@/components/create/feeds/NewFeedSplitButton.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import CreateHeader from '@/components/app/create/CreateHeader.vue';
+import CreateTabs from '@/components/app/create/CreateTabs.vue';
+import AddFeedDialog from '@/components/app/create/feeds/AddFeedDialog.vue';
+import ExploreFeedsDialog from '@/components/app/create/feeds/ExploreFeedsDialog.vue';
+import FeedChips from '@/components/app/create/feeds/FeedChips.vue';
+import FeedItemRow from '@/components/app/create/feeds/FeedItemRow.vue';
+import FeedListHeader from '@/components/app/create/feeds/FeedListHeader.vue';
+import FeedNameDialog from '@/components/app/create/feeds/FeedNameDialog.vue';
+import NewFeedSplitButton from '@/components/app/create/feeds/NewFeedSplitButton.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
 import { Button } from '@/components/ui/button';
-import { openPostComposer } from '@/composables/useGlobalPostComposer';
+import { openPostComposer } from '@/composables/app/useGlobalPostComposer';
 import AppLayout from '@/layouts/AppLayout.vue';
 import {
     destroy as destroyCollection,
@@ -43,7 +43,7 @@ import {
     store,
     update,
 } from '@/routes/app/create/feeds';
-import type { MediaItem } from '@/types/media';
+import type { MediaItem } from '@/types/app/media';
 import type {
     RssFeed,
     RssFeedCollection,
@@ -53,7 +53,7 @@ import type {
     RssFeedItemPage,
     RssFeedsLimits,
     RssFeedsScope,
-} from '@/types/rssFeed';
+} from '@/types/app/rssFeed';
 
 const props = defineProps<{
     scope: RssFeedsScope;

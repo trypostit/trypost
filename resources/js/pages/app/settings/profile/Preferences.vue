@@ -9,12 +9,12 @@ import { computed, ref } from 'vue';
 
 import PreferencesController from '@/actions/App/Http/Controllers/App/Settings/PreferencesController';
 import { updateLanguage } from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
-import LanguageSelect from '@/components/LanguageSelect.vue';
-import SettingsRow from '@/components/settings/SettingsRow.vue';
+import LanguageSelect from '@/components/app/LanguageSelect.vue';
+import SettingsRow from '@/components/app/settings/SettingsRow.vue';
 import SettingsSelect, {
     type SettingsSelectOption,
-} from '@/components/settings/SettingsSelect.vue';
-import TimezoneSelect from '@/components/TimezoneSelect.vue';
+} from '@/components/app/settings/SettingsSelect.vue';
+import TimezoneSelect from '@/components/app/TimezoneSelect.vue';
 import { Separator } from '@/components/ui/separator';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
@@ -27,7 +27,7 @@ import {
     type WeekStart,
 } from '@/preferences';
 import type { Language, User } from '@/types';
-import type { TimezoneOption } from '@/types/posting-schedule';
+import type { TimezoneOption } from '@/types/app/posting-schedule';
 
 defineProps<{
     timezones: TimezoneOption[];

@@ -24,7 +24,7 @@ test('the typescript defuser agrees with the php one on every corpus entry', fun
         'node',
         base_path('tests/fixtures/defuse-x-links-harness.ts'),
         $tldsPath,
-        resource_path('js/lib/defuseXLinks.ts'),
+        resource_path('js/lib/app/defuseXLinks.ts'),
         $corpusPath,
     ]);
     $process->run();

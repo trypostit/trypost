@@ -5,15 +5,15 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, provide, ref, shallowRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import CreateHeader from '@/components/create/CreateHeader.vue';
-import CreateTabs from '@/components/create/CreateTabs.vue';
-import GenerateIdeasDialog from '@/components/create/ideas/GenerateIdeasDialog.vue';
-import IdeaBoard from '@/components/create/ideas/IdeaBoard.vue';
-import IdeaEditorDialog from '@/components/create/ideas/IdeaEditorDialog.vue';
-import IdeaGallery from '@/components/create/ideas/IdeaGallery.vue';
-import IdeasToolbar from '@/components/create/ideas/IdeasToolbar.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import CreateHeader from '@/components/app/create/CreateHeader.vue';
+import CreateTabs from '@/components/app/create/CreateTabs.vue';
+import GenerateIdeasDialog from '@/components/app/create/ideas/GenerateIdeasDialog.vue';
+import IdeaBoard from '@/components/app/create/ideas/IdeaBoard.vue';
+import IdeaEditorDialog from '@/components/app/create/ideas/IdeaEditorDialog.vue';
+import IdeaGallery from '@/components/app/create/ideas/IdeaGallery.vue';
+import IdeasToolbar from '@/components/app/create/ideas/IdeasToolbar.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import {
@@ -44,7 +44,7 @@ import {
     type IdeaStage,
     type IdeaLabel,
     type IdeasView,
-} from '@/types/idea';
+} from '@/types/app/idea';
 
 const props = defineProps<{
     view: IdeasView;

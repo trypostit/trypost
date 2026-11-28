@@ -9,7 +9,7 @@ import { IconCalendar } from "@tabler/icons-vue"
 import { trans } from "laravel-vue-i18n"
 import { computed, nextTick, ref, watch } from "vue"
 import { createReusableTemplate, useWindowSize } from "@vueuse/core"
-import BottomSheet from "@/components/BottomSheet.vue"
+import BottomSheet from "@/components/app/BottomSheet.vue"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -17,8 +17,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { RangeCalendar } from "@/components/ui/range-calendar"
-import { useBelowBreakpoint } from "@/composables/useBreakpoint"
-import { useCalendarLocale } from "@/composables/useCalendarLocale"
+import { useBelowBreakpoint } from "@/composables/app/useBreakpoint"
+import { useCalendarLocale } from "@/composables/app/useCalendarLocale"
 import { cn } from "@/lib/utils"
 import dayjs from "@/dayjs"
 import date from "@/date"

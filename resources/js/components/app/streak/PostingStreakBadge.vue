@@ -1,0 +1,282 @@
+<script setup lang="ts">
+import { IconFlameFilled, IconShare } from '@tabler/icons-vue';
+import { trans, transChoice } from 'laravel-vue-i18n';
+import { onBeforeUnmount, ref } from 'vue';
+import { toast } from 'vue-sonner';
+
+import { Button } from '@/components/ui/button';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { openPostComposer } from '@/composables/app/useGlobalPostComposer';
+import { streakShareFile } from '@/lib/app/streakShareImage';
+import { filled } from '@/lib/helpers';
+import { formatFullNumber } from '@/lib/utils';
+import { storeChunked } from '@/routes/app/media';
+import type { PostingStreak } from '@/types/app/posting-streak';
+import { uploadChunked } from '@/utils/chunkedUpload';
+
+const props = defineProps<{
+    streak: PostingStreak;
+}>();
+
+const open = ref(false);
+const sharing = ref(false);
+const mounted = ref(true);
+
+onBeforeUnmount(() => {
+    mounted.value = false;
+});
+
+/** Whether the share the user asked for still has somewhere to land: the popover open, the badge on the page. */
+const stillSharing = (): boolean => {
+    if (!mounted.value) {
+        return false;
+    }
+
+    return open.value;
+};
+
+const weeks = (): string => formatFullNumber(props.streak.weeks);
+
+/** What keeps the streak going: next week once this one has a post, this week otherwise. */
+const nudgeKey = (): string => {
+    if (props.streak.posted_this_week) {
+        return 'analytics.posting_streak.keep_going';
+    }
+
+    return 'analytics.posting_streak.post_this_week';
+};
+
+/** Three digits shrink so the number stays inside its 80px circle. */
+const numberSize = (): string => {
+    if (props.streak.weeks >= 100) {
+        return 'text-[30px]';
+    }
+
+    return 'text-[40px]';
+};
+
+const hasRank = (): boolean => filled(props.streak.top_percent);
+
+const percent = (): string => String(props.streak.top_percent);
+
+/**
+ * Opening the streak focuses the popover itself, so the rank's tooltip waits
+ * for a hover or a Tab. The event comes from Reka's wrapper; the popover is in it.
+ */
+const focusPopover = (event: Event): void => {
+    event.preventDefault();
+
+    const popover = (event.target as HTMLElement).querySelector<HTMLElement>(
+        '[data-slot="popover-content"]',
+    );
+
+    if (!filled(popover)) {
+        return;
+    }
+
+    popover.focus({ preventScroll: true });
+};
+
+const schedulePost = (): void => {
+    open.value = false;
+    openPostComposer();
+};
+
+/** Opens the composer with the streak's image and a post that announces it. */
+const sharePost = async (): Promise<void> => {
+    sharing.value = true;
+
+    try {
+        const file = await streakShareFile(props.streak.weeks, {
+            number: weeks(),
+            unit: transChoice(
+                'analytics.posting_streak.image_weeks',
+                props.streak.weeks,
+            ),
+            tagline: trans('analytics.posting_streak.image_tagline'),
+        });
+        const media = await uploadChunked({ file, url: storeChunked.url() });
+
+        if (!stillSharing()) {
+            return;
+        }
+
+        open.value = false;
+        openPostComposer({
+            draft: {
+                content: transChoice(
+                    'analytics.posting_streak.share_caption',
+                    props.streak.weeks,
+                ),
+                media: [media],
+                scheduled_at: null,
+                label_ids: [],
+            },
+        });
+    } catch {
+        if (!stillSharing()) {
+            return;
+        }
+
+        toast.error(trans('analytics.share.post_failed'), {
+            testId: 'posting-streak-share-error',
+        });
+    } finally {
+        sharing.value = false;
+    }
+};
+</script>
+
+<template>
+    <Popover v-model:open="open">
+        <PopoverTrigger as-child>
+            <button
+                type="button"
+                class="relative inline-flex size-8 shrink-0 items-center justify-center rounded-lg outline-hidden hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                :aria-label="$t('analytics.posting_streak.button')"
+                data-testid="posting-streak-badge"
+            >
+                <IconFlameFilled
+                    class="size-6 text-orange-500"
+                    aria-hidden="true"
+                />
+                <span
+                    class="absolute top-4 left-4 inline-flex h-4 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] leading-4 font-[650] text-primary-foreground tabular-nums"
+                    data-testid="posting-streak-count"
+                    >{{ weeks() }}</span
+                >
+            </button>
+        </PopoverTrigger>
+        <PopoverContent
+            side="bottom"
+            align="center"
+            :side-offset="16"
+            class="w-61 rounded-xl p-2"
+            data-testid="posting-streak-popover"
+            @open-auto-focus="focusPopover"
+        >
+            <div class="flex flex-col gap-4">
+                <div class="relative h-25.25">
+                    <div
+                        class="relative h-16.5 overflow-hidden rounded-lg bg-violet-100 dark:bg-violet-950/60"
+                        aria-hidden="true"
+                    >
+                        <div
+                            class="absolute -top-3 -left-4 h-12 w-24 rounded-full bg-violet-50/80 dark:bg-violet-900/40"
+                        />
+                        <div
+                            class="absolute inset-0 bg-violet-300 [clip-path:polygon(60%_0,100%_0,100%_100%,57%_100%)] dark:bg-violet-700"
+                        />
+                        <span
+                            class="absolute top-2.5 left-3 size-1 rounded-full bg-violet-400"
+                        />
+                        <span
+                            class="absolute top-9 left-9 size-1.5 rounded-full bg-white/90"
+                        />
+                        <span
+                            class="absolute top-2 left-36 size-1 rounded-full bg-violet-950"
+                        />
+                        <span
+                            class="absolute top-11 left-48 size-1 rounded-full bg-white/90"
+                        />
+                        <span
+                            class="absolute top-4 right-3 size-1.5 rounded-full bg-violet-950"
+                        />
+                    </div>
+                    <div
+                        class="absolute top-4 left-17.25 size-20 rounded-full bg-primary text-center font-heading leading-20 font-normal text-primary-foreground tabular-nums"
+                        :class="numberSize()"
+                    >
+                        {{ weeks() }}
+                    </div>
+                    <div
+                        class="absolute top-15 left-29.75 inline-flex size-10 items-center justify-center rounded-full bg-orange-100 ring-2 ring-popover dark:bg-orange-950"
+                    >
+                        <IconFlameFilled
+                            class="size-6 streak-sway text-orange-500"
+                            aria-hidden="true"
+                        />
+                    </div>
+                </div>
+
+                <div class="flex flex-col items-center text-center">
+                    <h3
+                        class="font-heading text-lg leading-[22.5px] font-medium text-foreground"
+                        data-testid="posting-streak-title"
+                    >
+                        {{
+                            $tChoice(
+                                'analytics.posting_streak.title',
+                                streak.weeks,
+                                { count: weeks() },
+                            )
+                        }}
+                    </h3>
+                    <TooltipProvider v-if="hasRank()" :delay-duration="200">
+                        <Tooltip>
+                            <TooltipTrigger as-child>
+                                <button
+                                    type="button"
+                                    class="mt-0.5 rounded bg-primary-text/20 px-1 text-xs leading-4.5 font-medium text-primary-text outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                                    data-testid="posting-streak-rank"
+                                >
+                                    {{
+                                        $t('analytics.posting_streak.top', {
+                                            percent: percent(),
+                                        })
+                                    }}
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                                class="max-w-[calc(100vw-2rem)] sm:max-w-none sm:whitespace-nowrap"
+                                data-testid="posting-streak-rank-tooltip"
+                            >
+                                {{
+                                    $t('analytics.posting_streak.rank_tooltip')
+                                }}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <p
+                        class="mt-2 px-2 text-sm leading-5.25 text-muted-foreground"
+                        data-testid="posting-streak-nudge"
+                    >
+                        {{ $t(nudgeKey()) }}
+                    </p>
+                </div>
+
+                <div class="flex justify-center gap-2 px-2">
+                    <Button
+                        size="sm"
+                        class="h-8 rounded-lg px-3"
+                        data-testid="posting-streak-schedule"
+                        @click="schedulePost"
+                    >
+                        {{ $t('analytics.posting_streak.schedule') }}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        class="size-8 rounded-lg"
+                        :loading="sharing"
+                        :aria-label="$t('analytics.posting_streak.share')"
+                        data-testid="posting-streak-share"
+                        @click="sharePost"
+                    >
+                        <IconShare aria-hidden="true" />
+                    </Button>
+                </div>
+            </div>
+        </PopoverContent>
+    </Popover>
+</template>

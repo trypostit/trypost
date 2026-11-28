@@ -4,22 +4,22 @@ import { IconTrendingUp } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
-import InsightsExportMenu from '@/components/analytics/InsightsExportMenu.vue';
-import InsightsSyncStatus from '@/components/analytics/InsightsSyncStatus.vue';
-import PostingActivityCard from '@/components/analytics/PostingActivityCard.vue';
-import FollowersChart from '@/components/analytics/workspace/FollowersChart.vue';
-import ImportCoverage from '@/components/analytics/workspace/ImportCoverage.vue';
-import InsightsEmptyState from '@/components/analytics/workspace/InsightsEmptyState.vue';
-import PerformanceTable from '@/components/analytics/workspace/PerformanceTable.vue';
-import PostsChart from '@/components/analytics/workspace/PostsChart.vue';
-import SummaryCards from '@/components/analytics/workspace/SummaryCards.vue';
-import TopPosts from '@/components/analytics/workspace/TopPosts.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import InsightsExportMenu from '@/components/app/analytics/InsightsExportMenu.vue';
+import InsightsSyncStatus from '@/components/app/analytics/InsightsSyncStatus.vue';
+import PostingActivityCard from '@/components/app/analytics/PostingActivityCard.vue';
+import FollowersChart from '@/components/app/analytics/workspace/FollowersChart.vue';
+import ImportCoverage from '@/components/app/analytics/workspace/ImportCoverage.vue';
+import InsightsEmptyState from '@/components/app/analytics/workspace/InsightsEmptyState.vue';
+import PerformanceTable from '@/components/app/analytics/workspace/PerformanceTable.vue';
+import PostsChart from '@/components/app/analytics/workspace/PostsChart.vue';
+import SummaryCards from '@/components/app/analytics/workspace/SummaryCards.vue';
+import TopPosts from '@/components/app/analytics/workspace/TopPosts.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import LabelFilter from '@/components/app/labels/LabelFilter.vue';
+import PostChannelFilter from '@/components/app/posts/PostChannelFilter.vue';
+import TourStep from '@/components/app/tours/TourStep.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
-import LabelFilter from '@/components/labels/LabelFilter.vue';
-import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
-import TourStep from '@/components/tours/TourStep.vue';
-import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
+import { useAnalyticsCoveragePoll } from '@/composables/app/useAnalyticsCoveragePoll';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { accountColor } from '@/lib/analyticsColors';
 import { filled } from '@/lib/helpers';
@@ -31,7 +31,7 @@ import type {
     SummaryMetric,
     WorkspaceAnalyticsReport,
 } from '@/types/analytics';
-import type { PostCardLabel } from '@/types/publish';
+import type { PostCardLabel } from '@/types/app/publish';
 
 const props = defineProps<{
     report: WorkspaceAnalyticsReport;

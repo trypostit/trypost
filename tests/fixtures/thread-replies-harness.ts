@@ -1,5 +1,5 @@
 /**
- * Prints what the composer's thread helpers (`lib/threadReplies.ts`) answer for
+ * Prints what the composer's thread helpers (`lib/app/threadReplies.ts`) answer for
  * each platform given as an argument (a reply that is a poll included), the
  * post types that stand alone and why a thread is held back, so
  * `ThreadRepliesParityTest.php` can compare them with `ThreadReplies` on the
@@ -29,20 +29,20 @@ const {
     threadMaxReplies,
     threadReplyContentType,
 } = await import(
-    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/threadReplies.ts')).href
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/app/threadReplies.ts')).href
 );
 const { THREAD_REPLY_CONTENT_TYPES } = await import(
-    pathToFileURL(path.join(path.resolve(resourcesDir), 'types/network-options.ts')).href
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'types/app/network-options.ts')).href
 );
 
 const { channelPermissionKey, missingPermissionKey } = await import(
-    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/channelPermissions.ts')).href
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/app/channelPermissions.ts')).href
 );
 const { GatedFeature } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'types/channel-permission.ts')).href
 );
 const { STANDALONE_CONTENT_TYPES } = await import(
-    pathToFileURL(path.join(path.resolve(resourcesDir), 'types/content-type.ts')).href
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'types/app/content-type.ts')).href
 );
 
 const pollReply = { text: 'Which one?', media: [], poll: { options: ['Yes', 'No'] } };

@@ -2,12 +2,12 @@
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
+import WorkspaceUpgradeDialog from '@/components/app/workspaces/WorkspaceUpgradeDialog.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
-import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
+import { useWorkspaceLimit } from '@/composables/app/useWorkspaceLimit';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { store as storeWorkspace } from '@/routes/app/workspaces';
 import type { SharedData } from '@/types';

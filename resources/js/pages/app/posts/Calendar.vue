@@ -22,44 +22,44 @@ import {
 } from 'vue';
 
 import { destroy as destroyPost } from '@/actions/App/Http/Controllers/App/PostController';
-import AppHeaderActions from '@/components/AppHeaderActions.vue';
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import LabelFilter from '@/components/labels/LabelFilter.vue';
-import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
-import ScheduleViewSwitch from '@/components/posts/ScheduleViewSwitch.vue';
-import CalendarCustomTimeDialog from '@/components/publish/CalendarCustomTimeDialog.vue';
-import CalendarDragAnnouncer from '@/components/publish/CalendarDragAnnouncer.vue';
-import CalendarMonthGrid from '@/components/publish/CalendarMonthGrid.vue';
-import CalendarPeriodPicker from '@/components/publish/CalendarPeriodPicker.vue';
-import CalendarTimeGrid from '@/components/publish/CalendarTimeGrid.vue';
-import CalendarUndatedPanel from '@/components/publish/CalendarUndatedPanel.vue';
-import PublishFilterMenu from '@/components/publish/PublishFilterMenu.vue';
-import PublishHeader from '@/components/publish/PublishHeader.vue';
+import AppHeaderActions from '@/components/app/AppHeaderActions.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import LabelFilter from '@/components/app/labels/LabelFilter.vue';
+import PostChannelFilter from '@/components/app/posts/PostChannelFilter.vue';
+import ScheduleViewSwitch from '@/components/app/posts/ScheduleViewSwitch.vue';
+import CalendarCustomTimeDialog from '@/components/app/publish/CalendarCustomTimeDialog.vue';
+import CalendarDragAnnouncer from '@/components/app/publish/CalendarDragAnnouncer.vue';
+import CalendarMonthGrid from '@/components/app/publish/CalendarMonthGrid.vue';
+import CalendarPeriodPicker from '@/components/app/publish/CalendarPeriodPicker.vue';
+import CalendarTimeGrid from '@/components/app/publish/CalendarTimeGrid.vue';
+import CalendarUndatedPanel from '@/components/app/publish/CalendarUndatedPanel.vue';
+import PublishFilterMenu from '@/components/app/publish/PublishFilterMenu.vue';
+import PublishHeader from '@/components/app/publish/PublishHeader.vue';
 import { Button } from '@/components/ui/button';
-import { useCalendarAnnouncer } from '@/composables/calendar/useCalendarAnnouncer';
+import { useCalendarAnnouncer } from '@/composables/app/calendar/useCalendarAnnouncer';
 import {
     calendarDragKey,
     DRAG_HINT_ID,
     useCalendarDrag,
-} from '@/composables/calendar/useCalendarDrag';
-import { usePublishFilters } from '@/composables/publish/usePublishFilters';
-import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
-import { useCollapseWhenTruncated } from '@/composables/useCollapseWhenTruncated';
-import { openPostComposer } from '@/composables/useGlobalPostComposer';
+} from '@/composables/app/calendar/useCalendarDrag';
+import { usePublishFilters } from '@/composables/app/publish/usePublishFilters';
+import { useAtLeastBreakpoint } from '@/composables/app/useBreakpoint';
+import { useCollapseWhenTruncated } from '@/composables/app/useCollapseWhenTruncated';
+import { openPostComposer } from '@/composables/app/useGlobalPostComposer';
 import {
     deletePostCardKey,
     postCardLabelsKey,
-} from '@/composables/usePostCardActions';
-import { useShowPostingSlots } from '@/composables/useShowPostingSlots';
-import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+} from '@/composables/app/usePostCardActions';
+import { useShowPostingSlots } from '@/composables/app/useShowPostingSlots';
+import { useWorkspaceAbilities } from '@/composables/app/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { calendarDayKey } from '@/lib/calendarItems';
-import { afterPageInHistory } from '@/lib/inAppHistory';
+import { calendarDayKey } from '@/lib/app/calendarItems';
+import { afterPageInHistory } from '@/lib/app/inAppHistory';
 import { grid, settings } from '@/routes/app/channels';
-import type { TimezoneOption } from '@/types/posting-schedule';
+import type { TimezoneOption } from '@/types/app/posting-schedule';
 import type {
     CalendarPost,
     CalendarSlot,
@@ -71,7 +71,7 @@ import type {
     PublishScope,
     PublishSocialAccount,
     ScrollUndatedDrafts,
-} from '@/types/publish';
+} from '@/types/app/publish';
 
 interface Props {
     scope: PublishScope;

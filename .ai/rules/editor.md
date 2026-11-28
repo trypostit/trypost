@@ -1,6 +1,6 @@
 ---
 paths:
-  - 'resources/js/components/posts/editor/**'
+  - 'resources/js/components/app/posts/editor/**'
 ---
 
 # Editor

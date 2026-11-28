@@ -1,0 +1,40 @@
+<script setup lang="ts">
+import {
+    IconBookmark,
+    IconDots,
+    IconHeart,
+    IconMessageCircle,
+    IconRepeat,
+    IconUpload,
+} from '@tabler/icons-vue';
+
+import PreviewTextPost from '@/components/app/posts/previews/PreviewTextPost.vue';
+import type { PreviewProps } from '@/components/app/posts/previews/types';
+import date from '@/date';
+
+
+defineProps<PreviewProps>();
+</script>
+
+<template>
+    <PreviewTextPost
+        data-testid="bluesky-preview"
+        :account="socialAccount"
+        :content="content"
+        :media="media"
+        :handle="`@${socialAccount.username || socialAccount.handle_label}`"
+        :caption="date.formatPreviewPostedAt(postedAt, $t('common.just_now'))"
+        link-tone="info"
+        host-only
+        :actions="[
+            { icon: IconMessageCircle },
+            { icon: IconRepeat },
+            { icon: IconHeart },
+        ]"
+        :trailing-actions="[
+            { icon: IconBookmark },
+            { icon: IconUpload },
+            { icon: IconDots },
+        ]"
+    />
+</template>

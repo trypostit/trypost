@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import ComparedRange from '@/components/analytics/ComparedRange.vue';
-import InfoTip from '@/components/analytics/workspace/InfoTip.vue';
+import ComparedRange from '@/components/app/analytics/ComparedRange.vue';
+import InfoTip from '@/components/app/analytics/workspace/InfoTip.vue';
 import date from '@/date';
 import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 

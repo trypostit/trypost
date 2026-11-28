@@ -5,44 +5,44 @@ import { useDebounceFn } from '@vueuse/core';
 import { computed, onUnmounted, provide, ref, watch } from 'vue';
 
 import { destroy as destroyPost } from '@/actions/App/Http/Controllers/App/PostController';
-import AppHeaderActions from '@/components/AppHeaderActions.vue';
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import LabelFilter from '@/components/labels/LabelFilter.vue';
-import InviteMemberDialog from '@/components/members/InviteMemberDialog.vue';
-import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
-import ScheduleViewSwitch from '@/components/posts/ScheduleViewSwitch.vue';
-import BoardColumn from '@/components/publish/board/BoardColumn.vue';
-import BoardGroupMenu from '@/components/publish/board/BoardGroupMenu.vue';
-import NewPostButton from '@/components/publish/NewPostButton.vue';
-import PublishEmptyIllustration from '@/components/publish/PublishEmptyIllustration.vue';
-import PublishFilterMenu from '@/components/publish/PublishFilterMenu.vue';
-import PublishHeader from '@/components/publish/PublishHeader.vue';
+import AppHeaderActions from '@/components/app/AppHeaderActions.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import LabelFilter from '@/components/app/labels/LabelFilter.vue';
+import InviteMemberDialog from '@/components/app/members/InviteMemberDialog.vue';
+import PostChannelFilter from '@/components/app/posts/PostChannelFilter.vue';
+import ScheduleViewSwitch from '@/components/app/posts/ScheduleViewSwitch.vue';
+import BoardColumn from '@/components/app/publish/board/BoardColumn.vue';
+import BoardGroupMenu from '@/components/app/publish/board/BoardGroupMenu.vue';
+import NewPostButton from '@/components/app/publish/NewPostButton.vue';
+import PublishEmptyIllustration from '@/components/app/publish/PublishEmptyIllustration.vue';
+import PublishFilterMenu from '@/components/app/publish/PublishFilterMenu.vue';
+import PublishHeader from '@/components/app/publish/PublishHeader.vue';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
-import { usePublishFilters } from '@/composables/publish/usePublishFilters';
-import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
+import { useWorkspaceEcho } from '@/composables/app/echo/useWorkspaceEcho';
+import { usePublishFilters } from '@/composables/app/publish/usePublishFilters';
+import { useConnectChannelDialog } from '@/composables/app/useConnectChannelDialog';
 import {
     deletePostCardKey,
     postCardLabelsKey,
     type PostCardReload,
     postCardReloadKey,
-} from '@/composables/usePostCardActions';
-import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+} from '@/composables/app/usePostCardActions';
+import { useWorkspaceAbilities } from '@/composables/app/useWorkspaceAbilities';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { blank, filled } from '@/lib/helpers';
 import { grid } from '@/routes/app/channels';
-import type { BoardColumnMeta, BoardGroup } from '@/types/board';
-import { channelName } from '@/types/channel';
-import type { TimezoneOption } from '@/types/posting-schedule';
+import type { BoardColumnMeta, BoardGroup } from '@/types/app/board';
+import { channelName } from '@/types/app/channel';
+import type { TimezoneOption } from '@/types/app/posting-schedule';
 import type {
     PostCard,
     PostCardLabel,
     PublishChannel,
     PublishScope,
     PublishSocialAccount,
-} from '@/types/publish';
+} from '@/types/app/publish';
 
 interface Props {
     scope: PublishScope;

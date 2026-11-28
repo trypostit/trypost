@@ -8,10 +8,10 @@ import {
 } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
-import McpEmptyIllustration from '@/components/mcp/McpEmptyIllustration.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import McpConnectDialog from '@/components/app/mcp/McpConnectDialog.vue';
+import McpEmptyIllustration from '@/components/app/mcp/McpEmptyIllustration.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
-import { DOCS_URL } from '@/lib/docs';
+import { DOCS_URL } from '@/lib/app/docs';
 import {
     claudeMcpClient,
     mcpAppLogos,
@@ -31,7 +31,7 @@ import {
     otherMcpClient,
 } from '@/lib/mcpClients';
 import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
-import type { McpClient } from '@/types/mcp';
+import type { McpClient } from '@/types/app/mcp';
 import { fireCelebration } from '@/utils/confetti';
 
 interface ConnectedClient {

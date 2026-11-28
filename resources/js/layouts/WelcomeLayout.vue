@@ -4,12 +4,12 @@ import { IconArrowLeft } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import { updateLanguage } from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
-import AppLogo from '@/components/AppLogo.vue';
-import ImpersonationBanner from '@/components/ImpersonationBanner.vue';
-import LanguageSelect from '@/components/LanguageSelect.vue';
-import ThemeToggle from '@/components/ThemeToggle.vue';
-import Toast from '@/components/Toast.vue';
-import { useBelowBreakpoint } from '@/composables/useBreakpoint';
+import AppLogo from '@/components/app/AppLogo.vue';
+import ImpersonationBanner from '@/components/app/ImpersonationBanner.vue';
+import LanguageSelect from '@/components/app/LanguageSelect.vue';
+import ThemeToggle from '@/components/app/ThemeToggle.vue';
+import Toast from '@/components/app/Toast.vue';
+import { useBelowBreakpoint } from '@/composables/app/useBreakpoint';
 import {
     goals as goalsRoute,
     persona as personaRoute,

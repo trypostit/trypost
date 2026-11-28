@@ -8,23 +8,21 @@ import {
 } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
-import PublishingBarChart from '@/components/admin/PublishingBarChart.vue';
+import AdminStatGrid from '@/components/admin/shared/AdminStatGrid.vue';
+import PublishingBarChart from '@/components/admin/shared/PublishingBarChart.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Button } from '@/components/ui/button';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { countLabel } from '@/lib/adminFormat';
+import { countLabel } from '@/lib/admin/format';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent } from '@/lib/utils';
 import { index as networksIndex } from '@/routes/admin/networks';
 import { index as postsIndex } from '@/routes/admin/posts';
 import { index as failedIndex } from '@/routes/admin/posts/failed';
 import { index as quotasIndex } from '@/routes/admin/quotas';
-import type {
-    AdminDashboard,
-    AdminStat,
-} from '@/types/admin';
+import type { AdminDashboard } from '@/types/admin/dashboard';
+import type { AdminStat } from '@/types/admin/shared';
 
 type FailingNetwork = AdminDashboard['attention']['networks'][number];
 type QuotaAlert = AdminDashboard['attention']['quotas'][number];

@@ -2,15 +2,15 @@
 import { Head } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
-import AdminBarRows from '@/components/admin/AdminBarRows.vue';
+import NetworkPermissionsCard from '@/components/admin/networks/NetworkPermissionsCard.vue';
+import AdminBarRows from '@/components/admin/shared/AdminBarRows.vue';
 import AdminDailyBarChart, {
     type AdminChartSeries,
-} from '@/components/admin/AdminDailyBarChart.vue';
-import AdminDailyLineChart from '@/components/admin/AdminDailyLineChart.vue';
-import AdminMetricTabs from '@/components/admin/AdminMetricTabs.vue';
-import AdminSortableTable from '@/components/admin/AdminSortableTable.vue';
-import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
-import NetworkPermissionsCard from '@/components/admin/NetworkPermissionsCard.vue';
+} from '@/components/admin/shared/AdminDailyBarChart.vue';
+import AdminDailyLineChart from '@/components/admin/shared/AdminDailyLineChart.vue';
+import AdminMetricTabs from '@/components/admin/shared/AdminMetricTabs.vue';
+import AdminSortableTable from '@/components/admin/shared/AdminSortableTable.vue';
+import AdminStatGrid from '@/components/admin/shared/AdminStatGrid.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
@@ -20,22 +20,13 @@ import { useUrlTab } from '@/composables/admin/useUrlTab';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { ALARMING_FAILURE_RATE } from '@/lib/adminPublishing';
+import { ALARMING_FAILURE_RATE } from '@/lib/admin/publishing';
 import { accountColor } from '@/lib/analyticsColors';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, MISSING_VALUE, percentOf } from '@/lib/utils';
 import { index as networksIndex } from '@/routes/admin/networks';
-import type {
-    AdminBarRow,
-    AdminChannelDistribution,
-    AdminChannelGrowth,
-    AdminMetricTab,
-    AdminNetworkHealth,
-    AdminNetworkPermissions,
-    AdminStat,
-    AdminTableColumn,
-    BadgeVariant,
-} from '@/types/admin';
+import type { AdminChannelDistribution, AdminChannelGrowth, AdminNetworkHealth, AdminNetworkPermissions } from '@/types/admin/networks';
+import type { AdminBarRow, AdminMetricTab, AdminStat, AdminTableColumn, BadgeVariant } from '@/types/admin/shared';
 import type { AnalyticsFilters, DateRange } from '@/types/analytics';
 
 const props = defineProps<{

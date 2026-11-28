@@ -6,25 +6,25 @@ let compactSidebarOpen: boolean | null = null;
 import { Link } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 
-import AppHeader from '@/components/AppHeader.vue';
-import AppLogo from '@/components/AppLogo.vue';
-import AppSidebar from '@/components/AppSidebar.vue';
-import ChangelogDialog from '@/components/changelog/ChangelogDialog.vue';
-import ConnectChannelDialog from '@/components/channels/ConnectChannelDialog.vue';
-import CommandPalette from '@/components/command-palette/CommandPalette.vue';
-import ImpersonationBanner from '@/components/ImpersonationBanner.vue';
-import GlobalPostComposer from '@/components/posts/composer/GlobalPostComposer.vue';
-import ReferralSourceSurvey from '@/components/ReferralSourceSurvey.vue';
-import Toast from '@/components/Toast.vue';
-import McpPromptTour from '@/components/tours/McpPromptTour.vue';
-import TourOverlay from '@/components/tours/TourOverlay.vue';
+import AppHeader from '@/components/app/AppHeader.vue';
+import AppLogo from '@/components/app/AppLogo.vue';
+import AppSidebar from '@/components/app/AppSidebar.vue';
+import ChangelogDialog from '@/components/app/changelog/ChangelogDialog.vue';
+import ConnectChannelDialog from '@/components/app/channels/ConnectChannelDialog.vue';
+import CommandPalette from '@/components/app/command-palette/CommandPalette.vue';
+import ImpersonationBanner from '@/components/app/ImpersonationBanner.vue';
+import GlobalPostComposer from '@/components/app/posts/composer/GlobalPostComposer.vue';
+import ReferralSourceSurvey from '@/components/app/ReferralSourceSurvey.vue';
+import Toast from '@/components/app/Toast.vue';
+import McpPromptTour from '@/components/app/tours/McpPromptTour.vue';
+import TourOverlay from '@/components/app/tours/TourOverlay.vue';
 import {
     SidebarInset,
     SidebarProvider,
     SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { SIDEBAR_COOKIE_NAME } from '@/components/ui/sidebar/utils';
-import { useBelowBreakpoint } from '@/composables/useBreakpoint';
+import { useBelowBreakpoint } from '@/composables/app/useBreakpoint';
 import { index as postsIndex } from '@/routes/app/posts';
 
 type Props = {

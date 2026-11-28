@@ -3,8 +3,8 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { IconArrowsLeftRight, IconX } from '@tabler/icons-vue';
 import { onMounted, onUnmounted } from 'vue';
 
-import AppLogo from '@/components/AppLogo.vue';
-import ImpersonationBanner from '@/components/ImpersonationBanner.vue';
+import AppLogo from '@/components/app/AppLogo.vue';
+import ImpersonationBanner from '@/components/app/ImpersonationBanner.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Button } from '@/components/ui/button';
 

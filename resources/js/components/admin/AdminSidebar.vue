@@ -24,7 +24,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useActiveUrl } from '@/composables/useActiveUrl';
-import { ADMIN_NAV_GROUPS } from '@/lib/adminNavigation';
+import { ADMIN_NAV_GROUPS } from '@/lib/admin/navigation';
 
 const { urlIsActive } = useActiveUrl();
 const { isMobile, state: sidebarState } = useSidebar();

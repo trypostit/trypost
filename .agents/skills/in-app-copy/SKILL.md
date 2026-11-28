@@ -21,7 +21,7 @@ When the UI stops the user and asks them to do something first (a popover, an em
 
 ### Reference example: the queue setup popover
 
-Shown by `resources/js/components/publish/AddToQueueButton.vue` when someone clicks "Add to queue" on a channel without posting times (`posts.publish.actions.queue_setup`).
+Shown by `resources/js/components/app/publish/AddToQueueButton.vue` when someone clicks "Add to queue" on a channel without posting times (`posts.publish.actions.queue_setup`).
 
 Before (rejected):
 

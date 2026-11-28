@@ -1,5 +1,5 @@
 /**
- * Runs `toastLinkOptions()` of `resources/js/lib/toastLink.ts` with and
+ * Runs `toastLinkOptions()` of `resources/js/lib/app/toastLink.ts` with and
  * without a link, and merges them the way vue-sonner updates a toast still on
  * screen under the same id, so `ToastLinkTest.php` can check the link never
  * outlives its message.
@@ -24,7 +24,7 @@ registerHooks({
     },
 });
 
-const { toastLinkOptions } = await import(pathToFileURL(path.join(root, 'lib/toastLink.ts')).href);
+const { toastLinkOptions } = await import(pathToFileURL(path.join(root, 'lib/app/toastLink.ts')).href);
 
 const visited: string[] = [];
 const withLink = toastLinkOptions({ label: 'View post', url: '/posts?post=1' }, (url: string) => visited.push(url));

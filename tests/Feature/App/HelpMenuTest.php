@@ -25,11 +25,11 @@ test('english community group copy is community', function () {
 });
 
 test('the support menu opens crisp only on cloud', function () {
-    expect(file_get_contents(resource_path('js/components/WorkspaceMenuContent.vue')))
+    expect(file_get_contents(resource_path('js/components/app/WorkspaceMenuContent.vue')))
         ->toContain('page.props.selfHosted === false')
         ->toContain('openSupportChat');
 
-    expect(file_get_contents(resource_path('js/lib/supportChat.ts')))
+    expect(file_get_contents(resource_path('js/lib/app/supportChat.ts')))
         ->toContain("['do', 'chat:show']")
         ->toContain("['do', 'chat:open']");
 });

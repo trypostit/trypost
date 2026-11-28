@@ -12,7 +12,7 @@ test('the typescript hashtag counter agrees with the php one on every corpus ent
     $process = new Process([
         'node',
         base_path('tests/fixtures/hashtag-harness.ts'),
-        resource_path('js/lib/hashtags.ts'),
+        resource_path('js/lib/app/hashtags.ts'),
         $corpusPath,
     ]);
     $process->run();

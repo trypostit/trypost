@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import AdminDetailList from '@/components/admin/AdminDetailList.vue';
+import AdminDetailList from '@/components/admin/shared/AdminDetailList.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -12,14 +12,15 @@ import {
 } from '@/components/ui/dialog';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
-import { channelDisplayName, channelStatusLabel } from '@/lib/adminChannels';
-import { errorCategoryLabel } from '@/lib/adminErrorCategories';
-import { joinFilled, orDash } from '@/lib/adminFormat';
-import { originLabel } from '@/lib/adminPublishing';
+import { channelDisplayName, channelStatusLabel } from '@/lib/admin/channels';
+import { errorCategoryLabel } from '@/lib/admin/errorCategories';
+import { joinFilled, orDash } from '@/lib/admin/format';
+import { originLabel } from '@/lib/admin/publishing';
 import { filled } from '@/lib/helpers';
 import { isVideo } from '@/lib/mediaType';
 import { MISSING_VALUE } from '@/lib/utils';
-import type { AdminDetailRow, AdminFailedPost } from '@/types/admin';
+import type { AdminFailedPost } from '@/types/admin/posts';
+import type { AdminDetailRow } from '@/types/admin/shared';
 
 /** A failed post as it was sent: its text, media, when and how, and what the network answered. */
 const props = defineProps<{

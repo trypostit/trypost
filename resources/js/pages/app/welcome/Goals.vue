@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 
+import WelcomeChoiceCard from '@/components/app/welcome/WelcomeChoiceCard.vue';
+import WelcomeContinueButton from '@/components/app/welcome/WelcomeContinueButton.vue';
 import InputError from '@/components/InputError.vue';
-import WelcomeChoiceCard from '@/components/welcome/WelcomeChoiceCard.vue';
-import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { goalArt, welcomeOptionArt } from '@/lib/welcomeOptions';
 import { store } from '@/routes/app/welcome/goals';

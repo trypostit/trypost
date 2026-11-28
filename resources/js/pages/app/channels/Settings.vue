@@ -5,12 +5,12 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
-import ChannelAvatar from '@/components/ChannelAvatar.vue';
-import ChannelPostingGoalSetting from '@/components/channels/ChannelPostingGoalSetting.vue';
-import ChannelTimezoneSetting from '@/components/channels/ChannelTimezoneSetting.vue';
-import PostingScheduleAddSlot from '@/components/channels/PostingScheduleAddSlot.vue';
-import PostingScheduleGenerateMenu from '@/components/channels/PostingScheduleGenerateMenu.vue';
-import PostingScheduleGrid from '@/components/channels/PostingScheduleGrid.vue';
+import ChannelAvatar from '@/components/app/ChannelAvatar.vue';
+import ChannelPostingGoalSetting from '@/components/app/channels/ChannelPostingGoalSetting.vue';
+import ChannelTimezoneSetting from '@/components/app/channels/ChannelTimezoneSetting.vue';
+import PostingScheduleAddSlot from '@/components/app/channels/PostingScheduleAddSlot.vue';
+import PostingScheduleGenerateMenu from '@/components/app/channels/PostingScheduleGenerateMenu.vue';
+import PostingScheduleGrid from '@/components/app/channels/PostingScheduleGrid.vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import {
@@ -18,7 +18,7 @@ import {
     emptySchedule,
     slotCount,
     withTime,
-} from '@/lib/postingSchedule';
+} from '@/lib/app/postingSchedule';
 import { copy, generate, update } from '@/routes/app/channels/posting-schedule';
 import { channels as channelsRoute } from '@/routes/app/workspace';
 import type {
@@ -27,8 +27,8 @@ import type {
     PostingSchedule,
     ScheduleGenerateAction,
     TimezoneOption,
-} from '@/types/posting-schedule';
-import type { ConnectedAccount } from '@/types/social-account';
+} from '@/types/app/posting-schedule';
+import type { ConnectedAccount } from '@/types/app/social-account';
 
 const DEFAULT_GOAL = 3;
 

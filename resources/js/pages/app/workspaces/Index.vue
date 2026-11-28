@@ -3,11 +3,11 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { IconCheck } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
+import WorkspaceUpgradeDialog from '@/components/app/workspaces/WorkspaceUpgradeDialog.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
-import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
+import { useWorkspaceAbilities } from '@/composables/app/useWorkspaceAbilities';
+import { useWorkspaceLimit } from '@/composables/app/useWorkspaceLimit';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { home } from '@/routes/app';
 import { switchMethod } from '@/routes/app/workspaces';

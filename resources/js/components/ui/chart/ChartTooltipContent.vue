@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import ChannelAvatar from '@/components/ChannelAvatar.vue';
+import ChannelAvatar from '@/components/app/ChannelAvatar.vue';
 
 import { activeLocale } from '@/language';
 import { filled } from '@/lib/helpers';

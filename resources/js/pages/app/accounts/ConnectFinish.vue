@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import ConnectLayout from '@/layouts/ConnectLayout.vue';
-import { DOCS_URL, platformGuideDocsUrl } from '@/lib/docs';
+import { DOCS_URL, platformGuideDocsUrl } from '@/lib/app/docs';
 import { cn } from '@/lib/utils';
 import { finish } from '@/routes/app/social/connect';
 

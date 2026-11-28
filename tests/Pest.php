@@ -1183,7 +1183,7 @@ function waitForPath(mixed $page, string $path): void
 
 /**
  * The JS expression that reads one item of a user's browser storage
- * (`trypost:<user id>`, see `resources/js/lib/browserStorage.ts`): from `user`,
+ * (`trypost:<user id>`, see `resources/js/lib/app/browserStorage.ts`): from `user`,
  * or from one workspace's block when `$workspaceId` is given.
  */
 function browserStorageItemJs(User $user, string $item, ?string $workspaceId = null): string

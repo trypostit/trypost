@@ -1,5 +1,5 @@
 /**
- * Prints the reconnect URL `connectUrl()` (`lib/connectRoutes.ts`)
+ * Prints the reconnect URL `connectUrl()` (`lib/app/connectRoutes.ts`)
  * builds for each platform given as an argument, so `ConnectUrlTest.php` can
  * check it against the server's connect routes. The connect routes are built
  * by `connectRouteModule()` below, so the harness needs no frontend build. A LinkedIn Page reconnects
@@ -48,7 +48,7 @@ registerHooks({
 Object.assign(globalThis, { window: { location: { pathname: '/schedule' } } });
 
 const { connectUrl } = await import(
-    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/connectRoutes.ts')).href
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/app/connectRoutes.ts')).href
 );
 
 console.log(JSON.stringify(Object.fromEntries(platforms.map((platform) => [platform, connectUrl(platform, 'channel-1') ?? null]))));

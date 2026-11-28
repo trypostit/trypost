@@ -3,10 +3,10 @@ import { Form, Head, usePage } from '@inertiajs/vue3';
 import { IconEye, IconEyeOff } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import LegalLinks from '@/components/auth/LegalLinks.vue';
-import SocialLogin from '@/components/auth/SocialLogin.vue';
+import LegalLinks from '@/components/app/auth/LegalLinks.vue';
+import SocialLogin from '@/components/app/auth/SocialLogin.vue';
+import TextLink from '@/components/app/TextLink.vue';
 import InputError from '@/components/InputError.vue';
-import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -18,8 +18,8 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useGuestLocale } from '@/composables/useGuestLocale';
-import { usePageErrors } from '@/composables/usePageErrors';
+import { useGuestLocale } from '@/composables/app/useGuestLocale';
+import { usePageErrors } from '@/composables/app/usePageErrors';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { register } from '@/routes';
 import { store } from '@/routes/login';

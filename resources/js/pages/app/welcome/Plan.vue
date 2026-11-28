@@ -3,16 +3,16 @@ import { Head, useForm } from '@inertiajs/vue3';
 import { IconStarFilled } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
-import ReviewQuote from '@/components/reviews/ReviewQuote.vue';
-import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
-import WelcomeOfferBanner from '@/components/welcome/WelcomeOfferBanner.vue';
-import { useAutoRotate } from '@/composables/useAutoRotate';
+import PlanFeatureList from '@/components/app/billing/PlanFeatureList.vue';
+import ReviewQuote from '@/components/app/reviews/ReviewQuote.vue';
+import WelcomeContinueButton from '@/components/app/welcome/WelcomeContinueButton.vue';
+import WelcomeOfferBanner from '@/components/app/welcome/WelcomeOfferBanner.vue';
+import { useAutoRotate } from '@/composables/app/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
-import { REVIEWS } from '@/lib/reviews';
+import { REVIEWS } from '@/lib/app/reviews';
 import { store } from '@/routes/app/welcome/plan';
-import type { Offer } from '@/types/offer';
-import type { PlanOption } from '@/types/plan';
+import type { Offer } from '@/types/app/offer';
+import type { PlanOption } from '@/types/app/plan';
 
 const props = defineProps<{
     plan: PlanOption;

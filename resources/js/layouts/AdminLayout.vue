@@ -5,7 +5,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import { useActiveUrl } from '@/composables/useActiveUrl';
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { ADMIN_NAV_GROUPS } from '@/lib/adminNavigation';
+import { ADMIN_NAV_GROUPS } from '@/lib/admin/navigation';
 import { filled } from '@/lib/helpers';
 
 /**

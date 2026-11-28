@@ -4,23 +4,23 @@ import { IconChartBar, IconChartBarOff } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
-import ChannelMetricsCard from '@/components/analytics/channel/ChannelMetricsCard.vue';
-import ChannelPublicationTable from '@/components/analytics/channel/ChannelPublicationTable.vue';
-import PostTypeFilter from '@/components/analytics/channel/PostTypeFilter.vue';
-import InsightsExportMenu from '@/components/analytics/InsightsExportMenu.vue';
-import InsightsSyncStatus from '@/components/analytics/InsightsSyncStatus.vue';
-import PostingActivityCard from '@/components/analytics/PostingActivityCard.vue';
-import ImportCoverage from '@/components/analytics/workspace/ImportCoverage.vue';
-import SummaryCards from '@/components/analytics/workspace/SummaryCards.vue';
-import ChannelInsightsPermissionNotice from '@/components/channels/ChannelInsightsPermissionNotice.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import LabelFilter from '@/components/labels/LabelFilter.vue';
-import PublishHeader from '@/components/publish/PublishHeader.vue';
-import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
+import ChannelMetricsCard from '@/components/app/analytics/channel/ChannelMetricsCard.vue';
+import ChannelPublicationTable from '@/components/app/analytics/channel/ChannelPublicationTable.vue';
+import PostTypeFilter from '@/components/app/analytics/channel/PostTypeFilter.vue';
+import InsightsExportMenu from '@/components/app/analytics/InsightsExportMenu.vue';
+import InsightsSyncStatus from '@/components/app/analytics/InsightsSyncStatus.vue';
+import PostingActivityCard from '@/components/app/analytics/PostingActivityCard.vue';
+import ImportCoverage from '@/components/app/analytics/workspace/ImportCoverage.vue';
+import SummaryCards from '@/components/app/analytics/workspace/SummaryCards.vue';
+import ChannelInsightsPermissionNotice from '@/components/app/channels/ChannelInsightsPermissionNotice.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import LabelFilter from '@/components/app/labels/LabelFilter.vue';
+import PublishHeader from '@/components/app/publish/PublishHeader.vue';
+import { useAnalyticsCoveragePoll } from '@/composables/app/useAnalyticsCoveragePoll';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { accountLabel } from '@/lib/analyticsAccounts';
-import { showsPostTypeFilter } from '@/lib/channelInsights';
+import { accountLabel } from '@/lib/app/analyticsAccounts';
+import { showsPostTypeFilter } from '@/lib/app/channelInsights';
 import { insights } from '@/routes/app/channels';
 import type {
     AnalyticsReport,
@@ -32,9 +32,9 @@ import type {
     PostingActivity,
     SummaryMetric,
 } from '@/types/analytics';
-import { channelName } from '@/types/channel';
+import { channelName } from '@/types/app/channel';
+import type { PublishChannel } from '@/types/app/publish';
 import { GatedFeature } from '@/types/channel-permission';
-import type { PublishChannel } from '@/types/publish';
 
 /** The analytics features whose missing scope this page warns about. */
 const INSIGHTS_FEATURES = [

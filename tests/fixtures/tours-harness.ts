@@ -1,5 +1,5 @@
 /**
- * Prints `TOURS` of `resources/js/lib/tours.ts` and its step navigation over
+ * Prints `TOURS` of `resources/js/lib/app/tours.ts` and its step navigation over
  * the cases in a JSON argument, as JSON, so `ToursTest.php` can check them.
  * Node strips the types, so the source is loaded as-is.
  */

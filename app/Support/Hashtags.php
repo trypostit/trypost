@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
  * Hashtags as Instagram links them: `#` at the start or after a character
  * that cannot be part of a word, URL path or HTML entity, followed by
  * letters, digits or `_` with at least one letter. Mirrored by
- * `resources/js/lib/hashtags.ts`; keep the two patterns identical.
+ * `resources/js/lib/app/hashtags.ts`; keep the two patterns identical.
  */
 final class Hashtags
 {

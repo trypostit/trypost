@@ -33,53 +33,53 @@ import {
     store as storePost,
     update as updatePost,
 } from '@/actions/App/Http/Controllers/App/PostController';
-import AppHeaderActions from '@/components/AppHeaderActions.vue';
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import LabelFilter from '@/components/labels/LabelFilter.vue';
-import InviteMemberDialog from '@/components/members/InviteMemberDialog.vue';
-import PostComposerDialog from '@/components/posts/composer/PostComposerDialog.vue';
-import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
-import ScheduleViewSwitch from '@/components/posts/ScheduleViewSwitch.vue';
-import DayHeading from '@/components/publish/DayHeading.vue';
-import LinkedPostDetails from '@/components/publish/LinkedPostDetails.vue';
-import NewPostButton from '@/components/publish/NewPostButton.vue';
-import PostListSkeleton from '@/components/publish/PostListSkeleton.vue';
-import PostTimelineCard from '@/components/publish/PostTimelineCard.vue';
-import PublishEmptyIllustration from '@/components/publish/PublishEmptyIllustration.vue';
-import PublishFilterMenu from '@/components/publish/PublishFilterMenu.vue';
-import PublishHeader from '@/components/publish/PublishHeader.vue';
-import PublishTabs from '@/components/publish/PublishTabs.vue';
-import QueueTimeline from '@/components/publish/QueueTimeline.vue';
+import AppHeaderActions from '@/components/app/AppHeaderActions.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import LabelFilter from '@/components/app/labels/LabelFilter.vue';
+import InviteMemberDialog from '@/components/app/members/InviteMemberDialog.vue';
+import PostComposerDialog from '@/components/app/posts/composer/PostComposerDialog.vue';
+import PostChannelFilter from '@/components/app/posts/PostChannelFilter.vue';
+import ScheduleViewSwitch from '@/components/app/posts/ScheduleViewSwitch.vue';
+import DayHeading from '@/components/app/publish/DayHeading.vue';
+import LinkedPostDetails from '@/components/app/publish/LinkedPostDetails.vue';
+import NewPostButton from '@/components/app/publish/NewPostButton.vue';
+import PostListSkeleton from '@/components/app/publish/PostListSkeleton.vue';
+import PostTimelineCard from '@/components/app/publish/PostTimelineCard.vue';
+import PublishEmptyIllustration from '@/components/app/publish/PublishEmptyIllustration.vue';
+import PublishFilterMenu from '@/components/app/publish/PublishFilterMenu.vue';
+import PublishHeader from '@/components/app/publish/PublishHeader.vue';
+import PublishTabs from '@/components/app/publish/PublishTabs.vue';
+import QueueTimeline from '@/components/app/publish/QueueTimeline.vue';
 import { Button } from '@/components/ui/button';
-import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
-import { usePublishFilters } from '@/composables/publish/usePublishFilters';
-import { useComposerData } from '@/composables/useComposerData';
-import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
-import { openPostComposer } from '@/composables/useGlobalPostComposer';
+import { useWorkspaceEcho } from '@/composables/app/echo/useWorkspaceEcho';
+import { usePublishFilters } from '@/composables/app/publish/usePublishFilters';
+import { useComposerData } from '@/composables/app/useComposerData';
+import { useConnectChannelDialog } from '@/composables/app/useConnectChannelDialog';
+import { openPostComposer } from '@/composables/app/useGlobalPostComposer';
 import {
     deletePostCardKey,
     editPostCardUrlKey,
     postCardLabelsKey,
     schedulePostCard,
-} from '@/composables/usePostCardActions';
-import { useShowPostingSlots } from '@/composables/useShowPostingSlots';
-import type { QueueSlotTarget } from '@/composables/useSortableQueue';
-import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+} from '@/composables/app/usePostCardActions';
+import { useShowPostingSlots } from '@/composables/app/useShowPostingSlots';
+import type { QueueSlotTarget } from '@/composables/app/useSortableQueue';
+import { useWorkspaceAbilities } from '@/composables/app/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { afterHistorySettles, cameFromAppPage } from '@/lib/app/inAppHistory';
+import { postAttemptAt } from '@/lib/app/postCard';
 import { filled } from '@/lib/helpers';
-import { afterHistorySettles, cameFromAppPage } from '@/lib/inAppHistory';
-import { postAttemptAt } from '@/lib/postCard';
 import { grid, settings } from '@/routes/app/channels';
-import { PostStatus, ScheduleMode } from '@/types/post';
+import { PostStatus, ScheduleMode } from '@/types/app/post';
 import type {
     ComposerInitialDraft,
     ComposerInitialPost,
     PostComposition,
-} from '@/types/post-composition';
-import type { TimezoneOption } from '@/types/posting-schedule';
+} from '@/types/app/post-composition';
+import type { TimezoneOption } from '@/types/app/posting-schedule';
 import type {
     PostCard,
     PostCardLabel,
@@ -93,7 +93,7 @@ import type {
     QueueItem,
     QueueView,
     ScrollPostCards,
-} from '@/types/publish';
+} from '@/types/app/publish';
 
 interface Props {
     scope: PublishScope;

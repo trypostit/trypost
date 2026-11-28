@@ -3,37 +3,27 @@ import { Head, router } from '@inertiajs/vue3';
 import { IconEye, IconLock, IconLockOpen } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
-import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
-import BlockUserDialog from '@/components/admin/BlockUserDialog.vue';
-import UserActivityTab from '@/components/admin/user/UserActivityTab.vue';
-import UserBillingTab from '@/components/admin/user/UserBillingTab.vue';
-import UserIntegrationsTab from '@/components/admin/user/UserIntegrationsTab.vue';
-import UserOverviewTab from '@/components/admin/user/UserOverviewTab.vue';
-import UserPostsTab from '@/components/admin/user/UserPostsTab.vue';
-import UserWorkspacesTab from '@/components/admin/user/UserWorkspacesTab.vue';
+import AdminEmptyState from '@/components/admin/shared/AdminEmptyState.vue';
+import AdminStatGrid from '@/components/admin/shared/AdminStatGrid.vue';
+import BlockUserDialog from '@/components/admin/users/BlockUserDialog.vue';
+import UserActivityTab from '@/components/admin/users/profile/UserActivityTab.vue';
+import UserBillingTab from '@/components/admin/users/profile/UserBillingTab.vue';
+import UserIntegrationsTab from '@/components/admin/users/profile/UserIntegrationsTab.vue';
+import UserOverviewTab from '@/components/admin/users/profile/UserOverviewTab.vue';
+import UserPostsTab from '@/components/admin/users/profile/UserPostsTab.vue';
+import UserWorkspacesTab from '@/components/admin/users/profile/UserWorkspacesTab.vue';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { planName, profileUrl } from '@/lib/adminUsers';
+import { planName, profileUrl } from '@/lib/admin/users';
 import { blank, filled } from '@/lib/helpers';
 import { destroy as blockDestroy } from '@/routes/admin/users/block';
 import { store as startImpersonation } from '@/routes/admin/users/impersonation';
-import type {
-    AdminAccountBilling,
-    AdminStat,
-    AdminUser,
-    AdminUserActivityData,
-    AdminUserIntegrationsData,
-    AdminUserOverview,
-    AdminUserPostsData,
-    AdminUserTab,
-    AdminUserTabData,
-    AdminUserWorkspacesData,
-} from '@/types/admin';
+import type { AdminStat } from '@/types/admin/shared';
+import type { AdminAccountBilling, AdminUser, AdminUserActivityData, AdminUserIntegrationsData, AdminUserOverview, AdminUserPostsData, AdminUserTab, AdminUserTabData, AdminUserWorkspacesData } from '@/types/admin/users';
 
 const ALL_TABS: { value: AdminUserTab; label: string }[] = [
     { value: 'overview', label: 'Overview' },

@@ -3,7 +3,7 @@ import { IconCircleCheck, IconCircleX } from '@tabler/icons-vue';
 import { computed, onMounted, ref } from 'vue';
 
 import PopupLayout from '@/layouts/PopupLayout.vue';
-import { MEDIA_SOURCE_POPUP_CHANNEL } from '@/lib/mediaSources/popup';
+import { MEDIA_SOURCE_POPUP_CHANNEL } from '@/lib/app/mediaSources/popup';
 
 const props = defineProps<{
     source: string;

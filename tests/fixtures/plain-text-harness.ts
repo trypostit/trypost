@@ -1,5 +1,5 @@
 /**
- * Runs `plainText()` from `resources/js/lib/plainText.ts` over a corpus and
+ * Runs `plainText()` from `resources/js/lib/app/plainText.ts` over a corpus and
  * prints the results as JSON, so `PlainTextParityTest.php` can compare them
  * with `ContentSanitizer::plainText()`. Node has no DOM, so the textarea
  * answers as a browser does: named references from a small table (an unknown
@@ -73,7 +73,7 @@ Object.assign(globalThis, {
     },
 });
 
-const { plainText } = await import(new URL('lib/plainText.ts', base).href);
+const { plainText } = await import(new URL('lib/app/plainText.ts', base).href);
 const corpus: string[] = JSON.parse(fs.readFileSync(corpusFile, 'utf8'));
 
 console.log(JSON.stringify(corpus.map((text) => plainText(text))));

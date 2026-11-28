@@ -3,17 +3,17 @@ import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
 import { IconChevronRight, IconPlus, IconTemplate } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import CreateHeader from '@/components/create/CreateHeader.vue';
-import CreateTabs from '@/components/create/CreateTabs.vue';
-import DuplicateTemplateDialog from '@/components/create/templates/DuplicateTemplateDialog.vue';
-import TemplateCard from '@/components/create/templates/TemplateCard.vue';
-import TemplateDetailDialog from '@/components/create/templates/TemplateDetailDialog.vue';
-import TemplateEditorDialog from '@/components/create/templates/TemplateEditorDialog.vue';
-import TemplateFilterPopover from '@/components/create/templates/TemplateFilterPopover.vue';
-import TemplateScopeChips from '@/components/create/templates/TemplateScopeChips.vue';
-import TemplateSearch from '@/components/create/templates/TemplateSearch.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import CreateHeader from '@/components/app/create/CreateHeader.vue';
+import CreateTabs from '@/components/app/create/CreateTabs.vue';
+import DuplicateTemplateDialog from '@/components/app/create/templates/DuplicateTemplateDialog.vue';
+import TemplateCard from '@/components/app/create/templates/TemplateCard.vue';
+import TemplateDetailDialog from '@/components/app/create/templates/TemplateDetailDialog.vue';
+import TemplateEditorDialog from '@/components/app/create/templates/TemplateEditorDialog.vue';
+import TemplateFilterPopover from '@/components/app/create/templates/TemplateFilterPopover.vue';
+import TemplateScopeChips from '@/components/app/create/templates/TemplateScopeChips.vue';
+import TemplateSearch from '@/components/app/create/templates/TemplateSearch.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy, index } from '@/routes/app/create/templates';
@@ -29,7 +29,7 @@ import {
     type TemplateLibraryProps,
     type TemplateModal,
     type TemplateScope,
-} from '@/types/template';
+} from '@/types/app/template';
 
 const props = defineProps<{
     view: TemplateScope;

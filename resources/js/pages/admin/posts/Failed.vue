@@ -4,8 +4,8 @@ import { IconEye, IconRefresh } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
-import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import FailedPostDialog from '@/components/admin/posts/FailedPostDialog.vue';
+import AdminEmptyState from '@/components/admin/shared/AdminEmptyState.vue';
 import NetworkFilter from '@/components/NetworkFilter.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import {
@@ -30,16 +30,17 @@ import {
 } from '@/components/ui/table';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { channelDisplayName, channelStatusLabel, needsReconnect } from '@/lib/adminChannels';
-import { errorCategoryLabel } from '@/lib/adminErrorCategories';
-import { countIn, firstError, joinFilled } from '@/lib/adminFormat';
-import { originLabel } from '@/lib/adminPublishing';
-import { profileUrl } from '@/lib/adminUsers';
+import { channelDisplayName, channelStatusLabel, needsReconnect } from '@/lib/admin/channels';
+import { errorCategoryLabel } from '@/lib/admin/errorCategories';
+import { countIn, firstError, joinFilled } from '@/lib/admin/format';
+import { originLabel } from '@/lib/admin/publishing';
+import { profileUrl } from '@/lib/admin/users';
 import { blank, filled, transform } from '@/lib/helpers';
 import { formatFullNumber, MISSING_VALUE } from '@/lib/utils';
 import { index as failedIndex } from '@/routes/admin/posts/failed';
 import { store as retryStore } from '@/routes/admin/posts/retry';
-import type { AdminFailedPost, ScrollPage } from '@/types/admin';
+import type { AdminFailedPost } from '@/types/admin/posts';
+import type { ScrollPage } from '@/types/admin/shared';
 
 const props = defineProps<{
     posts: ScrollPage<AdminFailedPost>;

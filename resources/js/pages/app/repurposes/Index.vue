@@ -10,22 +10,22 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
-import ChannelAvatar from '@/components/ChannelAvatar.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import ChannelAvatar from '@/components/app/ChannelAvatar.vue';
+import EmptyState from '@/components/app/EmptyState.vue';
+import CreateRepurposeDialog from '@/components/app/repurpose/CreateRepurposeDialog.vue';
+import RepurposesEmptyIllustration from '@/components/app/repurpose/RepurposesEmptyIllustration.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
-import CreateRepurposeDialog from '@/components/repurpose/CreateRepurposeDialog.vue';
-import RepurposesEmptyIllustration from '@/components/repurpose/RepurposesEmptyIllustration.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
+import { useConnectChannelDialog } from '@/composables/app/useConnectChannelDialog';
+import { useWorkspaceAbilities } from '@/composables/app/useWorkspaceAbilities';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { show } from '@/routes/app/repurposes';
-import type { ChannelAccount } from '@/types/channel';
-import type { Repurpose } from '@/types/repurpose';
-import { repurposeStatusVariant } from '@/types/repurpose-status';
+import type { ChannelAccount } from '@/types/app/channel';
+import type { Repurpose } from '@/types/app/repurpose';
+import { repurposeStatusVariant } from '@/types/app/repurpose-status';
 
 const props = defineProps<{
     repurposes: { data: Repurpose[] };

@@ -8,7 +8,7 @@ import {
   AlertDialogPortal,
   useForwardPropsEmits,
 } from "reka-ui"
-import { trackDialogForTours } from "@/composables/tours/useTourWaitsForDialogs"
+import { trackDialogForTours } from "@/composables/app/tours/useTourWaitsForDialogs"
 import { cn } from "@/lib/utils"
 
 defineOptions({

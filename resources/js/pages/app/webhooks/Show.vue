@@ -8,17 +8,17 @@ import {
 } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import { Button } from '@/components/ui/button';
-import EditWebhookDialog from '@/components/webhook/EditWebhookDialog.vue';
-import RotateSecretDialog from '@/components/webhook/RotateSecretDialog.vue';
+import ConfirmDeleteModal from '@/components/app/ConfirmDeleteModal.vue';
+import EditWebhookDialog from '@/components/app/webhook/EditWebhookDialog.vue';
+import RotateSecretDialog from '@/components/app/webhook/RotateSecretDialog.vue';
 import {
     webhookEventDescriptionKey,
     webhookEventLabelKey,
-} from '@/components/webhook/webhook-events';
-import WebhookActionsMenu from '@/components/webhook/WebhookActionsMenu.vue';
-import WebhookLogViewer from '@/components/webhook/WebhookLogViewer.vue';
-import WebhookSigningSecret from '@/components/webhook/WebhookSigningSecret.vue';
+} from '@/components/app/webhook/webhook-events';
+import WebhookActionsMenu from '@/components/app/webhook/WebhookActionsMenu.vue';
+import WebhookLogViewer from '@/components/app/webhook/WebhookLogViewer.vue';
+import WebhookSigningSecret from '@/components/app/webhook/WebhookSigningSecret.vue';
+import { Button } from '@/components/ui/button';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { destroy, index, sendTest } from '@/routes/app/webhooks';
@@ -26,8 +26,8 @@ import {
     webhookEndpointParts,
     type WebhookLog,
     type WebhookWithSecret,
-} from '@/types/webhook';
-import { webhookStatusDot } from '@/types/webhook-status';
+} from '@/types/app/webhook';
+import { webhookStatusDot } from '@/types/app/webhook-status';
 
 const props = defineProps<{
     webhook: WebhookWithSecret;
