@@ -1,6 +1,6 @@
 import type { GatedFeatureValue } from '@/types/channel-permission';
 
-/** How the backoffice names each `GatedFeature` a channel's scopes turn on. */
+/** How the admin names each `GatedFeature` a channel's scopes turn on. */
 const FEATURE_LABELS: Record<GatedFeatureValue, string> = {
     publish: 'Publish',
     thread_replies: 'Replies',

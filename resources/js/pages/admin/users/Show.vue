@@ -146,10 +146,10 @@ const activity = computed((): AdminUserActivityData | null => {
 });
 
 const isBlocked = computed(() => filled(props.user.blocked_at));
-const canAct = computed(() => !props.user.is_backoffice_admin);
+const canAct = computed(() => !props.user.can_access_admin);
 
 const canViewAs = computed((): boolean => {
-    if (props.user.is_backoffice_admin) {
+    if (props.user.can_access_admin) {
         return false;
     }
 

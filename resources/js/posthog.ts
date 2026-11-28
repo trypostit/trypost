@@ -11,7 +11,7 @@ const host = import.meta.env.VITE_POSTHOG_HOST as string | undefined;
 const enabled = import.meta.env.VITE_POSTHOG_ENABLED === 'true' && !!apiKey;
 
 /**
- * A backoffice admin viewing the app as another user (the shared
+ * An admin viewing the app as another user (the shared
  * `impersonating` prop) must never be tracked as that user: capture stays off
  * until the impersonation ends.
  */

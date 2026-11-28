@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** What a backoffice list shows when it has nothing to list. */
+/** What an admin list shows when it has nothing to list. */
 import { computed } from 'vue';
 
 type EmptyStateVariant = 'page' | 'card' | 'section' | 'chart' | 'inset';

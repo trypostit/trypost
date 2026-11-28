@@ -19,7 +19,7 @@ class BuildUserActivity
     public const int HISTORY_LIMIT = 50;
 
     /**
-     * What happened around the user: what backoffice admins did to them, the
+     * What happened around the user: what admins did to them, the
      * sessions they are signed in with (`DatabaseSessions`: none under another
      * session driver; the id is hashed, never sent, and the last activity is
      * an ISO instant), and the changelog entries they opened.
@@ -60,7 +60,7 @@ class BuildUserActivity
 
     /**
      * The sessions the user is signed in with, the most recently active
-     * first, as the backoffice shows them: the id hashed, never sent, and the
+     * first, as the admin shows them: the id hashed, never sent, and the
      * last activity an ISO instant. The overview's "last seen" is the first.
      *
      * @return list<array{id: string, user_agent: ?string, ip: ?string, last_activity: string}>

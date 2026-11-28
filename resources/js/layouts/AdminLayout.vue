@@ -9,7 +9,7 @@ import { ADMIN_NAV_GROUPS } from '@/lib/adminNavigation';
 import { filled } from '@/lib/helpers';
 
 /**
- * The backoffice page: the app's shell with the admin sidebar in place of the
+ * The admin page: the app's shell with the admin sidebar in place of the
  * app's, like `SettingsLayout` swaps in the settings one, and the wide
  * settings page header (the sidebar item's icon, title, description,
  * actions).

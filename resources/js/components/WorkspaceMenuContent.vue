@@ -343,11 +343,11 @@ const supportLinks = [
                 {{ $t('sidebar.plans_billing') }}
             </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem v-if="user.is_backoffice_admin" :as-child="true">
+        <DropdownMenuItem v-if="user.can_access_admin" :as-child="true">
             <Link
                 class="block w-full cursor-pointer"
                 :href="adminDashboard.url()"
-                data-testid="sidebar-menu-backoffice"
+                data-testid="sidebar-menu-admin"
             >
                 <IconLockSquareRounded class="size-4" />
                 Admin

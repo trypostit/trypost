@@ -1,7 +1,7 @@
 import { filled } from '@/lib/helpers';
 import { show as userShow } from '@/routes/admin/users';
 
-/** A customer's name, or what the backoffice calls one whose user was deleted. */
+/** A customer's name, or what the admin calls one whose user was deleted. */
 export const customerName = (name: string | null): string => {
     if (filled(name)) {
         return name;

@@ -11,7 +11,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /**
- * Every subscription that ever billed, read once, and what the backoffice
+ * Every subscription that ever billed, read once, and what the admin
  * works out from it over time: how many were alive at a moment, which ended
  * in a range and the churn they make. An ended subscription keeps its row
  * with `ends_at`, so every figure is exact for any day.

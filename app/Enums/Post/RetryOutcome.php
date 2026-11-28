@@ -24,7 +24,7 @@ enum RetryOutcome: string
     /** The post changed while the retry was being prepared; nothing was queued. */
     case Changed = 'changed';
 
-    /** The form field the backoffice shows the outcome under. */
+    /** The form field the admin shows the outcome under. */
     public function errorField(): string
     {
         return match ($this) {
@@ -37,7 +37,7 @@ enum RetryOutcome: string
         };
     }
 
-    /** What the backoffice tells the admin who retried. */
+    /** What the admin tells the admin who retried. */
     public function message(): string
     {
         return match ($this) {

@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 class ImpersonationController extends Controller
 {
     /**
-     * Stop viewing the app as another user. Lives outside the backoffice
+     * Stop viewing the app as another user. Lives outside the admin
      * routes: the signed-in user here is the impersonated one.
      */
     public function destroy(Request $request, StopImpersonation $stopImpersonation): RedirectResponse
@@ -27,7 +27,7 @@ class ImpersonationController extends Controller
             return redirect()->route('login');
         }
 
-        if ($admin->isBackofficeAdmin()) {
+        if ($admin->canAccessAdmin()) {
             return redirect()->route('admin.users.show', $impersonated);
         }
 

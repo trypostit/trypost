@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Enums\Admin;
 
 /**
- * The tabs of a user's backoffice profile. Only the open tab's data is built
+ * The tabs of a user's admin profile. Only the open tab's data is built
  * on each visit.
  */
 enum UserTab: string

@@ -33,6 +33,7 @@ afterEach(function () {
 });
 
 test('the overview shows how the user signs in, came in and was last seen', function () {
+    $this->freezeSecond();
     config(['session.driver' => 'database']);
     DB::table('sessions')->insert(['id' => 'sess-1', 'user_id' => $this->user->id, 'ip_address' => '203.0.113.7', 'user_agent' => 'Safari', 'payload' => '', 'last_activity' => now()->timestamp]);
 

@@ -79,8 +79,8 @@ test('an admin cannot impersonate another admin, a blocked user or themselves, a
     expect(session()->has(Impersonation::SESSION_KEY))->toBeFalse()
         ->and(Activity::query()->exists())->toBeFalse();
 })->with([
-    'another admin' => [fn (): User => User::factory()->create(['email' => 'other@trypost.test']), 'You cannot view the app as a backoffice admin.'],
-    'themselves' => [fn (): User => test()->admin, 'You cannot view the app as a backoffice admin.'],
+    'another admin' => [fn (): User => User::factory()->create(['email' => 'other@trypost.test']), 'You cannot view the app as an admin.'],
+    'themselves' => [fn (): User => test()->admin, 'You cannot view the app as an admin.'],
     'a blocked user' => [fn (): User => User::factory()->blocked()->create(), 'Unblock this user before viewing the app as them.'],
 ]);
 

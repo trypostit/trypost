@@ -58,7 +58,7 @@ test('the quotas page offers no custom range at all', function () {
         ->assertSessionHasErrors('range');
 });
 
-test('the month to date is not a backoffice period', function (string $route) {
+test('the month to date is not an admin period', function (string $route) {
     $this->actingAs($this->admin)
         ->get(route($route, ['range' => 'mtd']))
         ->assertSessionHasErrors('range');

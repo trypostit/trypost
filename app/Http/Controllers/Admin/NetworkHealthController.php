@@ -23,7 +23,7 @@ class NetworkHealthController extends Controller
             'distribution' => BuildChannelDistribution::execute(),
             'permissions' => BuildNetworkPermissions::execute(),
             'growth' => BuildChannelGrowth::execute($request->dateRange()),
-            'ranges' => DateRangePreset::backoffice(),
+            'ranges' => DateRangePreset::admin(),
             ...$request->rangeProps(),
             'filters' => $request->rangeFilters(),
         ]);

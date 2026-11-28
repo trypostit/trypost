@@ -152,7 +152,7 @@ class BuildUsageInsights
     }
 
     /**
-     * A stage as people read it, as the backoffice's `humanize()` writes a
+     * A stage as people read it, as the admin's `humanize()` writes a
      * key on the frontend: `at_risk` becomes "At risk".
      */
     private static function stageLabel(LifecycleStage $stage): string

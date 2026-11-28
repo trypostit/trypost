@@ -16,7 +16,7 @@ class SaveOffer
     public function __construct(private readonly RecordAdminAction $recordAdminAction) {}
 
     /**
-     * Creates an offer, or updates one, from the backoffice form. Its days
+     * Creates an offer, or updates one, from the admin form. Its days
      * are the admin's own: it starts at the start of its first day and ends
      * at the end of its last, in their zone.
      *

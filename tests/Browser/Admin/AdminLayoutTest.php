@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-test('an admin opens the backoffice from the user menu and gets its own sidebar', function () {
+test('an admin opens the admin from the user menu and gets its own sidebar', function () {
     $admin = workspaceOwner();
     config()->set('trypost.admin.emails', [$admin->email]);
     $admin->account->forceFill(['trial_ends_at' => now()->addWeek()])->save();
@@ -13,8 +13,8 @@ test('an admin opens the backoffice from the user menu and gets its own sidebar'
 
     waitFor($page, '@sidebar-workspace-menu');
     $page->click('@sidebar-workspace-menu');
-    waitFor($page, '@sidebar-menu-backoffice');
-    $page->click('@sidebar-menu-backoffice');
+    waitFor($page, '@sidebar-menu-admin');
+    $page->click('@sidebar-menu-admin');
 
     waitForPath($page, route('admin.dashboard', absolute: false));
     waitFor($page, '@admin-sidebar');
@@ -30,7 +30,7 @@ test('an admin opens the backoffice from the user menu and gets its own sidebar'
     $page->assertNoJavaScriptErrors();
 });
 
-test('a user who is not an admin has no backoffice item in the user menu', function () {
+test('a user who is not an admin has no admin item in the user menu', function () {
     admin();
     $user = workspaceOwner();
     $user->account->forceFill(['trial_ends_at' => now()->addWeek()])->save();
@@ -43,6 +43,6 @@ test('a user who is not an admin has no backoffice item in the user menu', funct
     $page->click('@sidebar-workspace-menu');
     waitFor($page, '@logout-button');
 
-    $page->assertMissing('@sidebar-menu-backoffice')
+    $page->assertMissing('@sidebar-menu-admin')
         ->assertNoJavaScriptErrors();
 });

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
- * How the backoffice counts what TryPost sent to a network: a post went out
+ * How the admin counts what TryPost sent to a network: a post went out
  * (published, or deleted there since) or the network refused it (failed, or
  * rejected in review). Posts still on their way are not counted.
  *
@@ -90,7 +90,7 @@ final class PublishingCounts
     }
 
     /**
-     * What the backoffice calls failed everywhere: the network refused the
+     * What the admin calls failed everywhere: the network refused the
      * post, or rejected it in review.
      *
      * @return list<PublishStatus>

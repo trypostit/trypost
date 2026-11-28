@@ -26,7 +26,7 @@ class AuthUserResource
             'week_starts_on' => $user->week_starts_on->value,
             'default_post_action' => $user->default_post_action->value,
             'email_verified_at' => $user->email_verified_at?->toIso8601String(),
-            'is_backoffice_admin' => $user->isBackofficeAdmin() && ! (bool) config('trypost.self_hosted'),
+            'can_access_admin' => $user->canAccessAdmin() && ! (bool) config('trypost.self_hosted'),
             'current_workspace_id' => $user->current_workspace_id,
             'created_at' => $user->created_at->toIso8601String(),
             'updated_at' => $user->updated_at->toIso8601String(),

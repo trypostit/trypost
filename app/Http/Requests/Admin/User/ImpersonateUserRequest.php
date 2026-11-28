@@ -39,8 +39,8 @@ class ImpersonateUserRequest extends FormRequest
                     return;
                 }
 
-                if ($target->is($this->user()) || $target->isBackofficeAdmin()) {
-                    $validator->errors()->add('user', 'You cannot view the app as a backoffice admin.');
+                if ($target->is($this->user()) || $target->canAccessAdmin()) {
+                    $validator->errors()->add('user', 'You cannot view the app as an admin.');
 
                     return;
                 }

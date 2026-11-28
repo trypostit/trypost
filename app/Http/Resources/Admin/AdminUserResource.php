@@ -24,7 +24,7 @@ class AdminUserResource extends JsonResource
             'email' => $this->email,
             'photo_url' => $this->photo_url,
             'email_verified' => filled($this->email_verified_at),
-            'is_backoffice_admin' => $this->isBackofficeAdmin(),
+            'can_access_admin' => $this->canAccessAdmin(),
             'is_owner' => $this->isAccountOwner(),
             'plan' => $this->account?->plan?->name,
             'has_app_access' => $this->account?->hasAppAccess() === true,

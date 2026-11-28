@@ -15,7 +15,7 @@ class SyncPlatformQuotas extends Command
 {
     protected $signature = 'admin:sync-platform-quotas';
 
-    protected $description = 'Read the YouTube quota and the X spend for the backoffice';
+    protected $description = 'Read the YouTube quota and the X spend for the admin';
 
     public function handle(YouTubeQuotaReader $youtube, XUsageReader $x): int
     {

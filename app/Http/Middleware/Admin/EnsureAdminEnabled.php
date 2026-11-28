@@ -8,11 +8,11 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureBackofficeEnabled
+class EnsureAdminEnabled
 {
     /**
-     * The backoffice is TryPost Cloud's only: a self-hosted install answers
-     * 404 on every backoffice page, as if it were not there.
+     * The admin is TryPost Cloud's only: a self-hosted install answers
+     * 404 on every admin page, as if it were not there.
      *
      * @param  Closure(Request): (Response)  $next
      */

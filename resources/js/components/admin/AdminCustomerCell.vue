@@ -5,7 +5,7 @@ import { computed } from 'vue';
 import { customerName } from '@/lib/adminUsers';
 
 /**
- * A customer in a backoffice table: their name, linking to their profile
+ * A customer in an admin table: their name, linking to their profile
  * while the user still exists, over a muted line (their email, a plan).
  */
 const props = defineProps<{

@@ -7,7 +7,7 @@ namespace App\Support\Admin;
 final class Impersonation
 {
     /**
-     * Session key holding the id of the backoffice admin who is viewing the
+     * Session key holding the id of the admin who is viewing the
      * app as another user. Present only while impersonating.
      */
     public const string SESSION_KEY = 'impersonator_id';

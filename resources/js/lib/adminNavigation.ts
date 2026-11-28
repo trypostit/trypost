@@ -39,7 +39,7 @@ interface AdminNavGroup {
     items: AdminNavItem[];
 }
 
-/** The backoffice's pages, as the sidebar lists them and the page header takes its icon from. */
+/** The admin's pages, as the sidebar lists them and the page header takes its icon from. */
 export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     {
         key: 'overview',

@@ -99,11 +99,11 @@ test('an admin cannot block themselves or another admin', function () {
 
     $this->actingAs($this->admin)
         ->post(route('admin.users.block.store', $this->admin), ['reason' => 'Test'])
-        ->assertSessionHasErrors(['user' => 'A backoffice admin cannot be blocked.']);
+        ->assertSessionHasErrors(['user' => 'An admin cannot be blocked.']);
 
     $this->actingAs($this->admin)
         ->post(route('admin.users.block.store', $otherAdmin), ['reason' => 'Test'])
-        ->assertSessionHasErrors(['user' => 'A backoffice admin cannot be blocked.']);
+        ->assertSessionHasErrors(['user' => 'An admin cannot be blocked.']);
 
     expect($this->admin->fresh()->isBlocked())->toBeFalse()
         ->and($otherAdmin->fresh()->isBlocked())->toBeFalse();

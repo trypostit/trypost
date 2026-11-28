@@ -122,7 +122,7 @@ const sessionDetail = (session: AdminUserActivityData['sessions'][number]): stri
     <div class="flex flex-col gap-10" data-testid="admin-user-activity">
         <SettingsSection
             title="Admin history"
-            description="What backoffice admins did to this user."
+            description="What admins did to this user."
         >
             <AdminEmptyState v-if="!hasHistory">No admin has acted on this user yet.</AdminEmptyState>
             <ul

@@ -8,7 +8,7 @@ use App\Dto\Analytics\DateRange;
 use App\Enums\Analytics\DateRangePreset;
 
 /**
- * The period a backoffice page covers: a preset or a custom range of the
+ * The period an admin page covers: a preset or a custom range of the
  * viewing admin's calendar days. The request using it declares its rules
  * and its `MAX_DAYS_BACK`, how far back a custom range may start.
  */

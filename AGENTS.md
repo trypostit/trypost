@@ -503,7 +503,7 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   any locale.
 - **Adding an offer.** Create its coupon in Stripe when it has one (no dates, no
   limit), add its
-  copy to all 16 locales and deploy, then create the offer on the backoffice
+  copy to all 16 locales and deploy, then create the offer on the admin
   Offers page (`admin.billing.offers.index`) of each environment (owner decision
   November 2026; still no data migration, since the coupon id differs between
   Stripe test and live). The page edits only the `offers` row: it refuses a
@@ -513,12 +513,12 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   `php artisan db:seed --class=OfferSeeder` adds the test-mode offers; it is not
   part of `DatabaseSeeder`, so tests never start with them.
 
-## Backoffice (`/admin`)
+## Admin (`/admin`)
 
-The in-app backoffice lives at `/admin` (`routes/admin.php`, pages under `resources/js/pages/admin`, controllers under `app/Http/Controllers/Admin`). It is TryPost Cloud's only.
+The in-app admin lives at `/admin` (`routes/admin.php`, pages under `resources/js/pages/admin`, controllers under `app/Http/Controllers/Admin`). It is TryPost Cloud's only.
 
-- **Off on self-hosted** (owner decision November 2026): every backoffice route sits behind `EnsureBackofficeEnabled`, which answers 404 when `trypost.self_hosted` is on, before the admin check, and the app menu never offers it there (`auth.user.is_backoffice_admin` is false). So nothing inside the backoffice checks `self_hosted` or `selfHosted`: no page, tab, sidebar group, action or Stripe read hides or skips anything for self-hosted. Do not add such a check; a new backoffice page needs nothing for it. Its tests run as Cloud (`tests/Pest.php` sets `trypost.self_hosted` off for `Feature/Admin` and `Browser/Admin`).
-- **Who gets in:** only the accounts whose email is in `ADMIN_EMAILS`, verified or not (owner decision November 2026: list only emails that already have an account, since the first signup with a listed email gets in) (`User::isBackofficeAdmin()`, through `EnsureBackofficeAdmin`); anyone else gets a 403. Horizon uses the same check, self-hosted included. The list is empty by default.
+- **Off on self-hosted** (owner decision November 2026): every admin route sits behind `EnsureAdminEnabled`, which answers 404 when `trypost.self_hosted` is on, before the admin check, and the app menu never offers it there (`auth.user.can_access_admin` is false). So nothing inside the admin checks `self_hosted` or `selfHosted`: no page, tab, sidebar group, action or Stripe read hides or skips anything for self-hosted. Do not add such a check; a new admin page needs nothing for it. Its tests run as Cloud (`tests/Pest.php` sets `trypost.self_hosted` off for `Feature/Admin` and `Browser/Admin`).
+- **Who gets in:** only the accounts whose email is in `ADMIN_EMAILS`, verified or not (owner decision November 2026: list only emails that already have an account, since the first signup with a listed email gets in) (`User::canAccessAdmin()`, through `EnsureCanAccessAdmin`); anyone else gets a 403. Horizon uses the same check, self-hosted included. The list is empty by default.
 - **People → Insights** (`admin.users.insights.index`): Overview (usage against the period before, customers by lifecycle stage worked out live through `ResolveLifecycleStage`, channels and posts per account), Top accounts (one sortable table: posts sent, via API and MCP, channels connected, posts failed) and Churn risk. Churn risk reads the paying accounts as a funnel (subscribed, active, at risk, MRR at risk); its signals (stopped posting, never posted or no channel a week after subscribing, posting halved, failing, channels broken, cancelling, past due) each weigh into a risk level (`BuildChurnRisk::assess()`), which a user's profile reads too (`BuildUserHealth`).
 - **Days are the viewer's own:** every per-day count (dashboard, publishing, networks, subscriptions) buckets by the admin's `users.timezone`, never UTC. The one exception is the X usage on Quotas, which keeps X's UTC days because X counts and bills them so. A post that went out counts at `published_at`, a refused one at its failure (`publication_updated_at`), through `PublishingCounts::countedBetween()`: later writes on a publication (deleted on the network, a TikTok id, reactions) move `publication_updated_at` and must never make an old post count as sent today.
 - **Every admin action is in the activity log** (`RecordAdminAction`, log `admin`): blocking and unblocking a user, starting and stopping impersonation, retrying a post, creating, editing, ending and deleting an offer. The log keeps 365 days: the daily `activitylog:clean` deletes older entries (`clean_after_days` in `config/activitylog.php`), the admin's included.
@@ -1236,7 +1236,7 @@ an `enabled` flag or posts with several channels. Posts created together share
 - Reply media rows are owned by the post like its root media. `SyncOwnedMedia` resolves them from the post's stored `meta.thread_replies` and writes the canonical items back, so write the target's meta **before** calling it; it never deletes a row a reply still uses. Every segment's checkpoint hash covers its media ids.
 - In the composer each post of a thread shows its own media under it; the toolbar, paste, drop and the toolbar upload button add to the active post.
 - X replies go through `POST /2/tweets` with `reply.in_reply_to_tweet_id` on the previous segment. X restricts API replies (February 2026) to posts whose author summoned the replier; replying to your own post is the case that stays allowed. Each reply is billed as a post.
-- Each segment already live is checkpointed in `posts.error_context.thread_progress` (`App\Support\Social\ThreadProgress`), so a retry resumes instead of re-posting, and a resume keeps the root hash. A retry from the backoffice (`RetryFailedPost`) keeps the live segments.
+- Each segment already live is checkpointed in `posts.error_context.thread_progress` (`App\Support\Social\ThreadProgress`), so a retry resumes instead of re-posting, and a resume keeps the root hash. A retry from the admin (`RetryFailedPost`) keeps the live segments.
 - `posts.thread_reply_ids` lists the reply ids so `ImportExternalPosts` does not import TryPost's own replies as new posts.
 
 ## Channel permissions (one map of what each network needs)
@@ -1269,7 +1269,7 @@ An Instagram feed post or reel (both logins) takes one thread reply, published a
 
 - **Reply type:** `ContentType::InstagramComment`, a reply's type only (no platform, no listing), text only (`maxMediaCount()` 0), up to 2,200 characters, sent as plain text by `ContentSanitizer`. The composer measures and previews the text the publisher sends through `plainText()` (`lib/plainText.ts`, the mirror of `ContentSanitizer::plainText()`): `replyDisplayText()` in the reply field and the card's issues, and `InstagramPreviewComment`.
 - **Permission:** the `thread_replies` feature, `instagram_business_manage_comments` on Instagram Login and `instagram_manage_comments` on Facebook Login, both in the default scopes (see "Channel permissions"). A network whose comments are off says `posts.form.thread.comment_unsupported`, never the thread copy.
-- **Never commented twice:** before the request the publisher writes `instagram_comment_pending` in `error_context` (`PublishCheckpoint`). A timeout, a server error or a transient Graph error leaves it set, and every later attempt fails with `posts.errors.instagram.comment_unconfirmed` instead of commenting again; a retry from the backoffice (`RetryFailedPost`) clears it only after the admin confirms the comment is missing on Instagram. A documented rejection clears it and fails like any thread, so a retry only comments.
+- **Never commented twice:** before the request the publisher writes `instagram_comment_pending` in `error_context` (`PublishCheckpoint`). A timeout, a server error or a transient Graph error leaves it set, and every later attempt fails with `posts.errors.instagram.comment_unconfirmed` instead of commenting again; a retry from the admin (`RetryFailedPost`) clears it only after the admin confirms the comment is missing on Instagram. A documented rejection clears it and fails like any thread, so a retry only comments.
 - **Live without a media id:** a resume that finds the container already published has only the container id, which takes no comment. The post ends published without the comment (`InstagramCommentSkippedException`, `InstagramPublisher::COMMENT_SKIPPED` in `error_context`, owner decision November 2026), never failed, and its card shows `PostWarningPopover` (shared with the Facebook cover warning), which tells the user to add it on Instagram.
 - **Composer:** "Add first comment" (`posts.form.thread.first_comment`) starts it, and the preview shows it under the caption.
 
@@ -1344,7 +1344,7 @@ What a post can carry on Instagram depends on how the account is connected: thro
 
 ## Browser Tests (Pest + Playwright)
 
-Browser tests live in `tests/Browser`, split like the pages: `tests/Browser/App` for the app and `tests/Browser/Admin` for the backoffice. They run on `pestphp/pest-plugin-browser` driving Playwright. **Laravel Dusk is not installed** — there is no `DuskTestCase`, no `$browser` object, and no `browse()`. Do not add `dusk="..."` attributes; they select nothing.
+Browser tests live in `tests/Browser`, split like the pages: `tests/Browser/App` for the app and `tests/Browser/Admin` for the admin. They run on `pestphp/pest-plugin-browser` driving Playwright. **Laravel Dusk is not installed** — there is no `DuskTestCase`, no `$browser` object, and no `browse()`. Do not add `dusk="..."` attributes; they select nothing.
 
 - ALWAYS use named routes via `route()`. NEVER hardcode URLs like `'https://trypost.test/login'`.
     - Example: `visit(route('login'))`.

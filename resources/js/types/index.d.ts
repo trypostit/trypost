@@ -121,7 +121,7 @@ export interface SharedData {
     mediaUploadLimits?: MediaUploadLimits | null;
     toursEnabled?: boolean;
     languages?: Language[];
-    /** The user a backoffice admin is viewing the app as; null when nobody is. */
+    /** The user an admin is viewing the app as; null when nobody is. */
     impersonating?: { name: string; email: string } | null;
     [key: string]: unknown;
 }
@@ -146,7 +146,7 @@ export interface User {
     week_starts_on: WeekStart;
     default_post_action: DefaultPostAction;
     email_verified_at: string | null;
-    is_backoffice_admin: boolean;
+    can_access_admin: boolean;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;

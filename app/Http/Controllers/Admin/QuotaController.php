@@ -17,7 +17,7 @@ class QuotaController extends Controller
     {
         return Inertia::render('admin/quotas/Index', [
             'cards' => BuildQuotaCards::execute($request->dateRange()),
-            'ranges' => DateRangePreset::backoffice(),
+            'ranges' => DateRangePreset::admin(),
             ...$request->rangeProps(),
             'filters' => $request->rangeFilters(),
         ]);

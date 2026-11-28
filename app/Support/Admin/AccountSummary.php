@@ -8,7 +8,7 @@ use App\Models\Account;
 use Illuminate\Support\Str;
 
 /**
- * How a backoffice table names an account: by its owner and its plan.
+ * How an admin table names an account: by its owner and its plan.
  */
 final class AccountSummary
 {

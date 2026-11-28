@@ -22,11 +22,11 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     /**
      * Register the Horizon gate.
      *
-     * Outside the local environment Horizon opens to the backoffice admins
+     * Outside the local environment Horizon opens to the admins
      * (`ADMIN_EMAILS`), the same people who may open /admin.
      */
     protected function gate(): void
     {
-        Gate::define('viewHorizon', fn (?User $user = null): bool => $user?->isBackofficeAdmin() === true);
+        Gate::define('viewHorizon', fn (?User $user = null): bool => $user?->canAccessAdmin() === true);
     }
 }

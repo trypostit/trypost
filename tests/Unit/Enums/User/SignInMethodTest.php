@@ -15,7 +15,7 @@ test('a user can sign in with every method they have', function (array $attribut
     'every method' => [['google_id' => 'g-1', 'github_id' => 'gh-1', 'password' => 'secret'], [SignInMethod::Google, SignInMethod::GitHub, SignInMethod::Email]],
 ]);
 
-test('each sign-in method has its backoffice label', function () {
+test('each sign-in method has its admin label', function () {
     expect(collect(SignInMethod::cases())->mapWithKeys(fn (SignInMethod $method): array => [$method->value => $method->label()])->all())
         ->toBe(['google' => 'Google', 'github' => 'GitHub', 'email' => 'Email and password']);
 });

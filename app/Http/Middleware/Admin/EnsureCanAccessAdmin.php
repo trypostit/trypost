@@ -8,17 +8,17 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureBackofficeAdmin
+class EnsureCanAccessAdmin
 {
     /**
-     * Let only backoffice admins (an account whose email is in `ADMIN_EMAILS`,
+     * Let only admins (an account whose email is in `ADMIN_EMAILS`,
      * verified or not) through; everyone else gets a 403.
      *
      * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        abort_unless($request->user()?->isBackofficeAdmin() === true, Response::HTTP_FORBIDDEN);
+        abort_unless($request->user()?->canAccessAdmin() === true, Response::HTTP_FORBIDDEN);
 
         return $next($request);
     }

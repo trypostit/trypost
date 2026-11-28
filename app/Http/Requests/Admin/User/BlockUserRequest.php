@@ -40,8 +40,8 @@ class BlockUserRequest extends FormRequest
                     return;
                 }
 
-                if ($target->is($this->user()) || $target->isBackofficeAdmin()) {
-                    $validator->errors()->add('user', 'A backoffice admin cannot be blocked.');
+                if ($target->is($this->user()) || $target->canAccessAdmin()) {
+                    $validator->errors()->add('user', 'An admin cannot be blocked.');
                 }
             },
         ];

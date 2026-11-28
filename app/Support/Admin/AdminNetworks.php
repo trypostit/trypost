@@ -8,7 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 
 /**
- * The backoffice filters by network (LinkedIn, Instagram…), like the app's
+ * The admin filters by network (LinkedIn, Instagram…), like the app's
  * network filter: one entry per network, covering every way of connecting it
  * (`Platform::network()`).
  */

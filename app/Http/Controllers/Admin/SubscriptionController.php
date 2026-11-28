@@ -31,7 +31,7 @@ class SubscriptionController extends Controller
                 ListSubscriptions::execute($request->status(), $request->search())->paginate((int) config('app.pagination.default')),
             )),
             'statusCounts' => fn (): array => ListSubscriptions::statusCounts($request->search()),
-            'ranges' => DateRangePreset::backoffice(),
+            'ranges' => DateRangePreset::admin(),
             ...$request->rangeProps(),
             'filters' => [
                 ...$request->rangeFilters(),

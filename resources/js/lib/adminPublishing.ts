@@ -4,7 +4,7 @@ import type { PostCreatedVia } from '@/types/admin';
 /** A failure rate, in percent, at or above which a network or an origin reads as in trouble. */
 export const ALARMING_FAILURE_RATE = 10;
 
-/** Where a post was made, as the backoffice names it; keyed by text so the stats' plain origin keys read it too. */
+/** Where a post was made, as the admin names it; keyed by text so the stats' plain origin keys read it too. */
 const ORIGIN_LABELS: Record<string, string> = {
     web: 'Web app',
     api: 'REST API',

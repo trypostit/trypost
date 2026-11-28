@@ -19,7 +19,7 @@ class PostStatsController extends Controller
         return Inertia::render('admin/posts/Index', [
             'stats' => BuildPublishingStats::execute($request->dateRange(), $request->platforms()),
             'networks' => AdminNetworks::options(),
-            'ranges' => DateRangePreset::backoffice(),
+            'ranges' => DateRangePreset::admin(),
             ...$request->rangeProps(),
             'filters' => [
                 ...$request->rangeFilters(),

@@ -105,7 +105,7 @@ class UserFactory extends Factory
     }
 
     /**
-     * A user a backoffice admin has blocked.
+     * A user an admin has blocked.
      */
     public function blocked(string $reason = 'Abuse'): static
     {

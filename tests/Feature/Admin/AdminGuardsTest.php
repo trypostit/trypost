@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\Admin\EnsureBackofficeAdmin;
-use App\Http\Middleware\Admin\EnsureBackofficeEnabled;
+use App\Http\Middleware\Admin\EnsureCanAccessAdmin;
+use App\Http\Middleware\Admin\EnsureAdminEnabled;
 use App\Models\Activity;
 use App\Models\User;
 use App\Support\Admin\Impersonation;
@@ -16,17 +16,17 @@ beforeEach(function () {
     $this->admin = admin();
 });
 
-test('every backoffice route needs a signed-in backoffice admin on Cloud', function () {
+test('every admin route needs a signed-in admin on Cloud', function () {
     $routes = collect(Route::getRoutes()->getRoutes())
         ->filter(fn (RoutingRoute $route): bool => str_starts_with((string) $route->getName(), 'admin.'));
 
     expect($routes)->not->toBeEmpty();
 
     $routes->each(fn (RoutingRoute $route) => expect($route->gatherMiddleware())
-        ->toContain('auth', EnsureBackofficeEnabled::class, EnsureBackofficeAdmin::class));
+        ->toContain('auth', EnsureAdminEnabled::class, EnsureCanAccessAdmin::class));
 });
 
-test('a user who is not a backoffice admin cannot block, unblock or view the app as someone', function () {
+test('a user who is not an admin cannot block, unblock or view the app as someone', function () {
     $someone = User::factory()->create();
     $blocked = User::factory()->blocked()->create();
     $target = workspaceOwner();

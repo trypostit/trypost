@@ -42,7 +42,7 @@ enum SignInMethod: string
         return $methods;
     }
 
-    /** The name the backoffice shows, in English. */
+    /** The name the admin shows, in English. */
     public function label(): string
     {
         return match ($this) {

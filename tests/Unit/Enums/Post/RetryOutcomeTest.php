@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Post\RetryOutcome;
 
-test('every outcome names the field and the message the backoffice shows', function (RetryOutcome $outcome, string $field, string $message) {
+test('every outcome names the field and the message the admin shows', function (RetryOutcome $outcome, string $field, string $message) {
     expect($outcome->errorField())->toBe($field)
         ->and($outcome->message())->toBe($message);
 })->with([

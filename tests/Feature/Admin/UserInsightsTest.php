@@ -118,7 +118,7 @@ test('a user profile shows no churn risk for an account that pays nothing', func
     expect(BuildUserHealth::execute($owner, 'UTC')['risk'])->toBeNull();
 });
 
-test('a post the network rejected in review counts as failed, as everywhere in the backoffice', function () {
+test('a post the network rejected in review counts as failed, as everywhere in the admin', function () {
     fakeStripeReads(['price_123' => [1900, 'month']]);
     [$owner, $channel] = adminOwnerWithChannel('Rejected');
     subscribeAccount($owner->account, ['created_at' => $this->now->subDays(30)]);

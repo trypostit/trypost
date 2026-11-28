@@ -4,7 +4,7 @@ import type { ChangelogEntry } from '@/types/changelog';
 import type { GatedFeatureValue } from '@/types/channel-permission';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
 
-/** A `Badge` variant, as the backoffice maps a state to one. */
+/** A `Badge` variant, as the admin maps a state to one. */
 export type BadgeVariant = NonNullable<BadgeVariants['variant']>;
 
 /** The Users list's tabs (`App\Enums\Admin\UserStatusFilter`). */
@@ -13,7 +13,7 @@ export type UserStatusFilter = 'all' | 'blocked';
 /** The Subscriptions list's tabs (`App\Enums\Admin\SubscriptionStatusFilter`). */
 export type SubscriptionStatusFilter = 'all' | 'active' | 'cancelling' | 'past_due' | 'trialing' | 'canceled';
 
-/** A network whose quota the backoffice reads (`App\Enums\Admin\QuotaSource`). */
+/** A network whose quota the admin reads (`App\Enums\Admin\QuotaSource`). */
 export type QuotaSource = 'youtube' | 'x';
 
 /** Where a post was made (`App\Enums\Post\CreatedVia`). */
@@ -40,7 +40,7 @@ export type ChurnSignal =
 /** How likely a paying account is to leave, as `BuildChurnRisk` grades it. */
 export type RiskLevel = 'high' | 'medium' | 'low';
 
-/** A figure's change from a past value, as the backoffice's tiles show it. */
+/** A figure's change from a past value, as the admin's tiles show it. */
 export interface AdminChange {
     /** The change in percent; its sign picks the arrow. */
     value: number;
@@ -88,7 +88,7 @@ export interface AdminUser {
     email: string;
     photo_url: string | null;
     email_verified: boolean;
-    is_backoffice_admin: boolean;
+    can_access_admin: boolean;
     is_owner: boolean;
     plan: string | null;
     has_app_access: boolean;

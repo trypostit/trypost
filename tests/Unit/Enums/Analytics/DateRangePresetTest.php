@@ -32,6 +32,6 @@ test('a custom range keeps the days it is given', function () {
 
 test('the values stay the ones the pages send', function () {
     expect(collect(DateRangePreset::cases())->map->value->all())->toBe(['7d', '30d', '60d', '90d', 'mtd', 'custom'])
-        ->and(collect(DateRangePreset::backoffice())->map->value->all())->toBe(['7d', '30d', '60d', '90d'])
+        ->and(collect(DateRangePreset::admin())->map->value->all())->toBe(['7d', '30d', '60d', '90d'])
         ->and(DateRangePreset::DEFAULT_RANGE)->toBe(DateRangePreset::ThirtyDays);
 });

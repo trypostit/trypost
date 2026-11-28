@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Enums\Offer;
 
 /**
- * Where an offer stands today, as the backoffice shows it.
+ * Where an offer stands today, as the admin shows it.
  */
 enum OfferState: string
 {

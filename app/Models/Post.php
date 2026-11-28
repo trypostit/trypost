@@ -270,7 +270,7 @@ class Post extends Model
 
     /**
      * Posts whose account owner is not blocked. A blocked owner's scheduled
-     * posts wait, unpublished, until a backoffice admin unblocks them.
+     * posts wait, unpublished, until an admin unblocks them.
      */
     public function scopeOwnerNotBlocked(Builder $query): Builder
     {
@@ -477,7 +477,7 @@ class Post extends Model
     /**
      * A blocked owner's post waits as the scheduler leaves it: a limit retry
      * goes back to being due, anything else back to scheduled, so it
-     * publishes once a backoffice admin unblocks the owner.
+     * publishes once an admin unblocks the owner.
      */
     public function waitForOwnerUnblock(): void
     {

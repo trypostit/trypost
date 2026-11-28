@@ -32,7 +32,7 @@ test('every branded option has its logo in the competitors folder', function () 
     }
 });
 
-test('the backoffice names a brand as it spells itself and the other options in words', function () {
+test('the admin names a brand as it spells itself and the other options in words', function () {
     expect(PreviousSoftware::SproutSocial->label())->toBe('Sprout Social')
         ->and(PreviousSoftware::SocialBee->label())->toBe('SocialBee')
         ->and(PreviousSoftware::None->label())->toBe('None yet')

@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
 class ListFailedPosts
 {
     /**
-     * Posts the networks refused or rejected in review (what the backoffice
+     * Posts the networks refused or rejected in review (what the admin
      * calls failed everywhere), across every workspace, the most recently
      * failed first: by when the publication last moved
      * (`publication_updated_at`, the failure time the list shows), which an

@@ -8,7 +8,7 @@ use App\Enums\Billing\Interval;
 use App\Models\Plan;
 
 /**
- * How the backoffice reads a subscription's plan and interval: from its
+ * How the admin reads a subscription's plan and interval: from its
  * Stripe price, where a price no plan lists anymore is legacy. Where a
  * subscription stands is the SubscriptionStatusFilter it falls in.
  */

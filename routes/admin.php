@@ -16,11 +16,11 @@ use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\UserBlockController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserInsightsController;
-use App\Http\Middleware\Admin\EnsureBackofficeAdmin;
-use App\Http\Middleware\Admin\EnsureBackofficeEnabled;
+use App\Http\Middleware\Admin\EnsureAdminEnabled;
+use App\Http\Middleware\Admin\EnsureCanAccessAdmin;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', EnsureBackofficeEnabled::class, EnsureBackofficeAdmin::class])->group(function (): void {
+Route::middleware(['auth', EnsureAdminEnabled::class, EnsureCanAccessAdmin::class])->group(function (): void {
     Route::get('admin', [DashboardController::class, 'index'])->name('admin.dashboard');
 
     Route::get('admin/users', [UserController::class, 'index'])->name('admin.users.index');

@@ -42,7 +42,7 @@ class BuildDashboard
     public const float X_LOW_BALANCE = 10.0;
 
     /**
-     * The backoffice's first page: what needs attention now (a network
+     * The admin's first page: what needs attention now (a network
      * failing, posts stuck publishing, a quota running out), what went out in
      * the last 24 hours, the publishing queue, the last two weeks of
      * publishing, and the channels. Each block leads to

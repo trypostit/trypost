@@ -54,7 +54,7 @@ class AdminFailedPostResource extends JsonResource
 
     /**
      * A blocked owner's posts wait until they are unblocked, so the
-     * backoffice offers no retry for them.
+     * admin offers no retry for them.
      */
     private function retryable(RetryFailedPost $retry, ?User $owner): bool
     {

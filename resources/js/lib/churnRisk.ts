@@ -40,7 +40,7 @@ const RISK_LEVELS: Record<RiskLevel, { label: string; dot: string }> = {
 
 export const churnSignal = (signal: ChurnSignal): ChurnSignalDisplay => CHURN_SIGNALS[signal];
 
-/** Whether the key names a signal the backoffice knows, as a count map's keys come back as text. */
+/** Whether the key names a signal the admin knows, as a count map's keys come back as text. */
 export const isChurnSignal = (key: string): key is ChurnSignal => key in CHURN_SIGNALS;
 
 export const riskLevel = (level: RiskLevel): { label: string; dot: string } => RISK_LEVELS[level];

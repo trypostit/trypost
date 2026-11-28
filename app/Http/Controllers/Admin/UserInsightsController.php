@@ -22,7 +22,7 @@ class UserInsightsController extends Controller
         return Inertia::render('admin/users/Insights', [
             'usage' => BuildUsageInsights::execute($activity),
             'churn' => BuildChurnRisk::execute($activity),
-            'ranges' => DateRangePreset::backoffice(),
+            'ranges' => DateRangePreset::admin(),
             ...$request->rangeProps(),
             'filters' => $request->rangeFilters(),
         ]);

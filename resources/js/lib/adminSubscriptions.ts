@@ -2,7 +2,7 @@ import { humanize } from '@/lib/adminFormat';
 import { filled } from '@/lib/helpers';
 import type { AdminSubscriptionPlan, BadgeVariant } from '@/types/admin';
 
-/** How the backoffice shows where a subscription stands. */
+/** How the admin shows where a subscription stands. */
 const STATES: Record<string, { label: string; variant: BadgeVariant }> = {
     active: { label: 'Active', variant: 'success' },
     trialing: { label: 'Trialing', variant: 'info' },

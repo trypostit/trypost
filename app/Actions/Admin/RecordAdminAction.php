@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 class RecordAdminAction
 {
     /**
-     * Write what a backoffice admin did to a subject in the `admin` log. The
+     * Write what an admin did to a subject in the `admin` log. The
      * admin is always passed in, never read from the session: while
      * impersonating, the signed-in user is the impersonated one.
      *

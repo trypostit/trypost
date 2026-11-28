@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * What a backoffice tile shows: a muted label over a large figure, its change
+ * What an admin tile shows: a muted label over a large figure, its change
  * and a hint. `AdminStatGrid` and `AdminMetricTabs` lay the tiles out.
  */
 import MetricChange from '@/components/analytics/MetricChange.vue';

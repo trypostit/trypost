@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Queue a new publish attempt for a failed post, resuming an in-flight remote
- * publish when a checkpoint exists. The backoffice's Retry button calls it.
+ * publish when a checkpoint exists. The admin's Retry button calls it.
  */
 class RetryFailedPost
 {

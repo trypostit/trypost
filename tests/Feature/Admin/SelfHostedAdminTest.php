@@ -9,7 +9,7 @@ beforeEach(function () {
     $this->admin = admin();
 });
 
-test('a self-hosted install has no backoffice: every page answers 404, even to an admin', function () {
+test('a self-hosted install has no admin: every page answers 404, even to an admin', function () {
     config()->set('trypost.self_hosted', true);
     $offer = Offer::factory()->create();
     $this->actingAs($this->admin);
@@ -23,10 +23,10 @@ test('a self-hosted install has no backoffice: every page answers 404, even to a
     $this->delete(route('admin.billing.offers.destroy', $offer))->assertNotFound();
 });
 
-test('a self-hosted install never offers the backoffice in the app menu', function (bool $selfHosted) {
+test('a self-hosted install never offers the admin in the app menu', function (bool $selfHosted) {
     config()->set('trypost.self_hosted', $selfHosted);
 
-    expect(AuthUserResource::make($this->admin)['is_backoffice_admin'])->toBe(! $selfHosted);
+    expect(AuthUserResource::make($this->admin)['can_access_admin'])->toBe(! $selfHosted);
 })->with([
     'self-hosted' => [true],
     'TryPost Cloud' => [false],

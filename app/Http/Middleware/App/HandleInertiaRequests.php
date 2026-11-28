@@ -89,7 +89,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * The user a backoffice admin is viewing the app as, for the banner that
+     * The user an admin is viewing the app as, for the banner that
      * lets them stop. Null when nobody is impersonating.
      *
      * @return array{name: string, email: string}|null

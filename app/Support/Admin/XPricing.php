@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Admin;
 
 /**
- * X's public pay-per-use prices, in USD, used only to estimate the backoffice's
+ * X's public pay-per-use prices, in USD, used only to estimate the admin's
  * daily X cost. X marks them as subject to change; the console is the source
  * of what was actually charged.
  *

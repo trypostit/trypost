@@ -133,7 +133,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
-     * A backoffice admin blocked this user: no sign-in, no API or MCP, and the
+     * An admin blocked this user: no sign-in, no API or MCP, and the
      * scheduled posts of the account they own wait until they are unblocked.
      */
     public function isBlocked(): bool
@@ -142,10 +142,10 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
-     * May open the backoffice and Horizon: an account whose email is in
+     * May open the admin and Horizon: an account whose email is in
      * `ADMIN_EMAILS`. Not the workspace admin (`user_workspace.is_admin`).
      */
-    public function isBackofficeAdmin(): bool
+    public function canAccessAdmin(): bool
     {
         return collect(config()->array('trypost.admin.emails'))->contains(Str::lower($this->email));
     }

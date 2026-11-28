@@ -17,7 +17,7 @@ class SignupInsightsController extends Controller
     {
         return Inertia::render('admin/billing/insights/Index', [
             'insights' => BuildSignupInsights::execute($request->dateRange()),
-            'ranges' => DateRangePreset::backoffice(),
+            'ranges' => DateRangePreset::admin(),
             ...$request->rangeProps(),
             'filters' => $request->rangeFilters(),
         ]);

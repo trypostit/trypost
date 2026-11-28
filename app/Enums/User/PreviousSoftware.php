@@ -40,7 +40,7 @@ enum PreviousSoftware: string
         };
     }
 
-    /** The name the backoffice shows, in English: the brand's own spelling, or the option's. */
+    /** The name the admin shows, in English: the brand's own spelling, or the option's. */
     public function label(): string
     {
         return match ($this) {

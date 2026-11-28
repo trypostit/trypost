@@ -3,7 +3,7 @@ import { filled } from '@/lib/helpers';
 import type { BadgeVariant } from '@/types/admin';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
 
-/** How the backoffice shows where a channel's connection stands. */
+/** How the admin shows where a channel's connection stands. */
 const CHANNEL_STATUSES: Record<SocialAccountStatusValue, { label: string; variant: BadgeVariant }> = {
     connected: { label: 'Connected', variant: 'success' },
     token_expired: { label: 'Needs reconnect', variant: 'warning' },

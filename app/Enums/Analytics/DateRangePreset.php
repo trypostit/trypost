@@ -23,11 +23,11 @@ enum DateRangePreset: string
     public const self DEFAULT_RANGE = self::ThirtyDays;
 
     /**
-     * The fixed periods the backoffice charts offer.
+     * The fixed periods the admin charts offer.
      *
      * @return list<self>
      */
-    public static function backoffice(): array
+    public static function admin(): array
     {
         return [self::SevenDays, self::ThirtyDays, self::SixtyDays, self::NinetyDays];
     }

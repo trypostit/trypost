@@ -30,7 +30,7 @@ class IndexQuotaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'range' => ['nullable', Rule::enum(DateRangePreset::class)->only(DateRangePreset::backoffice())],
+            'range' => ['nullable', Rule::enum(DateRangePreset::class)->only(DateRangePreset::admin())],
         ];
     }
 

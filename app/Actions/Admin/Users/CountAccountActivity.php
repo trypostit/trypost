@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
- * What the backoffice counts per account, in SQL: the posts it sent and the
+ * What the admin counts per account, in SQL: the posts it sent and the
  * channels it has. Every page that reads an account's activity counts it
  * here, for every account at once or for one.
  */

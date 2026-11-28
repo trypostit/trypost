@@ -29,7 +29,7 @@ class IndexPostStatsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'range' => ['nullable', Rule::enum(DateRangePreset::class)->only([...DateRangePreset::backoffice(), DateRangePreset::Custom])],
+            'range' => ['nullable', Rule::enum(DateRangePreset::class)->only([...DateRangePreset::admin(), DateRangePreset::Custom])],
             'start' => [Rule::requiredIf($this->picksCustomRange()), 'nullable', 'date_format:Y-m-d', "after_or_equal:{$this->earliestDay()}"],
             'end' => [Rule::requiredIf($this->picksCustomRange()), 'nullable', 'date_format:Y-m-d', 'after_or_equal:start', "before_or_equal:{$this->today()}"],
             'networks' => ['nullable', 'array'],

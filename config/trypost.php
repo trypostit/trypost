@@ -23,10 +23,10 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Backoffice
+    | Admin
     |--------------------------------------------------------------------------
     |
-    | The people who may open the backoffice (/admin) and Horizon: a
+    | The people who may open the admin (/admin) and Horizon: a
     | comma-separated list of emails, matched without case against the
     | accounts' emails, verified or not: list only emails that already have
     | an account. Empty by default, which closes both to everyone.
@@ -37,7 +37,7 @@ return [
         'emails' => ConfigEnvironment::emails('ADMIN_EMAILS'),
 
         /*
-         * API quotas and spend shown in the backoffice, read at most four
+         * API quotas and spend shown in the admin, read at most four
          * times a day by `admin:sync-platform-quotas`. Each source runs only
          * when it is on and its credentials are set.
          */

@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 use Stripe\Subscription as StripeSubscription;
 
 /**
- * Where a subscription stands, as the backoffice filters them. Every one is in
+ * Where a subscription stands, as the admin filters them. Every one is in
  * All, and in at most one other group: a subscription with an end is
  * cancelling or canceled whatever its Stripe status, and one without is in
  * the group of its status. A status no group names (unpaid, paused) leaves a
